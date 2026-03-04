@@ -37,5 +37,5 @@ vim.keymap.set("n", "<leader>c", ":AI/clear<CR>", { silent = true });
 vim.keymap.set("n", "<leader>s", ":AI/status<CR>", { silent = true });
 
 print("AI (nzi) Loaded! Use <leader>a to toggle the Model Stream.");
-print("Context refined: Named whitespace buffers allowed; unnamed ignored.");
-print("Directives: Unified with questions until further notice.");
+print("Context filtered: Blank and unsaved buffers are now ignored.");
+print("Providers standardized: Using Ollama and OpenRouter for all models.");

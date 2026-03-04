@@ -61,8 +61,8 @@ end
 
 --- Get the current active model configuration
 function M.get_active_model()
-  local alias = M.options.active_model or "qwenzel";
-  return M.options.models[alias] or M.options.models["qwenzel"];
+  local alias = M.options.active_model or "coder";
+  return M.options.models[alias] or M.options.models["coder"];
 end
 
 return M;
