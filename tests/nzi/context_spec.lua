@@ -2,8 +2,11 @@ local assert = require("luassert");
 local context = require("nzi.context");
 
 describe("AI context engine", function()
-  it("should have default buffer state as active", function()
-    assert.are.equal("active", context.get_state(1));
+  it("should have default buffer state as active for named buffers", function()
+    local bufnr = vim.api.nvim_create_buf(true, false);
+    vim.api.nvim_buf_set_name(bufnr, "named_file.lua");
+    assert.are.equal("active", context.get_state(bufnr));
+    vim.api.nvim_buf_delete(bufnr, { force = true });
   end);
 
   it("should allow setting and getting buffer state", function()

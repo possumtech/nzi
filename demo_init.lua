@@ -49,6 +49,12 @@ vim.keymap.set("n", "<leader>ay", ":AI/yank<CR>",   { desc = "AI: Yank Last Resp
 vim.keymap.set("n", "<leader>ac", ":AI/clear<CR>",  { desc = "AI: Clear History" })
 vim.keymap.set("n", "<leader>au", ":AI/undo<CR>",   { desc = "AI: Undo Last Turn" })
 
+-- Interaction
+vim.keymap.set("n", "<leader>a?", ":AI? ", { desc = "AI: Ask Question" })
+vim.keymap.set("n", "<leader>a:", ":AI: ", { desc = "AI: Give Directive" })
+vim.keymap.set("n", "<leader>a!", ":AI! ", { desc = "AI: Shell Command" })
+vim.keymap.set("n", "<leader>a/", ":AI/",  { desc = "AI: Internal Command" })
+
 -- Context Management
 vim.keymap.set("n", "<leader>aA", ":AI/active<CR>", { desc = "AI: Set Buffer Active" })
 vim.keymap.set("n", "<leader>aR", ":AI/read<CR>",   { desc = "AI: Set Buffer Read-only" })
