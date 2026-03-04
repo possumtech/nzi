@@ -5,7 +5,7 @@ set -e
 if [ -f .env ]; then export $(grep -v '^#' .env | xargs); fi
 if [ -z "$OPENROUTER_API_KEY" ]; then echo "Error: OPENROUTER_API_KEY is not set."; exit 1; fi
 
-MODEL="qwen/qwen-2.5-coder-32b-instruct"
+MODEL="deepseek/deepseek-chat"
 API_URL="https://openrouter.ai/api/v1/chat/completions"
 
 run_trace() {
@@ -36,10 +36,10 @@ run_trace() {
     echo -e "\n----------------------------------------------------\n"
 }
 
-IDENTITY="You are Qwen, created by Alibaba Cloud. You are coder, a Neovim-native agentic programming tool."
-CONSTRAINTS="## OPERATIONAL CONSTRAINTS\n* Focus exclusively on providing new information or applying requested changes.\n* Adhere strictly to the engineering standards provided below."
-GLOBAL_RULES="### GLOBAL ENGINEERING STANDARDS\nBe concise."
-PROJECT_RULES="### PROJECT-SPECIFIC RULES\n$(cat AGENTS.md)"
+IDENTITY="You are deepseek."
+CONSTRAINTS="## CONSTRAINTS\n* NEVER output <agent:*> tags.\n* NEVER repeat prompt, history, or context content.\n* Provide only new information or requested changes."
+GLOBAL_RULES="### GLOBAL RULES\nBe concise."
+PROJECT_RULES="### PROJECT RULES\n$(cat AGENTS.md)"
 
 USER_PROMPT="I have added these files to the context:\nvault_a.txt\nvault_b.txt\n\nvault_a.txt\n\`\`\`\nTEST_KEY_A = ABC-123\n\`\`\`\n\nvault_b.txt\n\`\`\`\nTEST_KEY_B = DEF-456\n\`\`\`\n\nWhat are the values of TEST_KEY_A and TEST_KEY_B? Answer with the keys and values."
 

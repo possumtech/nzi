@@ -28,7 +28,7 @@ end
 
 --- Execute an AI job via the Python/LiteLLM bridge
 function M.run(messages, callback, on_stdout)
-  local model_alias = config.options.active_model or "coder";
+  local model_alias = config.options.active_model or "deepseek";
   local model_cfg = config.get_active_model();
   local opts = config.options;
 

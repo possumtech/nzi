@@ -24,12 +24,12 @@ vim.api.nvim_set_current_buf(bufnr)
 
 -- Provide a second test file just like the live environment often has
 local bufnr2 = vim.api.nvim_create_buf(true, false)
-vim.api.nvim_buf_set_lines(bufnr2, 0, -1, false, { "TEST_KEY_A = ALPHA" })
+vim.api.nvim_buf_set_lines(bufnr2, 0, -1, false, { "TEST_KEY_A = 1234" })
 vim.api.nvim_buf_set_name(bufnr2, vim.fn.getcwd() .. "/vault_a.txt")
 vim.api.nvim_set_option_value("buflisted", true, { buf = bufnr2 })
 
 -- EXECUTE THE ACTUAL COMMAND
-vim.cmd("AI ? What is the value of TEST_KEY_A in vault_a.txt?")
+vim.cmd("AI ? Where's the beef")
 
 -- Wait for completion or error
 local success = vim.wait(30000, function()

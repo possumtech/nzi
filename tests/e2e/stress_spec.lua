@@ -3,7 +3,7 @@ local config = require("nzi.config");
 
 describe("STRESS E2E: Context and Synthesis", function()
   
-  local model_alias = vim.env.NZI_DEFAULT_MODEL or "coder";
+  local model_alias = vim.env.NZI_DEFAULT_MODEL or "deepseek";
   local model_cfg = config.options.models[model_alias];
 
   before_each(function()

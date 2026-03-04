@@ -12,7 +12,7 @@ Interact with the model directly inside your source files using prefixed comment
 *   `ai: refactor this` — Treated as a code directive (currently routed to question handler).
 *   `ai? explain this` — Ask a specific question about the surrounding code.
 *   `ai! git log` — Execute a shell command and inject the output below the directive.
-*   `ai/model coder` — Send an internal command (e.g., switch models).
+*   `ai/model deepseek` — Send an internal command (e.g., switch models).
 
 ### 2. Status Line Commands
 
@@ -31,7 +31,7 @@ Your project state lives in `AGENTS.md`. This is a collaborative, living documen
 AI (nzi) provides a sanitized but raw view of every interaction. The read-only modal window (`:AI/toggle`) uses a machine-friendly XML structure with real-time telemetry:
 
 ```xml
-[ USER | model: coder | temp: 0.7 | top_p: 1.0 ]
+[ USER | model: deepseek | temp: 0.7 | top_p: 1.0 ]
 <nzi:user>
 What is the purpose of this module?
 </nzi:user>

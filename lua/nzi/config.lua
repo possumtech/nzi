@@ -3,7 +3,7 @@ local M = {};
 --- Default configuration options for nzi
 M.defaults = {
   -- The currently active model alias (selected via environment)
-  active_model = vim.env.NZI_DEFAULT_MODEL or "coder",
+  active_model = vim.env.NZI_DEFAULT_MODEL or "deepseek",
 
   -- OpenRouter/OpenAI identification
   referer = vim.env.NZI_REFERER or "https://github.com/possumtech/nzi",
@@ -11,14 +11,15 @@ M.defaults = {
 
   -- Pre-configured models with aliases
   models = {
-    coder = {
+    deepseek = {
       provider = "openrouter",
-      model = "qwen/qwen-2.5-coder-32b-instruct",
+      model = "deepseek/deepseek-chat",
       api_base = "https://openrouter.ai/api/v1",
       api_key = vim.env.OPENROUTER_API_KEY,
-      role_preference = "developer", 
+      role_preference = "system",
     },
     qwenzel = {
+      provider = "ollama",
       model = "qwenzel",
       api_base = "http://localhost:11434/v1",
       api_key = "ollama",
@@ -67,8 +68,8 @@ end
 
 --- Get the current active model configuration
 function M.get_active_model()
-  local alias = M.options.active_model or "coder";
-  return M.options.models[alias] or M.options.models["coder"];
+  local alias = M.options.active_model or "deepseek";
+  return M.options.models[alias] or M.options.models["deepseek"];
 end
 
 return M;

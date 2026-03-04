@@ -123,8 +123,13 @@ def main():
                 retry_delay *= 2 # Exponential backoff
                 continue
 
-            # If not retryable or last attempt, report the error
-            if "AuthenticationError" in error_msg:
+            # Provider-specific guidance
+            if "500" in error_msg and "openrouter" in str(api_base).lower():
+                error_msg = (
+                    f"OpenRouter Provider Error (500): The upstream host interrupted the stream. "
+                    f"Try switching to a different model like 'deepseek/deepseek-chat' or 'google/gemini-2.0-flash-001'."
+                )
+            elif "AuthenticationError" in error_msg:
                 error_msg = f"Authentication Error: Check your API key for {model}."
             elif "NotFoundError" in error_msg:
                 error_msg = f"Model Not Found: '{model}' is invalid or inaccessible."

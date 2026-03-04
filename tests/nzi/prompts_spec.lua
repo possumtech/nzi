@@ -11,7 +11,7 @@ describe("AI prompts module", function()
     local result = prompts.build_system_prompt(parts, "test-alias");
     assert.match("Global Rule", result);
     assert.match("Project Rule", result);
-    assert.match("STRUCTURAL SCHEMA", result);
+    assert.match("## SCHEMA", result);
   end);
 
   it("should format context correctly with clean machine-friendly tags", function()

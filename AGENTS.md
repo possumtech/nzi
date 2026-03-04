@@ -30,8 +30,8 @@ This is the living document for AI (nzi) development. We use this to track tasks
 - [x] **Read-only Protection:** Ensured modal is `nomodifiable` and protects against insert mode.
 
 ### Phase 4: Integration & Validation
-- [x] **Local Model Integration:** Test `qwen2.5-coder` at `http://192.168.1.17:11434`.
-- [x] **Fast Model Testing:** Use `coder` alias for integration and e2e tests.
+- [x] **Local Model Integration:** Test `qwenzel` at `http://192.168.1.17:11434`.
+- [x] **Fast Model Testing:** Use `deepseek` alias for integration and e2e tests.
 - [x] **Integration Suite:** Real LLM round-trips verified in `tests/integration/`.
 - [ ] **Fugitive-Diff Workflow (Refinement):** Re-implement surgical edits once a stable strategy is devised. (Currently unified with question handler).
 

@@ -5,8 +5,8 @@ local config = require("nzi.config");
 
 describe("BEEF E2E: Real LLM Integration", function()
   
-  -- We use the active model from the environment or default to coder
-  local model_alias = vim.env.NZI_MODEL or "coder";
+  -- We use the active model from the environment or default to deepseek
+  local model_alias = vim.env.NZI_MODEL or "deepseek";
   local model_cfg = config.options.models[model_alias];
 
   before_each(function()

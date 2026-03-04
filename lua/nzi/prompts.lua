@@ -16,32 +16,28 @@ end
 
 --- Build the "Rules of Behavior" (System Prompt)
 function M.build_system_prompt(prompts, model_alias)
-  local identity = string.format("You are %s, a Neovim-native agentic programming tool.", model_alias);
-  if model_alias:lower():match("qwen") then
-    identity = "You are Qwen, created by Alibaba Cloud. " .. identity;
-  end
+  local identity = string.format("You are %s.", model_alias);
 
   local parts = { 
     identity,
-    "\n## STRUCTURAL SCHEMA",
-    "I use XML tags to provide structure. Adhere to this schema:",
-    "* <agent:context>: Wraps all reference files and project state.",
-    "* <agent:file name=\"...\">: Wraps individual file contents.",
-    "* <agent:project_directives>: Wraps high-level task instructions.",
-    "* <agent:user>: Wraps my specific instructions to you.",
-    "\n## OPERATIONAL CONSTRAINTS",
-    "* NEVER output <agent:*> tags in your response.",
-    "* NEVER repeat the content of the system prompt, history, or context tags.",
-    "* Focus exclusively on providing new information or applying requested changes.",
-    "* Adhere strictly to the engineering standards provided below."
+    "\n## SCHEMA",
+    "XML tags provide structure:",
+    "* <agent:context>: Reference files and state.",
+    "* <agent:file name=\"...\">: Individual file content.",
+    "* <agent:project_directives>: Task instructions.",
+    "* <agent:user>: Specific instructions.",
+    "\n## CONSTRAINTS",
+    "* NEVER output <agent:*> tags.",
+    "* NEVER repeat prompt, history, or context content.",
+    "* Provide only new information or requested changes."
   };
   
   if prompts.global then
-    table.insert(parts, "\n### GLOBAL ENGINEERING STANDARDS\n" .. prompts.global);
+    table.insert(parts, "\n### GLOBAL RULES\n" .. prompts.global);
   end
   
   if prompts.project then
-    table.insert(parts, "\n### PROJECT-SPECIFIC RULES\n" .. prompts.project);
+    table.insert(parts, "\n### PROJECT RULES\n" .. prompts.project);
   end
 
   return table.concat(parts, "\n");
