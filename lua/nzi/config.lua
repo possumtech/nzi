@@ -26,7 +26,7 @@ M.defaults = {
   },
 
   -- Ecosystem settings
-  python_cmd = { "python3" }, -- Use {"uv", "run", "python"} or {"./.venv/bin/python"} if needed
+  python_cmd = { vim.fn.getcwd() .. "/.venv/bin/python" }, 
 
   -- Advanced Model Options (OpenAI Standard)
   model_options = {

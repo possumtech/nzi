@@ -47,6 +47,11 @@ function M.run(messages, callback, on_stdout)
   local model_cfg = config.get_active_model();
   local opts = config.options;
 
+  -- Ensure messages is an array of objects
+  if type(messages) == "string" then
+    messages = {{ role = "user", content = messages }};
+  end
+
   -- 1. Prepare Request Payload for the Bridge
   local payload = {
     model = model_cfg.model,
@@ -58,15 +63,22 @@ function M.run(messages, callback, on_stdout)
 
   local request_json = vim.json.encode(payload);
   
-  -- 2. Determine bridge path
-  local script_path = debug.getinfo(1).source:match("@?(.*/)") .. "bridge.py";
+  -- 2. Determine bridge path (absolute)
+  local info = debug.getinfo(M.run);
+  local script_dir = info.source:match("@?(.*/)")
+  local script_path = vim.fn.fnamemodify(script_dir .. "bridge.py", ":p");
 
-  -- 3. Execute via configured command (expecting litellm in that env)
+  -- 3. Execute via configured command
   local cmd = {}
-  for _, part in ipairs(opts.python_cmd or { "python3" }) do
+  local python_parts = opts.python_cmd or { "python3" }
+  for _, part in ipairs(python_parts) do
     table.insert(cmd, part)
   end
   table.insert(cmd, script_path)
+  
+  if os.getenv("NZI_DEBUG") then
+    print("DEBUG CMD: " .. table.concat(cmd, " "));
+  end
 
   local full_stdout = "";
   local partial_data = "";
