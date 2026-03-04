@@ -24,7 +24,7 @@ vim.api.nvim_set_current_buf(bufnr)
 
 -- Provide a second test file just like the live environment often has
 local bufnr2 = vim.api.nvim_create_buf(true, false)
-vim.api.nvim_buf_set_lines(bufnr2, 0, -1, false, { "TEST_KEY_A = ABC-123" })
+vim.api.nvim_buf_set_lines(bufnr2, 0, -1, false, { "TEST_KEY_A = ALPHA" })
 vim.api.nvim_buf_set_name(bufnr2, vim.fn.getcwd() .. "/vault_a.txt")
 vim.api.nvim_set_option_value("buflisted", true, { buf = bufnr2 })
 

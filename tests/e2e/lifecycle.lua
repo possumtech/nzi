@@ -16,7 +16,7 @@ modal.write = function(text, type, append)
 end
 
 -- 2. Execution
-engine.handle_question("What is the origin of \"Where is the beef?\"", false)
+engine.handle_question("Say hello", false)
 
 -- Wait for completion or error (Fast 30s timeout)
 local success = vim.wait(30000, function()
