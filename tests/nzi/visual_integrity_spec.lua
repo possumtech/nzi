@@ -5,7 +5,7 @@ local modal = require("nzi.modal");
 local function validate_xml_integrity(lines)
   local stack = {};
   local full_text = table.concat(lines, "\n");
-  for tag_type, name in full_text:gmatch("<(/?)(nzi:[%w_]+)>") do
+  for tag_type, name in full_text:gmatch("<(/?)(agent:[%w_]+)>") do
     if tag_type == "" then
       table.insert(stack, name);
     else
@@ -47,16 +47,16 @@ describe("AI modal structural integrity", function()
     local lines = vim.api.nvim_buf_get_lines(modal.bufnr, 0, -1, false);
     local text = table.concat(lines, "\n");
     
-    assert.match("<nzi:user>%s*Turn 1%s*</nzi:user>", text);
-    assert.match("<nzi:assistant>%s*Reply 1%s*</nzi:assistant>", text);
-    assert.match("<nzi:user>%s*Turn 2%s*</nzi:user>", text);
+    assert.match("<agent:user>%s*Turn 1%s*</agent:user>", text);
+    assert.match("<agent:assistant>%s*Reply 1%s*</agent:assistant>", text);
+    assert.match("<agent:user>%s*Turn 2%s*</agent:user>", text);
     
     local ok, err = validate_xml_integrity(lines);
     assert.is_true(ok, err);
   end);
 
   it("should produce valid XML even with complex multi-line content", function()
-    modal.write("Line 1\n<fake_tag>\nLine 2", "user", false);
+    modal.write("Line 1\nJust some text\nLine 2", "user", false);
     modal.write("Code block\n```lua\nlocal x = 1\n```", "assistant", true);
     modal.close_tag();
     

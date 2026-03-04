@@ -10,11 +10,10 @@ describe("AI history module", function()
     history.add("question", "What is 1+1?", "It is 2.");
     local formatted = history.format();
     
-    assert.match("<nzi:history>", formatted);
-    assert.match("<nzi:turn id=\"1\" type=\"question\">", formatted, 1, true);
-    assert.match("<nzi:user>What is 1%+1%?</nzi:user>", formatted);
-    assert.match("<nzi:assistant>It is 2%.</nzi:assistant>", formatted);
-    assert.match("</nzi:turn>", formatted);
+    assert.match("<agent:user>", formatted);
+    assert.match("What is 1%+1%?", formatted);
+    assert.match("<agent:assistant>", formatted);
+    assert.match("It is 2%.", formatted);
     
     -- Ensure NO line numbers in the model-facing format
     assert.is_nil(formatted:find("1: "))
@@ -26,13 +25,15 @@ describe("AI history module", function()
     assert.match("1: Line 1\n2: Line 2", turn.user);
   end);
 
-  it("should handle multiple turns with unique IDs", function()
+  it("should handle multiple turns", function()
     history.add("question", "Turn 1", "Reply 1");
     history.add("directive", "Turn 2", "Reply 2");
     local formatted = history.format();
     
-    assert.match("id=\"1\"", formatted);
-    assert.match("id=\"2\"", formatted);
+    assert.match("Turn 1", formatted);
+    assert.match("Reply 1", formatted);
+    assert.match("Turn 2", formatted);
+    assert.match("Reply 2", formatted);
   end);
 
   it("should escape XML in history turns", function()

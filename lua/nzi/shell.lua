@@ -9,6 +9,7 @@ function M.run(command, bufnr, line_idx, inject)
   local modal = require("nzi.modal");
   local history = require("nzi.history");
   
+  bufnr = bufnr or vim.api.nvim_get_current_buf();
   if inject == nil then inject = true; end
   
   -- Open modal and show what we are running
@@ -31,7 +32,7 @@ function M.run(command, bufnr, line_idx, inject)
         end
         
         -- 2. Inject into source buffer only if requested and safe
-        if inject and bufnr ~= modal.bufnr then
+        if inject and bufnr ~= modal.bufnr and vim.api.nvim_buf_is_valid(bufnr) then
           local output_lines = vim.split(obj.stdout or "", "\n");
           if #output_lines > 0 and output_lines[#output_lines] == "" then
             table.remove(output_lines);

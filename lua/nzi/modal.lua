@@ -129,16 +129,16 @@ end
 --- Lexicon Mapping
 local function get_tag_name(type)
   local map = {
-    reasoning_content = "reasoning_content",
-    content = "content",
-    assistant = "assistant",
-    system = "system",
-    user = "user",
-    context = "context",
-    history = "history",
-    shell = "shell_output",
-    shell_output = "shell_output",
-    error = "error",
+    reasoning_content = "agent:reasoning_content",
+    content = "agent:content",
+    assistant = "agent:assistant",
+    system = "agent:system",
+    user = "agent:user",
+    context = "agent:context",
+    history = "agent:history",
+    shell = "agent:shell_output",
+    shell_output = "agent:shell_output",
+    error = "agent:error",
   };
   return map[type] or type;
 end
@@ -164,7 +164,7 @@ local function _close_current_tag(bufnr)
   if not M.current_open_tag then return end
   local tag = get_tag_name(M.current_open_tag);
   local lc = vim.api.nvim_buf_line_count(bufnr);
-  local tag_line = "</nzi:" .. tag .. ">";
+  local tag_line = "</" .. tag .. ">";
   vim.api.nvim_buf_set_lines(bufnr, lc, lc, false, { tag_line });
   highlight_lines(bufnr, lc, lc, "NziTelemetry");
   M.current_open_tag = nil;
@@ -203,13 +203,17 @@ function M.write(text, type, append)
   vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr });
 
   -- 1. Structural Transitions
-  if not append or (M.current_open_tag and M.current_open_tag ~= type) then
+  if (M.current_open_tag and M.current_open_tag ~= type) or (not append and M.current_open_tag) then
     _close_current_tag(bufnr);
+    append = false; -- Force fresh start for new tag
+  end
+
+  if not M.current_open_tag then
     local lc = vim.api.nvim_buf_line_count(bufnr);
     local is_empty = (lc == 1 and vim.api.nvim_buf_get_lines(bufnr, 0, 1, false)[1] == "");
     
     local telemetry = get_telemetry_line(type);
-    local open_tag = "<nzi:" .. tag .. ">";
+    local open_tag = "<" .. tag .. ">";
     local lines_to_add = is_empty and { telemetry, open_tag } or { "", telemetry, open_tag };
     local start_idx = is_empty and 0 or lc;
     
@@ -218,13 +222,6 @@ function M.write(text, type, append)
     
     M.current_open_tag = type;
     append = false; 
-  elseif not M.current_open_tag then
-    local telemetry = get_telemetry_line(type);
-    local open_tag = "<nzi:" .. tag .. ">";
-    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { telemetry, open_tag });
-    highlight_lines(bufnr, 0, 1, "NziTelemetry");
-    M.current_open_tag = type;
-    append = false;
   end
 
   -- 2. Content Injection

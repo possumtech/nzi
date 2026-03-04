@@ -58,16 +58,18 @@ function M.run(messages, callback, on_stdout)
     stream = true,
   };
 
-  -- Merge model options (temperature, top_p, etc.)
+  -- Merge model options (temperature, top_p, etc.) and filter out nils
   if opts.model_options then
     for k, v in pairs(opts.model_options) do
-      body[k] = v;
+      if v ~= nil then body[k] = v; end
     end
   end
 
   -- 2. Prepare Headers
   local headers = {
     ["Content-Type"] = "application/json",
+    ["HTTP-Referer"] = opts.referer, 
+    ["X-Title"] = opts.title,        
   };
   if model_cfg.api_key then
     headers["Authorization"] = "Bearer " .. model_cfg.api_key;
@@ -80,6 +82,7 @@ function M.run(messages, callback, on_stdout)
 
   local cmd = { 
     "curl", "-s", "-N", "-X", "POST", 
+    "-w", "\\n%{http_code}", -- Write status code on a new line at the end
     model_cfg.api_base .. "/chat/completions",
     "-d", request_body
   };
@@ -92,6 +95,8 @@ function M.run(messages, callback, on_stdout)
   local full_stdout = "";
   local partial_data = ""; -- Buffer for incomplete SSE lines
   local stream_error = nil;
+  local http_status = nil;
+  local job_ref = { handle = nil };
 
   -- Helper to process whatever is currently in partial_data
   local function process_partial(is_final)
@@ -102,11 +107,17 @@ function M.run(messages, callback, on_stdout)
       local line = partial_data:sub(1, nl_pos - 1);
       partial_data = partial_data:sub(nl_pos + 1);
       
-      if line ~= "" then
+      -- Catch the HTTP status code added by -w
+      local status_code = line:match("^(%d%d%d)$");
+      if status_code then
+        http_status = tonumber(status_code);
+      elseif line ~= "" then
         local parsed = parse_sse_line(line);
         if parsed.error then
           stream_error = parsed.error;
           if on_stdout then on_stdout(parsed.error, "error"); end
+          -- If we get a stream error, we should probably stop and report
+          if job_ref.handle then job_ref.handle:kill(15) end
         end
         if parsed.reasoning_content ~= "" then
           if on_stdout then on_stdout(parsed.reasoning_content, "reasoning_content"); end
@@ -135,7 +146,7 @@ function M.run(messages, callback, on_stdout)
     end
   end
 
-  local job = vim.system(cmd, {
+  job_ref.handle = vim.system(cmd, {
     text = true,
     stdout = function(err, data)
       if not data then return end
@@ -146,14 +157,22 @@ function M.run(messages, callback, on_stdout)
     vim.schedule(function()
       process_partial(true);
 
-      if obj.code == 0 and not stream_error then
+      local success = (obj.code == 0) and (not stream_error) and (not http_status or (http_status >= 200 and http_status < 300));
+
+      if success then
         callback(true, full_stdout);
       else
         -- If curl failed or we got a mid-stream error, provide clear feedback
-        local err_msg = stream_error or obj.stderr or string.format("API failed with code %d", obj.code);
+        local err_msg = stream_error or obj.stderr;
+        
+        if http_status and (http_status < 200 or http_status >= 300) then
+          err_msg = string.format("HTTP %d: %s", http_status, err_msg or "Unknown Error");
+        elseif obj.code ~= 0 then
+          err_msg = err_msg or string.format("API failed with code %d", obj.code);
+        end
         
         -- Special check for common OpenRouter/OpenAI parameter errors
-        if err_msg:match("unsupported_parameter") or err_msg:match("invalid_request_error") then
+        if err_msg and (err_msg:match("unsupported_parameter") or err_msg:match("invalid_request_error")) then
           err_msg = "Model Compatibility Error: " .. err_msg;
         end
         
@@ -162,7 +181,7 @@ function M.run(messages, callback, on_stdout)
     end);
   end);
 
-  return job;
+  return job_ref.handle;
 end
 
 return M;

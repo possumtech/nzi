@@ -6,7 +6,7 @@ M.turns = {};
 local next_id = 1;
 
 --- Escape special characters for XML safety
-local function xml_escape(text)
+function M.xml_escape(text)
   if not text then return ""; end
   return text:gsub("&", "&amp;")
              :gsub("<", "&lt;")
@@ -59,7 +59,7 @@ function M.get_all()
   return M.turns;
 end
 
---- Format history into a structured XML block for the model
+--- Format history into a structured XML block for the modal view
 --- @return string
 function M.format()
   if #M.turns == 0 then return ""; end
@@ -69,14 +69,31 @@ function M.format()
     local user_clean = M.strip_line_numbers(turn.user);
     local assistant_clean = M.strip_line_numbers(turn.assistant);
     
-    local user_safe = xml_escape(user_clean);
-    local assistant_safe = xml_escape(assistant_clean);
-    
-    table.insert(parts, string.format("  <nzi:turn id=\"%d\" type=\"%s\">\n    <nzi:user>%s</nzi:user>\n    <nzi:assistant>%s</nzi:assistant>\n  </nzi:turn>",
-      turn.id, turn.type, user_safe, assistant_safe));
+    table.insert(parts, string.format("<agent:user>\n%s\n</agent:user>\n\n<agent:assistant>\n%s\n</agent:assistant>",
+      M.xml_escape(user_clean), M.xml_escape(assistant_clean)));
   end
   
-  return "<nzi:history>\n" .. table.concat(parts, "\n") .. "\n</nzi:history>";
+  return table.concat(parts, "\n\n");
+end
+
+--- Get history as an array of OpenAI-style messages
+--- @return table: Array of { role = string, content = string }
+function M.get_as_messages()
+  local messages = {};
+  for _, turn in ipairs(M.turns) do
+    local user_clean = M.strip_line_numbers(turn.user);
+    local assistant_clean = M.strip_line_numbers(turn.assistant);
+
+    table.insert(messages, { 
+      role = "user", 
+      content = string.format("<agent:user>\n%s\n</agent:user>", M.xml_escape(user_clean)) 
+    });
+    table.insert(messages, { 
+      role = "assistant", 
+      content = string.format("<agent:assistant>\n%s\n</agent:assistant>", M.xml_escape(assistant_clean)) 
+    });
+  end
+  return messages;
 end
 
 --- Remove the last turn from history

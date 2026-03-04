@@ -6,23 +6,38 @@ local job = require("nzi.job");
 local run_local = os.getenv("NZI_TEST_LOCAL");
 
 describe("AI local model integration", function()
-  if not run_local then
-    pending("Skipping local LLM integration tests (NZI_TEST_LOCAL not set)");
+  -- These tests use the active model alias configured in the environment
+  local config = require("nzi.config");
+  local model_alias = config.options.active_model;
+
+  if model_alias ~= "local_coder" then
+    pending("Skipping integration tests (NZI_MODEL not set to local_coder)");
     return;
   end
 
+  local created_buffers = {};
+
   before_each(function()
-    require("nzi").setup({
-      active_model = "local_model",
-      models = {
-        local_model = {
-          api_base = os.getenv("NZI_TEST_LOCAL"),
-          model = os.getenv("NZI_DEFAULT_MODEL") or "qwenzel:latest",
-        }
-      }
-    });
     require("nzi.history").clear();
+    created_buffers = {};
   end);
+
+  after_each(function()
+    for _, bufnr in ipairs(created_buffers) do
+      if vim.api.nvim_buf_is_valid(bufnr) then
+        vim.api.nvim_buf_delete(bufnr, { force = true });
+      end
+    end
+  end);
+
+  local function create_test_buf(name, lines)
+    local bufnr = vim.api.nvim_create_buf(true, false);
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines);
+    vim.api.nvim_buf_set_name(bufnr, vim.fn.getcwd() .. "/" .. name);
+    vim.api.nvim_set_option_value("buflisted", true, { buf = bufnr });
+    table.insert(created_buffers, bufnr);
+    return bufnr;
+  end
 
   it("should handle an ai? question end-to-end", function()
     local engine = require("nzi.engine");
@@ -32,25 +47,23 @@ describe("AI local model integration", function()
     local original_write = modal.write;
     
     modal.write = function(text, type, _)
-      if type == "model" then
+      if type == "content" or type == "response" then
         model_output = model_output .. text;
       end
     end
 
     engine.handle_question("Say only the word 'INTEGRATED'", false);
 
-    -- 60s timeout for local models
-    vim.wait(60000, function()
+    vim.wait(30000, function()
       return model_output:upper():match("INTEGRATED") ~= nil
     end);
 
-    assert.match("INTEGRATED", model_output:upper());
-    
     modal.write = original_write;
+    assert.match("INTEGRATED", model_output:upper());
   end);
 
   it("should handle command-line directive end-to-end", function()
-    local bufnr = vim.api.nvim_create_buf(true, false);
+    local bufnr = create_test_buf("directive_test.lua", { "-- Empty file" });
     vim.api.nvim_set_current_buf(bufnr);
     
     local diff = require("nzi.diff");
@@ -64,14 +77,12 @@ describe("AI local model integration", function()
 
     require("nzi.directive").run("Say only the word 'MODIFIED'", bufnr, false);
 
-    vim.wait(60000, function()
+    vim.wait(30000, function()
       return diff_called
     end);
 
-    assert.is_true(diff_called, "Diff view was not opened with model content.");
-
     diff.open_diff = original_open_diff;
-    vim.api.nvim_buf_delete(bufnr, { force = true });
+    assert.is_true(diff_called, "Diff view was not opened with model content.");
   end);
 
   it("BATTLE TEST: should maintain state across a multi-turn conversation", function()
@@ -85,7 +96,7 @@ describe("AI local model integration", function()
     local function setup_capture()
       model_output = "";
       modal.write = function(text, type, _)
-        if type == "model" then model_output = model_output .. text end
+        if type == "content" or type == "response" then model_output = model_output .. text end
       end
     end
 
@@ -93,8 +104,7 @@ describe("AI local model integration", function()
     setup_capture();
     engine.handle_question("My favorite color is Crimson. Remember that.", false);
     
-    -- Wait for history to show the turn is COMPLETE (Ollama can be slow)
-    vim.wait(300000, function() 
+    vim.wait(30000, function() 
       return #history.get_all() == 1 
     end);
     
@@ -104,42 +114,40 @@ describe("AI local model integration", function()
     setup_capture();
     engine.handle_question("What is my favorite color? Answer in one word.", false);
     
-    vim.wait(300000, function() 
+    vim.wait(30000, function() 
       return model_output:upper():match("CRIMSON") ~= nil 
     end);
 
-    assert.match("CRIMSON", model_output:upper(), 1, true);
-    
     modal.write = original_write;
+    assert.match("CRIMSON", model_output:upper(), 1, true);
   end);
 
   it("BATTLE TEST: should see and synthesize information from multiple buffers", function()
-    local buf1 = vim.api.nvim_create_buf(true, false);
-    vim.api.nvim_buf_set_lines(buf1, 0, -1, false, { "SECRET_CODE_A = 1234" });
-    vim.api.nvim_buf_set_name(buf1, "vault_a.txt");
-
-    local buf2 = vim.api.nvim_create_buf(true, false);
-    vim.api.nvim_buf_set_lines(buf2, 0, -1, false, { "SECRET_CODE_B = 5678" });
-    vim.api.nvim_buf_set_name(buf2, "vault_b.txt");
+    create_test_buf("vault_a.txt", { "SECRET_CODE_A = 1234" });
+    create_test_buf("vault_b.txt", { "SECRET_CODE_B = 5678" });
 
     local model_output = "";
     local modal = require("nzi.modal");
     local original_write = modal.write;
     modal.write = function(text, type, _)
-      if type == "model" then model_output = model_output .. text end
+      if type == "content" or type == "response" then 
+        model_output = model_output .. text 
+      end
     end
 
-    require("nzi.engine").handle_question("What are the values of SECRET_CODE_A and SECRET_CODE_B?", false);
+    require("nzi.engine").handle_question("What are the values of SECRET_CODE_A and SECRET_CODE_B? Answer with the codes.", false);
 
-    vim.wait(120000, function()
+    local success = vim.wait(30000, function()
       return model_output:match("1234") and model_output:match("5678")
     end);
 
+    modal.write = original_write;
+    
+    if not success then
+      error("Synthesis test timed out. Model output: " .. model_output)
+    end
+
     assert.match("1234", model_output);
     assert.match("5678", model_output);
-
-    modal.write = original_write;
-    vim.api.nvim_buf_delete(buf1, { force = true });
-    vim.api.nvim_buf_delete(buf2, { force = true });
   end);
 end);

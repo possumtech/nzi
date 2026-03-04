@@ -2,8 +2,12 @@ local M = {};
 
 --- Default configuration options for nzi
 M.defaults = {
-  -- The currently active model alias
-  active_model = "coder",
+  -- The currently active model alias (selected via environment)
+  active_model = vim.env.NZI_MODEL or "coder",
+
+  -- OpenRouter/OpenAI identification
+  referer = vim.env.NZI_REFERER or "https://github.com/possumtech/nzi",
+  title = "nzi",
 
   -- Pre-configured models with aliases
   models = {
@@ -11,14 +15,14 @@ M.defaults = {
       model = "qwen/qwen-2.5-coder-32b-instruct",
       api_base = "https://openrouter.ai/api/v1",
       api_key = vim.env.OPENROUTER_API_KEY,
-      -- O1/O3 class models prefer 'developer', most others use 'system'
-      role_preference = "system", 
+      -- O1/O3/4o class models prefer 'developer' in 2026
+      role_preference = "developer", 
     },
-    qwenzel = {
-      model = "qwenzel:latest",
-      api_base = "http://localhost:11434/v1",
+    local_coder = {
+      model = "qwen2.5-coder:latest",
+      api_base = "http://192.168.1.17:11434/v1",
       api_key = "ollama",
-      role_preference = "system",
+      role_preference = "developer",
     },
     default = {
       model = "gpt-4-turbo",
@@ -31,12 +35,11 @@ M.defaults = {
   -- Advanced Model Options (OpenAI Standard)
   model_options = {
     temperature = 0.7,
-    top_p = 1.0,
     max_tokens = 4096,
-    -- Frequency and presence penalties prevent repetition
-    frequency_penalty = 0.0,
-    presence_penalty = 0.0,
-    -- Custom stop sequences
+    -- penalties and top_p left as nil to use model defaults unless overridden
+    frequency_penalty = nil,
+    presence_penalty = nil,
+    top_p = nil,
     stop = nil,
   },
   

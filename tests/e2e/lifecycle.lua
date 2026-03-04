@@ -35,6 +35,9 @@ local success = vim.wait(30000, function()
   return last_error ~= nil or (modal.timer == nil and #history.get_all() == 1)
 end, 200)
 
+-- Extra pause to ensure schedule tasks (like close_tag) run
+vim.wait(500, function() return false end)
+
 if not success and not last_error then
   print("\n[E2E FAILED] Interaction Timed Out.")
   os.exit(1)
@@ -44,13 +47,27 @@ end
 local lines = vim.api.nvim_buf_get_lines(modal.bufnr, 0, -1, false)
 local text = table.concat(lines, "\n")
 
-local open_count = 0
-for _ in text:gmatch("<nzi:") do open_count = open_count + 1 end
-local close_count = 0
-for _ in text:gmatch("</nzi:") do close_count = close_count + 1 end
+local tags = { "agent:system", "agent:context", "agent:project_directives", "agent:user", "agent:content", "agent:error", "agent:history", "agent:shell_output" }
+local open_total = 0
+local close_total = 0
 
-if open_count ~= close_count or open_count == 0 then
-  print("\n[E2E FAILED] Structural tag mismatch: " .. open_count .. " open, " .. close_count .. " closed.")
+for _, t in ipairs(tags) do
+  local op = 0
+  for _ in text:gmatch("<" .. t .. ">") do op = op + 1 end
+  for _ in text:gmatch("<" .. t .. " ") do op = op + 1 end -- with attributes
+  
+  local cl = 0
+  for _ in text:gmatch("</" .. t .. ">") do cl = cl + 1 end
+  
+  if op ~= cl then
+    print(string.format("[DEBUG] Tag mismatch for %s: %d open, %d closed", t, op, cl))
+  end
+  open_total = open_total + op
+  close_total = close_total + cl
+end
+
+if open_total ~= close_total or open_total == 0 then
+  print("\n[E2E FAILED] Structural tag mismatch: " .. open_total .. " open, " .. close_total .. " closed.")
   print("Buffer content:\n" .. text)
   os.exit(1)
 end

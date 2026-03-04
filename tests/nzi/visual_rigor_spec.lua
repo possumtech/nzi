@@ -10,7 +10,7 @@ local function validate_buffer_integrity(bufnr)
   
   -- 1. XML Structure Pass
   for i, line in ipairs(lines) do
-    for tag_type, name in line:gmatch("<(/?)(nzi:[%w_]+)>") do
+    for tag_type, name in line:gmatch("<(/?)(agent:[%w_]+)>") do
       if tag_type == "" then
         table.insert(stack, { name = name, line = i });
       else
@@ -77,9 +77,9 @@ describe("AI modal rigorous validation", function()
     
     -- Sequence:
     -- 1: [ USER | ... ] (Telemetry)
-    -- 2: <nzi:user>     (Tag)
+    -- 2: <agent:user>      (Tag)
     -- 3: Hello          (Content)
-    -- 4: </nzi:user>    (Tag)
+    -- 4: </agent:user>     (Tag)
     
     local marks1 = vim.api.nvim_buf_get_extmarks(modal.bufnr, ns_id, {0, 0}, {0, -1}, { details = true });
     local marks2 = vim.api.nvim_buf_get_extmarks(modal.bufnr, ns_id, {1, 0}, {1, -1}, { details = true });

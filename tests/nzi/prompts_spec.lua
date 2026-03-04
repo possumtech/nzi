@@ -22,12 +22,12 @@ describe("AI prompts module", function()
     local result = prompts.format_context(ctx, false, "Active Task A");
     
     -- Note: <nzi:context> is added by the builder, not the formatter now
-    assert.match("<nzi:project_directives>", result);
+    assert.match("<agent:project_directives>", result);
     assert.match("Active Task A", result);
-    assert.match("<nzi:file name=\"test.lua\" state=\"active\">", result, 1, true);
+    assert.match("<agent:file name=\"test.lua\" state=\"active\">", result, 1, true);
     -- print('hi') becomes print(&apos;hi&apos;)
     assert.match("print%(&apos;hi&apos;%)", result);
-    assert.match("</nzi:file>", result);
+    assert.match("</agent:file>", result);
     
     -- Ensure NO line numbers in model-facing context
     assert.is_nil(result:find("1: "))
@@ -50,9 +50,11 @@ describe("AI prompts module", function()
       { global = "Be concise" },
       "CLEAN_CONTEXT"
     );
-    assert.match("Refactor this", result);
-    assert.match("main.lua", result);
-    assert.match("<nzi:user>", result);
-    assert.match("</nzi:user>", result);
+    assert.is_table(result);
+    local last_msg = result[#result].content;
+    assert.match("Refactor this", last_msg);
+    assert.match("main.lua", last_msg);
+    assert.match("<agent:user>", last_msg);
+    assert.match("</agent:user>", last_msg);
   end);
 end);

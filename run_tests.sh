@@ -42,12 +42,19 @@ else
     timeout --foreground "$TIMEOUT_VAL" make test
 fi
 
-# Integration tests (if environment is set)
-if [[ -n "$NZI_TEST_LOCAL" ]]; then
-    echo "Running integration tests against $NZI_TEST_LOCAL..."
+# Integration tests (if a model is selected for testing)
+if [[ "$NZI_MODEL" == "local_coder" ]]; then
+    echo "Running integration tests against $NZI_MODEL..."
     nvim --headless -i NONE --noplugin -u tests/init.lua \
         -c "lua require('plenary.test_harness').test_directory('tests/integration', { progressive = true, halt_on_error = true })" \
         -c "qa!"
+fi
+
+# E2E lifecycle test (OpenRouter)
+if [[ -n "$OPENROUTER_API_KEY" ]]; then
+    echo "Running OpenRouter E2E lifecycle test..."
+    nvim --headless -i NONE --noplugin -u tests/init.lua \
+        -l tests/e2e/lifecycle.lua
 fi
 
 echo "--- Tests Completed Successfully ---"
