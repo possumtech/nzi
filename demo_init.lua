@@ -4,7 +4,7 @@ vim.opt.runtimepath:append(current_dir);
 
 -- Load AI with environment-aware config
 require("nzi").setup({
-  active_model = "qwenzel",
+  active_model = "coder",
   models = {
     -- Primary Model (Local)
     qwenzel = {

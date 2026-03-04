@@ -11,11 +11,11 @@ local M = {};
 --- @param cmd_line string: The full command line
 --- @return table: List of completion candidates
 local function complete_ai_command(arg_lead, cmd_line)
-  local subcommands = { "model", "models", "clear", "status", "buffers", "toggle", "undo", "set", "add", "config" };
+  local subcommands = { "model", "clear", "status", "buffers", "toggle", "undo", "set", "add", "config" };
   
-  -- If we're at the start of the arguments (e.g., :AI /)
-  if arg_lead:match("^/") then
-    local lead = arg_lead:sub(2);
+  -- If we're at the very start of the command arguments
+  if arg_lead:match("^/") or (not arg_lead:match("^/") and #vim.split(cmd_line, " ") == 1) then
+    local lead = arg_lead:match("^/(.*)") or arg_lead;
     local candidates = {};
     for _, sub in ipairs(subcommands) do
       if sub:sub(1, #lead) == lead then
@@ -25,11 +25,17 @@ local function complete_ai_command(arg_lead, cmd_line)
     return candidates;
   end
 
-  -- Special case for :AI/model <alias> completion
-  if cmd_line:match("AI%/model%s+$") or cmd_line:match("AI%/model%s+[%w_]+$") then
+  -- Context-aware completion for model switching
+  if cmd_line:match("/model%s+") then
     local model_lead = arg_lead;
     local candidates = {};
+    local model_list = {};
     for alias, _ in pairs(config.options.models) do
+      table.insert(model_list, alias);
+    end
+    table.sort(model_list);
+    
+    for _, alias in ipairs(model_list) do
       if alias:sub(1, #model_lead) == model_lead then
         table.insert(candidates, alias);
       end
