@@ -17,7 +17,8 @@ local function setup_highlights()
   
   -- Specialized
   vim.api.nvim_set_hl(0, "NziEdit", { bg = "#fb4934", fg = "#ffffff", ctermbg = 1, ctermfg = 15 }); -- Red (Reserved)
-  vim.api.nvim_set_hl(0, "NziSystem", { bg = "#3c3836", fg = "#a89984", ctermbg = 242, ctermfg = 15 }); -- Gray
+  vim.api.nvim_set_hl(0, "NziSystem", { bg = "#3c3836", fg = "#ebdbb2", ctermbg = 237, ctermfg = 15 }); -- Gray (The Law)
+  vim.api.nvim_set_hl(0, "NziContext", { bg = "#32302f", fg = "#a89984", ctermbg = 235, ctermfg = 246 }); -- Deeper Gray (The Facts)
   vim.api.nvim_set_hl(0, "NziShell", { bg = "#076678", fg = "#ebdbb2", ctermbg = 30, ctermfg = 15 });
   
   -- Thinking state border
@@ -119,6 +120,7 @@ function M.write(text, type, append)
   
   local hl_map = {
     system = "NziSystem",
+    context = "NziContext",
     question = "NziQuestion",
     directive = "NziDirective",
     thought = "NziThought",

@@ -25,7 +25,7 @@ function M.handle_question(content, include_lsp)
   
   modal.open();
   modal.write(system_prompt .. "\n", "system", false);
-  modal.write(context_str .. "\n", "system", false);
+  modal.write(context_str .. "\n", "context", false);
   modal.write(content .. "\n", "question", false);
   
   modal.set_thinking(true);

@@ -24,7 +24,7 @@ function M.run(instruction, bufnr, include_lsp)
   -- Use the modal for status updates
   modal.open();
   modal.write(system_prompt .. "\n", "system", false);
-  modal.write(context_str .. "\n", "system", false);
+  modal.write(context_str .. "\n", "context", false);
   modal.write(instruction .. " (File: " .. target_file .. ")\n", "directive", false);
   
   modal.set_thinking(true);
