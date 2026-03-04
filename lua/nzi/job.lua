@@ -76,6 +76,8 @@ function M.run(messages, callback, on_stdout)
   for _, part in ipairs(python_parts) do
     table.insert(cmd, part)
   end
+  table.insert(cmd, "-W")
+  table.insert(cmd, "ignore")
   table.insert(cmd, script_path)
   
   if os.getenv("NZI_DEBUG") then

@@ -12,7 +12,7 @@ M.defaults = {
   -- Pre-configured models with aliases
   models = {
     coder = {
-      model = vim.env.NZI_CODER_MODEL or "qwen/qwen-2.5-coder-32b-instruct",
+      model = vim.env.NZI_CODER_MODEL or "openrouter/qwen/qwen-2.5-coder-32b-instruct",
       api_base = vim.env.NZI_CODER_BASE or "https://openrouter.ai/api/v1",
       api_key = vim.env.OPENROUTER_API_KEY,
       role_preference = "developer", 
