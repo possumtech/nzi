@@ -6,7 +6,7 @@ local buffers = require("nzi.buffers");
 local M = {};
 
 --- Execute an internal AI/ command
---- @param command_str string: The command and its arguments (e.g., "model local_llm")
+--- @param command_str string: The command and its arguments
 function M.run(command_str)
   local parts = vim.split(command_str, " ");
   local cmd = parts[1];
@@ -14,8 +14,12 @@ function M.run(command_str)
   if cmd == "model" then
     local alias = parts[2];
     if not alias then
-      local active = config.options.active_model;
-      print("Current model: " .. active);
+      -- List all aliases if none provided
+      print("Available Models (* = active):");
+      for name, cfg in pairs(config.options.models) do
+        local active = (name == config.options.active_model) and "*" or " ";
+        print(string.format(" %s %-12s -> %s", active, name, cfg.model));
+      end
       return;
     end
 
@@ -26,6 +30,53 @@ function M.run(command_str)
       vim.notify("AI: Unknown model alias: " .. alias, vim.log.levels.ERROR);
     end
 
+  elseif cmd == "models" then
+    -- Explicit directory view
+    print("AI Model Directory:");
+    for name, cfg in pairs(config.options.models) do
+      local active = (name == config.options.active_model) and "[ACTIVE]" or "";
+      print(string.format("  %-15s %s", name, active));
+      print(string.format("    Model: %s", cfg.model));
+      print(string.format("    Base:  %s", cfg.api_base));
+    end
+
+  elseif cmd == "set" then
+    -- Tune model_options (e.g., set temperature 0.5)
+    local key = parts[2];
+    local val = parts[3];
+    if not key or not val then
+      print("Usage: AI/set <option> <value>");
+      print("Current Options: " .. vim.inspect(config.options.model_options));
+      return;
+    end
+    
+    -- Convert numbers if applicable
+    local num_val = tonumber(val);
+    config.options.model_options[key] = num_val or val;
+    vim.notify(string.format("AI: %s set to %s", key, val), vim.log.levels.INFO);
+
+  elseif cmd == "add" then
+    -- Add ad-hoc model (add <alias> <model> <url> [key])
+    local alias, model, url, key = parts[2], parts[3], parts[4], parts[5];
+    if not alias or not model or not url then
+      print("Usage: AI/add <alias> <model_name> <api_base_url> [api_key]");
+      return;
+    end
+    config.options.models[alias] = {
+      model = model,
+      api_base = url,
+      api_key = key
+    };
+    vim.notify("AI: Added model alias '" .. alias .. "'", vim.log.levels.INFO);
+
+  elseif cmd == "undo" then
+    -- Pop the last turn
+    if history.pop() then
+      vim.notify("AI: Removed last interaction from history", vim.log.levels.INFO);
+    else
+      vim.notify("AI: History is already empty", vim.log.levels.WARN);
+    end
+
   elseif cmd == "clear" then
     history.clear();
     modal.clear();
@@ -34,10 +85,11 @@ function M.run(command_str)
   elseif cmd == "status" then
     local active = config.options.active_model;
     local model_cfg = config.get_active_model();
+    local opts = config.options.model_options;
     print("AI Status:");
     print("  Active Model: " .. active);
-    print("  API Base:     " .. model_cfg.api_base);
     print("  Model Name:   " .. model_cfg.model);
+    print("  Temperature:  " .. (opts.temperature or "default"));
     print("  Turns:        " .. #history.get_all());
 
   elseif cmd == "toggle" then

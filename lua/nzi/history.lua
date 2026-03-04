@@ -80,6 +80,16 @@ function M.format()
   return table.concat(parts, "\n");
 end
 
+--- Remove the last turn from history
+function M.pop()
+  if #M.turns > 0 then
+    table.remove(M.turns);
+    next_id = next_id - 1;
+    return true;
+  end
+  return false;
+end
+
 --- Clear the session history
 function M.clear()
   M.turns = {};

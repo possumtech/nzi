@@ -12,24 +12,26 @@ This is the living document for AI (nzi) development. We use this to track tasks
 
 ### Phase 1: Context & Buffers
 - [x] **The "Buffer-is-Context" Engine:** Logic to gather all open buffers.
-- [x] **Context Management UI:** `:AI/buffers` command.
+- [ ] **Context Management UI:** `:AI/buffers` command. (command and proposed bindings for ignore and read-only)
 - [ ] **LSP Integration:** Deep symbol harvesting (Partial: initial logic in `lsp.lua`).
 - [x] **Prompt Inheritance:** Merging layered markdown prompts (`~/AGENTS.md`, `.ai.md`).
 
 ### Phase 2: The Interpolation & Unified Command
-- [x] **Directive Parsing:** Efficiently scan for `ai:`, `ai?`, `ai!`, and `ai/`.
+- [x] **Directive Parsing:** Efficiently scan for `AI:`, `AI?`, `AI!`, and `AI/`.
 - [x] **Unified `:AI` Command:** Single entry point for questions, directives, and shell.
 - [x] **Magic `:AI!` Shortcut:** Automatic `cnoreabbrev` for shell injection.
 - [x] **Model Aliasing:** Support for switching between multiple models via `:AI/model <alias>`.
+- [ ] **Commands:** AI/reset, AI/clear, AI/save AI/load, other common or necessary commands?
 
 ### Phase 3: "Under the Hood" UI
-- [x] **Strict Tagged Modal:** Machine-friendly XML structure with `nzi:` namespace.
+- [ ] **Strict Tagged Modal:** Machine-friendly XML structure with `nzi:` namespace.
 - [x] **Telemetry Injection:** Real-time config/model status lines (White on Black).
 - [x] **Structural Integrity Validator:** Deterministic XML validation in test suite.
 - [x] **Read-only Protection:** Ensured modal is `nomodifiable` and protects against insert mode.
 
 ### Phase 4: Integration & Validation
-- [x] **Local Model Integration:** Target `qwenzel` at `http://192.168.1.17:11434`.
+- [x] **Local Model Integration:** Test `qwenzel` at `http://192.168.1.17:11434`.
+- [ ] **Fast Model Testing:** Use `coder` alias for integration and e2e tests.
 - [x] **Integration Suite:** Real LLM round-trips verified in `tests/integration/`.
 - [ ] **Fugitive-Diff Workflow (Refinement):** Re-implement surgical edits once a stable strategy is devised. (Currently unified with question handler).
 
