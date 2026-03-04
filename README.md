@@ -66,17 +66,31 @@ With LiteLLM integration, nzi supports nearly all of the models, including your 
 
 As you work this checklist, add and modify tasks, document design decisions and issues in this document.
 
-- [ ] Create generic, modern, standard, best practices neovim plugin
-- [ ] Create test framework with headless neovim instance for testing
-- [ ] Establish plugin integration with lsp, fugitive, plenary, and litellm
-- [ ] Create toggled read-only modal with toggle commands that can be mapped to key bindings
-- [ ] Create nzi:, nzi?, nzi!, and nzi/ normal mode command handling
-- [ ] Create LLM interface
-- [ ] Test ability to use modal and commands for basic chat experience
-- [ ] Create buffer sync to context (with active / read / ignore flags in statusbar)
-- [ ] Create lsp repo mapping
-- [ ] Create interpolation commands
-- [ ] Create visual mode commands
-- [ ] Create system prompt
-- [ ] Create fugitive / system prompt / edit framework
-- [ ] Create status line showing outstanding diffs to approve/reject and current +/- lines in outstanding diffs
+### Phase 0: Infrastructure & Core
+- [ ] **Scaffolding:** Initialize standard `lua/nzi/` structure with `setup()` and configuration handling.
+- [ ] **Test Framework:** Setup a headless Neovim test runner (using `plenary.test` or similar).
+- [ ] **Async Execution:** Implement a non-blocking job wrapper using `vim.system` (or `plenary.job`) for LiteLLM communication.
+
+### Phase 1: Context & Buffers
+- [ ] **The "Buffer-is-Context" Engine:** Logic to gather all open buffers by default as model context.
+- [ ] **Context Management UI:** `:nziBuffers` command to list buffers and toggle states (`active`, `read`, `ignore`).
+- [ ] **LSP Integration:** Harvesting symbol definitions and references for better model grounding.
+- [ ] **Prompt Inheritance:** Merging `~/AGENTS.md`, local `.nzi.md`, and buffer-local directives.
+
+### Phase 2: The Interpolation Engine
+- [ ] **Directive Parsing:** Efficiently scan for `nzi:`, `nzi?`, `nzi!`, and `nzi/` using optimized regex or Tree-sitter.
+- [ ] **`nzi!` (Shell):** Run shell commands and inject output directly into the buffer.
+- [ ] **`nzi:` (Directive):** Process code modification requests.
+- [ ] **`nzi?` (Question):** Process code-specific inquiries.
+
+### Phase 3: The Fugitive-Diff Workflow
+- [ ] **Fugitive Integration:** Logic to pipe model output into a standard `vimdiff`/`fugitive` merge buffer.
+- [ ] **Diff Status:** Statusline indicators for outstanding diffs (+/- lines) and pending approvals.
+- [ ] **Approval UX:** Ensure a seamless `dp` (put) and `do` (obtain) workflow for merging model changes.
+
+### Phase 4: UI & Polish
+- [ ] **Read-only Modal:** High-performance floating window for model logs and "neurotic ramblings."
+- [ ] **Visual Mode Support:** Handling directives and questions on visual selections.
+- [ ] **Monitoring Hooks:** State IDs and events (`User NziStateChanged`) for external tool integration.
+
+> **Design Note:** Prioritize the relationship between the user, the model, and `fugitive`. The model should output diffs that mimic git merges, allowing the user to approve/reject changes using the same keybindings they use for version control. This avoids heavy, custom agent workflows.
