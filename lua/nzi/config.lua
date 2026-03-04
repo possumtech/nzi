@@ -12,21 +12,21 @@ M.defaults = {
   -- Pre-configured models with aliases
   models = {
     coder = {
-      model = "qwen/qwen-2.5-coder-32b-instruct",
-      api_base = "https://openrouter.ai/api/v1",
+      model = vim.env.NZI_CODER_MODEL or "qwen/qwen-2.5-coder-32b-instruct",
+      api_base = vim.env.NZI_CODER_BASE or "https://openrouter.ai/api/v1",
       api_key = vim.env.OPENROUTER_API_KEY,
       role_preference = "developer", 
     },
-    qwenzel = {
-      model = "qwen2.5-coder:latest",
-      api_base = vim.env.NZI_TEST_LOCAL or "http://192.168.1.17:11434/v1",
+    local_coder = {
+      model = vim.env.NZI_LOCAL_MODEL or "qwen2.5-coder:latest",
+      api_base = vim.env.NZI_LOCAL_BASE or "http://localhost:11434/v1",
       api_key = "ollama",
       role_preference = "developer",
     }
   },
 
   -- Ecosystem settings
-  python_cmd = { vim.fn.getcwd() .. "/.venv/bin/python" }, 
+  python_cmd = vim.split(vim.env.NZI_PYTHON_CMD or "python3", " "), 
 
   -- Advanced Model Options (OpenAI Standard)
   model_options = {

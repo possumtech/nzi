@@ -89,6 +89,30 @@ function M.run(command_str)
   elseif cmd == "buffers" then
     buffers.open_ui();
 
+  elseif cmd == "install" then
+    local info = debug.getinfo(M.run);
+    local script_dir = info.source:match("@?(.*/)")
+    local plugin_root = vim.fn.fnamemodify(script_dir .. "../../", ":p");
+    local venv_path = plugin_root .. ".venv";
+    local python_bin = venv_path .. "/bin/python";
+
+    vim.notify("AI: Installing LiteLLM environment in " .. venv_path .. "...", vim.log.levels.INFO);
+    
+    local cmd_str = string.format("cd %s && python3 -m venv .venv && .venv/bin/python -m pip install litellm", plugin_root);
+    
+    vim.fn.jobstart(cmd_str, {
+      on_exit = function(_, code)
+        if code == 0 then
+          vim.notify("AI: LiteLLM installation successful! Update your config to use: " .. python_bin, vim.log.levels.INFO);
+          config.options.python_cmd = { python_bin };
+        else
+          vim.notify("AI: Installation failed (code " .. code .. "). Check your python3 and pip installation.", vim.log.levels.ERROR);
+        end
+      end,
+      stdout_buffered = true,
+      stderr_buffered = true,
+    });
+
   elseif cmd == "config" then
     print(vim.inspect(config.options));
     

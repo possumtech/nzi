@@ -58,7 +58,9 @@ function M.run(messages, callback, on_stdout)
     messages = messages,
     api_base = model_cfg.api_base,
     api_key = model_cfg.api_key,
-    model_options = opts.model_options or {}
+    model_options = opts.model_options or {},
+    extra_body = model_cfg.extra_body or {},
+    extra_headers = model_cfg.extra_headers or {},
   };
 
   local request_json = vim.json.encode(payload);
@@ -135,7 +137,12 @@ function M.run(messages, callback, on_stdout)
       else
         local msg = job_error or "Bridge failed"
         if msg:match("ModuleNotFoundError") and msg:match("litellm") then
-          msg = "Dependency missing: LiteLLM not found in " .. vim.inspect(cmd) .. ". Run 'pip install litellm' or check config.python_cmd."
+          local plugin_root = vim.fn.fnamemodify(script_path, ":h:h:h")
+          msg = "LiteLLM dependency missing. Please run the following to fix your environment:\n" ..
+                "1. cd " .. plugin_root .. "\n" ..
+                "2. python3 -m venv .venv\n" ..
+                "3. .venv/bin/python -m pip install litellm\n" ..
+                "4. Update your config: require('nzi').setup({ python_cmd = { '" .. plugin_root .. "/.venv/bin/python' } })"
         end
         callback(false, msg .. " (code " .. obj.code .. ")");
       end

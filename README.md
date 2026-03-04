@@ -47,9 +47,9 @@ This module handles the core UI and structural integrity...
 </nzi:content>
 ```
 
-## Pure Lua Architecture
+## Lightweight Python/LiteLLM Bridge
 
-AI (nzi) is a lean, dependency-free plugin. It uses native `curl` and `vim.system` to communicate with any OpenAI-compatible API (Ollama, OpenRouter, etc.). No Python or LiteLLM required.
+AI (nzi) is a lean plugin that leverages a high-performance Python bridge with `litellm`. This allows it to communicate with 100+ LLM providers (OpenAI, Anthropic, Ollama, OpenRouter, etc.) while keeping the Lua side focused on Neovim integration.
 
 ## Installation
 
@@ -57,48 +57,43 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 
 ```lua
 {
-  "your-username/nzi",
+  "possumtech/nzi",
   dependencies = {
     "nvim-lua/plenary.nvim",   -- Core async/test utilities
-    "tpope/vim-fugitive",     -- Highly recommended for diff workflows
+    "tpope/vim-fugitive",      -- Recommended for diff workflows
   },
   config = function()
     require("nzi").setup({
-      active_model = "coder",
-      models = {
-        coder = {
-          model = "qwen/qwen-2.5-coder-32b-instruct",
-          api_base = "https://openrouter.ai/api/v1",
-          api_key = vim.env.OPENROUTER_API_KEY,
-        },
-        qwenzel = {
-          model = "qwenzel:latest",
-          api_base = "http://localhost:11434/v1",
-          api_key = "ollama",
-        }
-      }
+      -- Path to python with litellm installed
+      -- python_cmd = { "python3" } 
     })
   end,
 }
 ```
 
-## Recommended Keymaps
+### Python Setup
+
+It is highly recommended to use a dedicated virtual environment:
+
+```bash
+cd ~/.local/share/nvim/lazy/nzi/  # Or your plugin path
+python3 -m venv .venv
+.venv/bin/python -m pip install litellm
+```
+
+Then configure `nzi` in your init.lua:
 
 ```lua
--- Normal Mode
-vim.keymap.set("n", "<leader>ai", ":AI<CR>", { desc = "AI: Execute" })
-vim.keymap.set("n", "<leader>at", ":AI/toggle<CR>", { desc = "AI: Toggle Modal" })
-vim.keymap.set("n", "<leader>ab", ":AI/buffers<CR>", { desc = "AI: Manage Context" })
-vim.keymap.set("n", "<leader>ac", ":AI/clear<CR>", { desc = "AI: Clear History" })
-
--- Visual Mode
-vim.keymap.set("v", "<leader>ai", ":AI<CR>", { desc = "AI: Run on Selection" })
+require("nzi").setup({
+  python_cmd = { vim.fn.expand("~/.local/share/nvim/lazy/nzi/.venv/bin/python") }
+})
 ```
 
 ## Prerequisites
 
 - **Neovim 0.10+** (Required for `vim.system`)
-- **curl**: Required for API communication.
+- **curl**: Required for basic communication.
+- **Python 3.10+** and **LiteLLM**: Required for the advanced bridge.
 
 ---
 *Sanitized. Structured. Agentic.*

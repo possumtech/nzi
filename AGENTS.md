@@ -7,7 +7,7 @@ This is the living document for AI (nzi) development. We use this to track tasks
 ### Phase 0: Infrastructure & Core
 - [x] **Scaffolding:** Initialize standard `lua/nzi/` structure with `setup()`.
 - [x] **Test Framework:** Setup a headless Neovim test runner (using `plenary.test`).
-- [x] **Pure Lua Engine:** Implement a `curl` based OpenAI-native job wrapper using `vim.system`. (Removed Python/LiteLLM dependency).
+- [x] **LiteLLM Bridge:** Implement a Python-based LiteLLM bridge for multi-provider support.
 - [ ] **80/80/80 Coverage:** Achieve 80% coverage on all core modules (config, job, context, parser).
 
 ### Phase 1: Context & Buffers
@@ -37,8 +37,8 @@ This is the living document for AI (nzi) development. We use this to track tasks
 
 ## Design Decisions
 
+- **LiteLLM Bridge:** We use a lightweight Python bridge with `litellm` to provide effortless compatibility with hundreds of LLM providers while keeping the Lua side lean and focused on Neovim integration.
 - **Buffer-is-Context:** All open buffers are sent to the model by default.
-- **Pure Lua & Curl:** Zero external dependencies (no Python, no Node, no LiteLLM). Native `curl` ensures high performance and reliability.
 - **OpenAI Standard Lexicon:** All internal logic and tags (`reasoning_content`, `content`, `user`) align exactly with the OpenAI API standard.
 - **Machine-Friendly UI:** The modal is designed to be parsed by machines while remaining readable for humans through strict tagging and color-coding.
 - **Telemetry Lines:** Interaction blocks are preceded by structured telemetry data (`model`, `temp`, `top_p`) for absolute transparency.
