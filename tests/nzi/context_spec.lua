@@ -21,7 +21,21 @@ describe("nzi context engine", function()
 
   it("should ignore buffers based on config names", function()
     assert.is_true(context.should_ignore(".git/config", "gitconfig"));
+    assert.is_true(context.should_ignore("node_modules/pkg/index.js", "javascript"));
     assert.is_false(context.should_ignore("src/main.lua", "lua"));
+  end);
+
+  it("should not gather content from unlisted or invalid buffers", function()
+    local bufnr = vim.api.nvim_create_buf(false, true); -- unlisted
+    vim.api.nvim_buf_set_name(bufnr, "unlisted.txt");
+    
+    local results = context.gather();
+    local found = false;
+    for _, item in ipairs(results) do
+      if item.bufnr == bufnr then found = true; end
+    end
+    assert.is_false(found);
+    vim.api.nvim_buf_delete(bufnr, { force = true });
   end);
 
   it("should gather content from loaded and non-ignored buffers", function()

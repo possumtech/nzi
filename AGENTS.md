@@ -5,16 +5,21 @@ This is the living document for nzi development. We use this to track tasks, doc
 ## Project Checklist
 
 ### Phase 0: Infrastructure & Core
-- [x] **Scaffolding:** Initialize standard `lua/nzi/` structure with `setup()` and configuration handling.
+- [x] **Scaffolding:** Initialize standard `lua/nzi/` structure with `setup()`.
 - [x] **Test Framework:** Setup a headless Neovim test runner (using `plenary.test`).
 - [x] **Async Execution:** Implement an Agnostic CLI job wrapper using `vim.system`.
-- [x] **Test Coverage:** Verify the job wrapper with a mock CLI script.
+- [ ] **80/80/80 Coverage:** Achieve 80% coverage on all core modules (config, job, context, parser).
 
 ### Phase 1: Context & Buffers
-- [x] **The "Buffer-is-Context" Engine:** Logic to gather all open buffers by default as model context.
-- [x] **Context Management UI:** `:nziBuffers` command to list buffers and toggle states (`active`, `read`, `ignore`).
-- [ ] **LSP Integration:** Harvesting symbol definitions and references for better model grounding.
-- [x] **Prompt Inheritance:** Merging `~/AGENTS.md`, local `.nzi.md`, and buffer-local directives.
+- [x] **The "Buffer-is-Context" Engine:** Logic to gather all open buffers.
+- [x] **Context Management UI:** `:nziBuffers` command.
+- [ ] **LSP Integration:** Deep symbol harvesting (Partial: initial logic in `lsp.lua`).
+- [x] **Prompt Inheritance:** Merging layered markdown prompts.
+
+### Phase 5: Integration & Real-World Validation
+- [ ] **Local Model Integration:** Configure `nzi` to target `qwenzel` at `http://192.168.1.17:11434`.
+- [ ] **Integration Suite:** Tests in `tests/integration/` that perform real LLM round-trips.
+- [ ] **Performance Benchmarking:** Ensure context gathering and job submission are within 100ms.
 
 ### Phase 2: The Interpolation Engine
 - [x] **Directive Parsing:** Efficiently scan for `nzi:`, `nzi?`, `nzi!`, and `nzi/` using optimized regex or Tree-sitter.

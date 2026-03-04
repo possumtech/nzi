@@ -11,25 +11,41 @@ local M = {};
 
 --- Handle an nzi? question
 --- @param content string
-function M.handle_question(content)
+--- @param include_lsp boolean | nil
+function M.handle_question(content, include_lsp)
+  local config = require("nzi.config");
+  local model_name = config.options.default_model;
   local ctx_list = context.gather();
   local prompt_parts = prompts.gather();
   
-  local system_prompt = prompts.build_system_prompt(prompt_parts);
-  local context_str = prompts.format_context(ctx_list);
+  local system_prompt = prompts.build_system_prompt(prompt_parts, model_name);
+  local context_str = prompts.format_context(ctx_list, include_lsp);
   
   local full_prompt = system_prompt .. "\n\n" .. context_str .. "\n\n### QUESTION\n" .. content;
   
-  modal.write("# nzi: Thinking...\n\nProcessing question: " .. content, false);
   modal.open();
+  modal.write(system_prompt .. "\n", "system", false);
+  modal.write(context_str .. "\n", "system", false);
+  modal.write(content .. "\n", "question", false);
+  
+  modal.set_thinking(true);
+  local start_line_count = vim.api.nvim_buf_line_count(modal.bufnr or 0);
   
   job.run(full_prompt, function(success, result)
     vim.schedule(function()
+      modal.set_thinking(false);
       if success then
-        modal.write("# nzi: Response\n\n" .. result, false);
+        -- Transition the streamed lines to the final response color
+        local end_line_count = vim.api.nvim_buf_line_count(modal.bufnr);
+        modal.recolor_last_lines(end_line_count - start_line_count, "response");
       else
-        modal.write("# nzi: Error\n\n" .. result, false);
+        modal.write("\nERROR: " .. result .. "\n", "system", false);
       end
+    end);
+  end, function(chunk, type)
+    -- On stdout chunk, stream to modal with correct color (thought or stream)
+    vim.schedule(function()
+      modal.write(chunk, type, true);
     end);
   end);
 end
@@ -38,8 +54,8 @@ end
 function M.execute_current_line()
   local bufnr = vim.api.nvim_get_current_buf();
   local cursor = vim.api.nvim_win_get_cursor(0);
-  local line_idx = cursor[1];
-  local line = vim.api.nvim_get_current_line();
+  local line_idx = cursor[1]; -- 1-based index
+  local line = vim.api.nvim_buf_get_lines(bufnr, line_idx - 1, line_idx, false)[1];
 
   local type, content = parser.parse_line(line);
   if not type then
@@ -50,9 +66,9 @@ function M.execute_current_line()
   if type == "shell" then
     shell.run(content, bufnr, line_idx);
   elseif type == "question" then
-    M.handle_question(content);
+    M.handle_question(content, true); -- Localized: include LSP
   elseif type == "directive" then
-    directive.run(content, bufnr);
+    require("nzi.directive").run(content, bufnr, true); -- Localized: include LSP
   elseif type == "command" then
     commands.run(content);
   end

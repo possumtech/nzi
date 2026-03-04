@@ -17,15 +17,47 @@ function M.setup(opts)
     buffers.open();
   end, { desc = "Manage nzi buffer context" });
 
-  -- Execute the directive on the current line or selection
+  -- Execute the directive on the current line, selection, or command bar
   vim.api.nvim_create_user_command("Nzi", function(opts)
+    local bufnr = vim.api.nvim_get_current_buf();
+
+    -- 1. Handle Bang Shortcut (:Nzi! ls)
+    if opts.bang then
+      require("nzi.shell").run(opts.args or "", bufnr);
+      return;
+    end
+
+    -- 2. Handle Command-line Arguments with strict prefixing
+    if opts.args and opts.args ~= "" then
+      local first_char = opts.args:sub(1,1);
+      local content = opts.args:sub(2);
+
+      if first_char == ":" then
+        require("nzi.directive").run(content, bufnr, false);
+      elseif first_char == "?" then
+        engine.handle_question(content, false);
+      elseif first_char == "!" then
+        require("nzi.shell").run(content, bufnr);
+      elseif first_char == "/" then
+        require("nzi.commands").run(content);
+      else
+        vim.notify("nzi: Command arguments must start with :, ?, !, or /", vim.log.levels.ERROR);
+      end
+      return;
+    end
+
+    -- 3. Fallback: Interpolated Directive in Buffer (Line or Range)
     if opts.range > 0 then
       engine.execute_range(opts.line1, opts.line2);
     else
       engine.execute_current_line();
     end
-  end, { range = true, desc = "Execute nzi directive on line or selection" });
-
+  end, { 
+    range = true, 
+    bang = true, 
+    nargs = "*",
+    desc = "Execute nzi: [ :?|/! args ] or line/selection" 
+  });
   -- Toggle the read-only modal window
   vim.api.nvim_create_user_command("NziToggle", function()
     modal.toggle();
@@ -33,12 +65,12 @@ function M.setup(opts)
 
   -- Status bar (command-line) versions of directives
   vim.api.nvim_create_user_command("NziQuestion", function(opts)
-    engine.handle_question(opts.args);
+    engine.handle_question(opts.args, false); -- Global: no LSP
   end, { nargs = 1, desc = "Ask nzi a question" });
 
   vim.api.nvim_create_user_command("NziDirective", function(opts)
     local bufnr = vim.api.nvim_get_current_buf();
-    directive.run(opts.args, bufnr);
+    require("nzi.directive").run(opts.args, bufnr, false); -- Global: no LSP
   end, { nargs = 1, desc = "Send a directive to nzi" });
 
   vim.api.nvim_create_user_command("NziShell", function(opts)

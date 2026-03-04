@@ -8,7 +8,7 @@ describe("nzi job wrapper", function()
 
   before_each(function()
     nzi.setup({
-      litellm_cmd = mock_llm,
+      model_cmd = { mock_llm },
       default_model = "test-model",
     });
   end);

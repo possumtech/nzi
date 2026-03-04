@@ -40,9 +40,10 @@ end
 
 --- Combine gathered prompts into a single system prompt string
 --- @param prompts table: The result of M.gather()
+--- @param model_name string: The name/alias of the model
 --- @return string
-function M.build_system_prompt(prompts)
-  local parts = { "You are nzi, a Neovim-native agentic programming tool." };
+function M.build_system_prompt(prompts, model_name)
+  local parts = { string.format("You are %s, a Neovim-native agentic programming tool.", model_name) };
   
   if prompts.global then
     table.insert(parts, "\n### GLOBAL DIRECTIVES (from ~/AGENTS.md)\n" .. prompts.global);
@@ -61,19 +62,22 @@ end
 
 --- Format gathered context into a readable string for the LLM
 --- @param ctx_list table: List of buffer objects from context.gather()
+--- @param include_lsp boolean | nil: Whether to include LSP symbol info
 --- @return string
-function M.format_context(ctx_list)
+function M.format_context(ctx_list, include_lsp)
   local parts = { "### CONTEXT (Active/Read Buffers)" };
   for _, item in ipairs(ctx_list) do
     local short_name = vim.fn.fnamemodify(item.name, ":.")
     table.insert(parts, string.format("\nFILE: %s (State: %s)\n```\n%s\n```", short_name, item.state, item.content));
   end
 
-  -- Add LSP symbol definition if available
-  local lsp_info = lsp.get_symbol_definition();
-  if lsp_info then
-    table.insert(parts, "\n### LSP DEFINITION (Symbol at cursor)");
-    table.insert(parts, string.format("Source: %s (Line: %d)\n```\n%s\n```", lsp_info.uri, lsp_info.line, lsp_info.content));
+  -- Add LSP symbol definition only if explicitly requested (e.g., for localized directives)
+  if include_lsp then
+    local lsp_info = lsp.get_symbol_definition();
+    if lsp_info then
+      table.insert(parts, "\n### LSP DEFINITION (Symbol at cursor)");
+      table.insert(parts, string.format("Source: %s (Line: %d)\n```\n%s\n```", lsp_info.uri, lsp_info.line, lsp_info.content));
+    end
   end
 
   return table.concat(parts, "\n");

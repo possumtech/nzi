@@ -50,7 +50,7 @@ function M.gather()
   local context = {};
 
   for _, bufnr in ipairs(buffers) do
-    if vim.api.nvim_buf_is_loaded(bufnr) then
+    if vim.api.nvim_buf_is_loaded(bufnr) and vim.api.nvim_get_option_value("buflisted", { buf = bufnr }) then
       local name = vim.api.nvim_buf_get_name(bufnr);
       local filetype = vim.api.nvim_get_option_value("filetype", { buf = bufnr });
       local state = M.get_state(bufnr);

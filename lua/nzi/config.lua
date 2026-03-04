@@ -1,12 +1,25 @@
 local M = {};
 
+-- Determine default python path
+local python_cmd = "python3";
+local venv_path = vim.fn.getcwd() .. "/.venv/bin/python";
+if vim.fn.executable(venv_path) == 1 then
+  python_cmd = venv_path;
+end
+
 --- Default configuration options for nzi
 M.defaults = {
-  -- LiteLLM command (e.g., 'litellm' or a full path)
-  litellm_cmd = "litellm",
+  -- Command to execute for model completion
+  model_cmd = { python_cmd, vim.fn.getcwd() .. "/scripts/complete.py" },
   
   -- The default model to use
   default_model = "gpt-4-turbo",
+  
+  -- The API base URL (for local models like Ollama)
+  api_base = nil,
+  
+  -- API Key if needed
+  api_key = nil,
   
   -- Modal window configuration
   modal = {

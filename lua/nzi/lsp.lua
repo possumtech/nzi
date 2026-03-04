@@ -4,7 +4,15 @@ local M = {};
 --- @return table | nil: { name = string, content = string, uri = string } or nil
 function M.get_symbol_definition()
   local bufnr = vim.api.nvim_get_current_buf();
-  local params = vim.lsp.util.make_position_params();
+  
+  -- Check if any LSP clients are attached to the current buffer
+  local clients = vim.lsp.get_clients({ bufnr = bufnr });
+  if #clients == 0 then
+    return nil;
+  end
+
+  -- Use the first client's encoding to avoid the 'position_encoding' warning
+  local params = vim.lsp.util.make_position_params(0, clients[1].offset_encoding);
   
   -- Request definition from attached LSP clients (1 second timeout)
   local responses, err = vim.lsp.buf_request_sync(bufnr, "textDocument/definition", params, 1000);
