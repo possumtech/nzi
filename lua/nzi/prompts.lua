@@ -82,7 +82,7 @@ function M.format_context(ctx_list, include_lsp, task_prompt)
   
   -- 2. Include active project tasks if present
   if task_prompt then
-    table.insert(parts, "  <nzi:tasks>\n" .. xml_escape(task_prompt) .. "\n  </nzi:tasks>");
+    table.insert(parts, "  <nzi:project_directives>\n" .. xml_escape(task_prompt) .. "\n  </nzi:project_directives>");
   end
 
   -- 3. Add open buffer contents
@@ -124,10 +124,10 @@ function M.build_directive_prompt(directive, target_file, prompts, context_str)
   -- 2. Project Context
   table.insert(parts, "\n" .. context_str);
   
-  table.insert(parts, "\n<nzi:directive>");
+  table.insert(parts, "\n<nzi:user>");
   table.insert(parts, "Editing file: " .. target_file);
   table.insert(parts, "Instruction: " .. directive);
-  table.insert(parts, "</nzi:directive>");
+  table.insert(parts, "</nzi:user>");
   
   return table.concat(parts, "\n");
 end

@@ -4,9 +4,9 @@ local M = {};
 
 --- Extract content or reasoning from a single line of OpenAI-compatible SSE data
 --- @param line string: A single line from the stream (e.g., "data: {...}")
---- @return table: { content = string, reasoning = string }
+--- @return table: { content = string, reasoning_content = string }
 local function parse_sse_line(line)
-  local result = { content = "", reasoning = "" };
+  local result = { content = "", reasoning_content = "" };
   
   if line:match("^data: %[DONE%]$") then
     return result;
@@ -21,7 +21,7 @@ local function parse_sse_line(line)
       -- Capture reasoning (OpenAI/O1 style, Ollama, or common extensions)
       local reasoning = delta.reasoning_content or delta.thought or delta.reasoning;
       if reasoning then
-        result.reasoning = reasoning;
+        result.reasoning_content = reasoning;
       end
       
       -- Capture standard content
@@ -102,19 +102,19 @@ function M.run(prompt, callback, on_stdout)
         if line ~= "" then
           local parsed = parse_sse_line(line);
           
-          if parsed.reasoning ~= "" then
-            if on_stdout then on_stdout(parsed.reasoning, "thought"); end
+          if parsed.reasoning_content ~= "" then
+            if on_stdout then on_stdout(parsed.reasoning_content, "reasoning_content"); end
           end
           
           if parsed.content ~= "" then
             full_stdout = full_stdout .. parsed.content;
-            if on_stdout then on_stdout(parsed.content, "model"); end
+            if on_stdout then on_stdout(parsed.content, "content"); end
           end
         end
       end
     end,
     stderr = function(err, data)
-      -- No-op for cleaner logs, or could be logged to a file
+      -- No-op for cleaner logs
     end,
   }, function(obj)
     vim.schedule(function()

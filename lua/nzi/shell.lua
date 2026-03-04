@@ -49,6 +49,7 @@ function M.run(command, bufnr, line_idx, inject)
           pcall(vim.keymap.del, "n", "y", { buffer = m_buf });
           pcall(vim.keymap.del, "n", "n", { buffer = m_buf });
           modal.pending_cleanup = nil;
+          modal.close_tag(); -- Close system prompt tag after choice
         end
 
         -- Register cleanup with modal so subsequent commands can "Auto-No"
@@ -71,6 +72,7 @@ function M.run(command, bufnr, line_idx, inject)
       else
         local err = (obj.stderr and obj.stderr ~= "") and obj.stderr or "Command exited with code " .. obj.code;
         modal.write("ERROR: " .. err, "system", false);
+        modal.close_tag();
         vim.notify("AI!: " .. err, vim.log.levels.ERROR);
       end
     end);

@@ -25,7 +25,7 @@ local function add_line_numbers(text)
   return table.concat(output, "\n");
 end
 
---- Remove line numbers from text (inverse of add_line_numbers)
+--- Remove line numbers from text
 --- @param text string
 --- @return string
 function M.strip_line_numbers(text)
@@ -33,16 +33,16 @@ function M.strip_line_numbers(text)
   local lines = vim.split(text, "\n");
   local output = {};
   for _, line in ipairs(lines) do
-    -- Matches "123: " at the start of the string
-    table.insert(output, (line:gsub("^%d+: ", "")));
+    local clean = line:gsub("^%d+: ", "", 1);
+    table.insert(output, clean);
   end
   return table.concat(output, "\n");
 end
 
 --- Add a completed turn to history
 --- @param type string: 'question', 'directive', or 'shell'
---- @param user_content string: Raw text (will be numbered before storage)
---- @param assistant_content string: Raw text (will be numbered before storage)
+--- @param user_content string
+--- @param assistant_content string
 function M.add(type, user_content, assistant_content)
   table.insert(M.turns, {
     id = next_id,
@@ -53,21 +53,19 @@ function M.add(type, user_content, assistant_content)
   next_id = next_id + 1;
 end
 
---- Get all turns (returns numbered text)
+--- Get all turns
 --- @return table
 function M.get_all()
   return M.turns;
 end
 
 --- Format history into a structured XML block for the model
---- Note: Strips line numbers for the model per user request.
 --- @return string
 function M.format()
   if #M.turns == 0 then return ""; end
 
   local parts = { "<nzi:history>" };
   for _, turn in ipairs(M.turns) do
-    -- Strip numbers for model consumption
     local user_clean = M.strip_line_numbers(turn.user);
     local assistant_clean = M.strip_line_numbers(turn.assistant);
     

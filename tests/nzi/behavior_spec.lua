@@ -22,7 +22,7 @@ describe("AI behavioral commands", function()
     -- Wait for the async vim.system to return and vim.schedule to run
     vim.wait(1000, function()
       local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false);
-      return #lines > 1 and (lines[2] == "SUCCESS" or lines[2]:match("SUCCESS"))
+      return #lines > 1 and lines[2]:match("SUCCESS")
     end);
 
     local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false);
@@ -31,20 +31,27 @@ describe("AI behavioral commands", function()
     vim.api.nvim_buf_delete(bufnr, { force = true });
   end);
 
-  it("should handle the 'AI !' shell shortcut correctly", function()
+  it("should handle the 'AI !' shell shortcut correctly and show in modal with tags", function()
     local bufnr = vim.api.nvim_create_buf(true, false);
     vim.api.nvim_set_current_buf(bufnr);
     
+    local modal = require("nzi.modal");
+    modal.clear();
+
     -- Execute the shortcut command
     vim.cmd("AI ! echo 'BANG_SUCCESS'");
 
+    -- Wait for modal output
     vim.wait(1000, function()
-      local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false);
-      return #lines > 1 and lines[2]:match("BANG_SUCCESS")
+      local lines = vim.api.nvim_buf_get_lines(modal.bufnr, 0, -1, false);
+      local text = table.concat(lines, "\n");
+      return text:match("<nzi:shell_output>.-BANG_SUCCESS") ~= nil
     end);
 
-    local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false);
-    assert.match("BANG_SUCCESS", lines[2]);
+    local lines = vim.api.nvim_buf_get_lines(modal.bufnr, 0, -1, false);
+    local text = table.concat(lines, "\n");
+    assert.match("<nzi:shell_output>", text, 1, true);
+    assert.match("BANG_SUCCESS", text, 1, true);
     
     vim.api.nvim_buf_delete(bufnr, { force = true });
   end);
@@ -53,15 +60,16 @@ describe("AI behavioral commands", function()
     local bufnr = vim.api.nvim_create_buf(true, false);
     vim.api.nvim_set_current_buf(bufnr);
     
-    local directive_mod = require("nzi.directive");
-    local directive_spy = require("luassert.spy").on(directive_mod, "run");
+    -- Directives are now treated as handle_question
+    local engine_mod = require("nzi.engine");
+    local question_spy = require("luassert.spy").on(engine_mod, "handle_question");
     
-    -- Simulate the command handler logic for :AI Hello World
-    require("nzi.directive").run("Hello World", bufnr, false);
+    -- Simulate :AI :Hello World
+    vim.cmd("AI :Hello World");
 
-    assert.spy(directive_spy).was_called_with("Hello World", bufnr, false);
+    assert.spy(question_spy).was_called_with("Hello World", true);
     
-    directive_spy:revert();
+    question_spy:revert();
     vim.api.nvim_buf_delete(bufnr, { force = true });
   end);
 end);

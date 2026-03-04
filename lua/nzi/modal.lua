@@ -3,36 +3,41 @@ local M = {};
 M.bufnr = nil;
 M.winid = nil;
 M.timer = nil;
-M.last_type = nil;
+M.current_open_tag = nil;
 M.pending_cleanup = nil;
 M.ns_id = vim.api.nvim_create_namespace("nzi_modal");
 
--- Precise background colors for categorization
+-- Categorized Opaque Highlights
 local function setup_highlights()
-  -- User Handshake
-  vim.api.nvim_set_hl(0, "NziQuestion", { bg = "#b8bb26", fg = "#282828", ctermbg = 10, ctermfg = 0 }); -- Light Green
-  vim.api.nvim_set_hl(0, "NziDirective", { bg = "#427b58", fg = "#ffffff", ctermbg = 22, ctermfg = 15 }); -- Dark Green
+  -- 1. INTERNAL / INFRASTRUCTURE (White on Black)
+  -- Used for tags, telemetry, and status messages.
+  vim.api.nvim_set_hl(0, "NziTelemetry", { bg = "#1d2021", fg = "#ebdbb2", ctermbg = 234, ctermfg = 15, bold = true });
+
+  -- 2. EXTERNAL DATA (Distinct Opaque Backgrounds)
+  -- The Law: Gray
+  vim.api.nvim_set_hl(0, "NziSystem", { bg = "#3c3836", fg = "#ebdbb2", ctermbg = 237, ctermfg = 15 });
+  -- The Context: Deep Gray
+  vim.api.nvim_set_hl(0, "NziContext", { bg = "#32302f", fg = "#a89984", ctermbg = 235, ctermfg = 246 }); 
+  vim.api.nvim_set_hl(0, "NziHistory", { bg = "#32302f", fg = "#a89984", ctermbg = 235, ctermfg = 246 });
+  -- The User: Green
+  vim.api.nvim_set_hl(0, "NziUser", { bg = "#427b58", fg = "#ffffff", ctermbg = 22, ctermfg = 15 });
+  -- The Assistant: Blue
+  vim.api.nvim_set_hl(0, "NziAssistant", { bg = "#076678", fg = "#ebdbb2", ctermbg = 30, ctermfg = 15 });
   
-  -- Model Communication
-  vim.api.nvim_set_hl(0, "NziThought", { bg = "#83a598", fg = "#282828", ctermbg = 12, ctermfg = 0 }); -- Light Blue (Reasoning)
-  vim.api.nvim_set_hl(0, "NziResponse", { bg = "#458588", fg = "#ffffff", ctermbg = 18, ctermfg = 15 }); -- Dark Blue (Actual Answer)
+  -- 3. STREAM COMPONENTS (Internal Field Views)
+  -- Reasoning: Light Blue
+  vim.api.nvim_set_hl(0, "NziReasoningContent", { bg = "#83a598", fg = "#282828", ctermbg = 12, ctermfg = 0 }); 
+  -- Streaming Content: Dark Blue
+  vim.api.nvim_set_hl(0, "NziContent", { bg = "#458588", fg = "#ffffff", ctermbg = 18, ctermfg = 15 });
   
-  -- Specialized
-  vim.api.nvim_set_hl(0, "NziEdit", { bg = "#fb4934", fg = "#ffffff", ctermbg = 1, ctermfg = 15 }); -- Red (Reserved)
-  vim.api.nvim_set_hl(0, "NziSystem", { bg = "#3c3836", fg = "#ebdbb2", ctermbg = 237, ctermfg = 15 }); -- Gray (The Law)
-  vim.api.nvim_set_hl(0, "NziContext", { bg = "#32302f", fg = "#a89984", ctermbg = 235, ctermfg = 246 }); -- Deeper Gray (The Facts)
-  vim.api.nvim_set_hl(0, "NziHistory", { bg = "#32302f", fg = "#a89984", ctermbg = 235, ctermfg = 246 }); -- Same as context
-  vim.api.nvim_set_hl(0, "NziShell", { bg = "#076678", fg = "#ebdbb2", ctermbg = 30, ctermfg = 15 });
-  
-  -- Thinking state border
+  -- Thinking state indicator
   vim.api.nvim_set_hl(0, "NziThinking", { fg = "#fe8019", ctermfg = 214, bold = true });
 end
 
---- Create or retrieve the modal buffer
 local function get_or_create_buffer()
   if not M.bufnr or not vim.api.nvim_buf_is_valid(M.bufnr) then
     M.bufnr = vim.api.nvim_create_buf(false, true);
-    vim.api.nvim_set_option_value("filetype", "nziLog", { buf = M.bufnr });
+    vim.api.nvim_set_option_value("filetype", "aiLog", { buf = M.bufnr });
     vim.api.nvim_set_option_value("buftype", "nofile", { buf = M.bufnr });
     vim.api.nvim_set_option_value("bufhidden", "hide", { buf = M.bufnr });
     vim.api.nvim_set_option_value("modifiable", false, { buf = M.bufnr });
@@ -41,7 +46,6 @@ local function get_or_create_buffer()
   return M.bufnr;
 end
 
---- Open the modal window
 function M.open()
   local bufnr = get_or_create_buffer();
   if M.winid and vim.api.nvim_win_is_valid(M.winid) then return; end
@@ -50,14 +54,12 @@ function M.open()
   local model_alias = config.options.active_model or "AI";
   local title = " " .. model_alias:upper() .. " " ;
 
-  local width = math.floor(vim.o.columns * 0.8);
-  local height = math.floor(vim.o.lines * 0.8);
-  
   M.winid = vim.api.nvim_open_win(bufnr, false, {
     relative = "editor",
-    width = width, height = height,
-    col = (vim.o.columns - width) / 2,
-    row = (vim.o.lines - height) / 2,
+    width = math.floor(vim.o.columns * 0.8),
+    height = math.floor(vim.o.lines * 0.8),
+    col = math.floor(vim.o.columns * 0.1),
+    row = math.floor(vim.o.lines * 0.1),
     style = "minimal", border = "rounded",
     title = title, title_pos = "center",
   });
@@ -65,17 +67,8 @@ function M.open()
   local opts = { buffer = bufnr, silent = true };
   vim.keymap.set("n", "q", M.close, opts);
   vim.keymap.set("n", "<Esc>", M.close, opts);
-  
-  -- Disable insert mode keys to prevent accidental edits
-  vim.keymap.set("n", "i", "<nop>", opts);
-  vim.keymap.set("n", "a", "<nop>", opts);
-  vim.keymap.set("n", "o", "<nop>", opts);
-  vim.keymap.set("n", "I", "<nop>", opts);
-  vim.keymap.set("n", "A", "<nop>", opts);
-  vim.keymap.set("n", "O", "<nop>", opts);
 end
 
---- Set the "Thinking" state
 function M.set_thinking(active)
   local config = require("nzi.config");
   local model_alias = config.options.active_model or "AI";
@@ -94,9 +87,7 @@ function M.set_thinking(active)
     end))
   else
     if M.timer then
-      M.timer:stop()
-      M.timer:close()
-      M.timer = nil
+      M.timer:stop(); M.timer:close(); M.timer = nil;
       if M.winid and vim.api.nvim_win_is_valid(M.winid) then
         vim.api.nvim_win_set_config(M.winid, { title = default_title })
       end
@@ -121,19 +112,17 @@ function M.toggle()
   end
 end
 
---- Apply background color to a range of lines
 local function highlight_lines(bufnr, start_line, end_line, hl_group)
   for i = start_line, end_line do
     vim.api.nvim_buf_set_extmark(bufnr, M.ns_id, i, 0, {
       end_line = i + 1,
       hl_group = hl_group,
-      hl_eol = true,
+      hl_eol = true, -- OPAQUE BACKGROUND
       priority = 1000,
     })
   end
 end
 
---- Cancel any outstanding interactive prompt (e.g., shell y/n)
 function M.cancel_pending_prompt()
   if M.pending_cleanup then
     M.pending_cleanup();
@@ -141,116 +130,165 @@ function M.cancel_pending_prompt()
   end
 end
 
+--- Lexicon Mapping
+local function get_tag_name(type)
+  local map = {
+    reasoning_content = "reasoning_content",
+    content = "content",
+    assistant = "assistant",
+    system = "system",
+    user = "user",
+    context = "context",
+    history = "history",
+    shell = "shell_output",
+    shell_output = "shell_output",
+  };
+  return map[type] or type;
+end
+
+local function get_hl_group(type)
+  local map = {
+    system = "NziSystem",
+    user = "NziUser",
+    assistant = "NziAssistant",
+    reasoning_content = "NziReasoningContent",
+    content = "NziContent",
+    context = "NziContext",
+    history = "NziHistory",
+    shell_output = "NziAssistant", -- Internal but matches assistant style
+    shell = "NziAssistant",
+  };
+  return map[type] or "Normal";
+end
+
+--- Internal helper to close the currently open tag
+local function _close_current_tag(bufnr)
+  if not M.current_open_tag then return end
+  local tag = get_tag_name(M.current_open_tag);
+  local lc = vim.api.nvim_buf_line_count(bufnr);
+  
+  -- Tags are always Telemetry (White on Black)
+  local tag_line = "</nzi:" .. tag .. ">";
+  vim.api.nvim_buf_set_lines(bufnr, lc, lc, false, { tag_line });
+  highlight_lines(bufnr, lc, lc, "NziTelemetry");
+  
+  M.current_open_tag = nil;
+end
+
+function M.close_tag()
+  local bufnr = get_or_create_buffer();
+  vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr });
+  _close_current_tag(bufnr);
+  vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr });
+end
+
+--- Build a telemetry line
+local function get_telemetry_line(type)
+  local config = require("nzi.config");
+  local model_alias = config.options.active_model or "unknown";
+  local opts = config.options.model_options or {};
+  
+  if type == "user" or type == "question" or type == "directive" then
+    return string.format("[ USER | model: %s | temp: %.1f | top_p: %.1f ]", model_alias, opts.temperature or 0, opts.top_p or 0);
+  elseif type == "reasoning_content" then
+    return string.format("[ ASSISTANT | reasoning_content | stream: active ]");
+  elseif type == "content" then
+    return string.format("[ ASSISTANT | content | stream: active ]");
+  elseif type == "shell" or type == "shell_output" then
+    return "[ SYSTEM | shell_output | execution: complete ]";
+  else
+    return string.format("[ %s | context: %s ]", type:upper(), model_alias);
+  end
+end
+
 --- Write text to the modal buffer
 function M.write(text, type, append)
   local bufnr = get_or_create_buffer();
+  local tag = get_tag_name(type);
 
-  -- Machine-friendly tag map
-  local tag_map = {
-    thought = "thought",
-    model = "response",
-    response = "response",
-    shell = "shell",
-    system = "system",
-    context = "context",
-    history = "history",
-    question = "question",
-    directive = "directive",
-  };
-
-  local current_tag = tag_map[type] or type;
-
-  -- If this is a new interaction block, cancel any pending prompts from the previous one
   if not append then
     M.cancel_pending_prompt();
   end
 
-  -- Handle Transitions and Initial Tagging
-  if append and M.last_type and M.last_type ~= type then
-    local last_tag = tag_map[M.last_type] or M.last_type;
-    local transition_prefix = string.format("\n</nzi:%s>\n\n<nzi:%s>\n", last_tag, current_tag);
-    M.last_type = type; 
-    M.write(transition_prefix, type, false);
-    append = false; 
-  elseif not append and not M.last_type then
-    -- First write of a session
-    local initial_prefix = string.format("<nzi:%s>\n", current_tag);
-    M.last_type = type;
-    M.write(initial_prefix, type, false);
-  end
-  M.last_type = type;
-
-  local lines = vim.split(text, "\n");
-  
-  local hl_map = {
-    system = "NziSystem",
-    context = "NziContext",
-    history = "NziHistory",
-    question = "NziQuestion",
-    directive = "NziDirective",
-    thought = "NziThought",
-    model = "NziResponse",
-    response = "NziResponse",
-    edit = "NziEdit",
-    shell = "NziShell",
-  };
-  local hl_group = hl_map[type] or "Normal";
-
   vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr });
-  local line_count = vim.api.nvim_buf_line_count(bufnr);
-  
-  if append and line_count > 0 then
-    local last_line_idx = line_count - 1;
-    local last_line = vim.api.nvim_buf_get_lines(bufnr, last_line_idx, line_count, false)[1] or "";
-    local updated_line = last_line .. lines[1];
-    vim.api.nvim_buf_set_lines(bufnr, last_line_idx, line_count, false, { updated_line });
-    highlight_lines(bufnr, last_line_idx, last_line_idx, hl_group);
 
-    if #lines > 1 then
-      local remaining = {};
-      for i = 2, #lines do table.insert(remaining, lines[i]); end
-      vim.api.nvim_buf_set_lines(bufnr, line_count, -1, false, remaining);
-      highlight_lines(bufnr, line_count, line_count + #remaining - 1, hl_group);
+  -- 1. Handle Tag Transitions & Telemetry
+  if not append or (M.current_open_tag and M.current_open_tag ~= type) then
+    _close_current_tag(bufnr);
+    
+    local lc = vim.api.nvim_buf_line_count(bufnr);
+    local is_empty = (lc == 1 and vim.api.nvim_buf_get_lines(bufnr, 0, 1, false)[1] == "");
+    
+    -- New Interaction Block
+    local telemetry = get_telemetry_line(type);
+    local open_tag = "<nzi:" .. tag .. ">";
+    
+    local lines_to_add = is_empty and { telemetry, open_tag } or { "", telemetry, open_tag };
+    local start_idx = is_empty and 0 or lc;
+    
+    vim.api.nvim_buf_set_lines(bufnr, start_idx, -1, false, lines_to_add);
+    
+    -- Telemetry and Tags are ALWAYS NziTelemetry (White on Black)
+    highlight_lines(bufnr, start_idx + (is_empty and 0 or 1), start_idx + (is_empty and 0 or 2), "NziTelemetry");
+    
+    M.current_open_tag = type;
+    append = false; -- We already opened the tag, now we add content on new lines
+  elseif not M.current_open_tag then
+    local telemetry = get_telemetry_line(type);
+    local open_tag = "<nzi:" .. tag .. ">";
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { telemetry, open_tag });
+    highlight_lines(bufnr, 0, 1, "NziTelemetry");
+    M.current_open_tag = type;
+    append = false;
+  end
+
+  -- 2. Content Injection (Categorical Colors)
+  local content_lines = vim.split(text, "\n");
+  local hl_group = get_hl_group(type);
+  local lc = vim.api.nvim_buf_line_count(bufnr);
+  
+  if append and lc > 0 then
+    -- Append to the last line of content
+    local last_idx = lc - 1;
+    local last_line = vim.api.nvim_buf_get_lines(bufnr, last_idx, lc, false)[1] or "";
+    vim.api.nvim_buf_set_lines(bufnr, last_idx, lc, false, { last_line .. content_lines[1] });
+    highlight_lines(bufnr, last_idx, last_idx, hl_group);
+    
+    if #content_lines > 1 then
+      local rem = {};
+      for i = 2, #content_lines do table.insert(rem, content_lines[i]); end
+      local current_lc = vim.api.nvim_buf_line_count(bufnr);
+      vim.api.nvim_buf_set_lines(bufnr, current_lc, -1, false, rem);
+      highlight_lines(bufnr, current_lc, current_lc + #rem - 1, hl_group);
     end
   else
-    local insert_pos = (line_count == 1 and vim.api.nvim_buf_get_lines(bufnr, 0, 1, false)[1] == "") and 0 or line_count;
-    vim.api.nvim_buf_set_lines(bufnr, insert_pos, -1, false, lines);
-    highlight_lines(bufnr, insert_pos, insert_pos + #lines - 1, hl_group);
+    -- Add content after the open tag
+    local current_lc = vim.api.nvim_buf_line_count(bufnr);
+    vim.api.nvim_buf_set_lines(bufnr, current_lc, -1, false, content_lines);
+    highlight_lines(bufnr, current_lc, current_lc + #content_lines - 1, hl_group);
   end
 
   vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr });
-  
-  local mode = vim.api.nvim_get_mode().mode;
   if M.winid and vim.api.nvim_win_is_valid(M.winid) then
-    local cur_win = vim.api.nvim_get_current_win();
-    if not (cur_win == M.winid and mode:match("[vV\22]")) then
-      local last_line_count = vim.api.nvim_buf_line_count(bufnr);
-      vim.api.nvim_win_set_cursor(M.winid, { last_line_count, 0 });
-    end
+    vim.api.nvim_win_set_cursor(M.winid, { vim.api.nvim_buf_line_count(bufnr), 0 });
   end
 end
 
 function M.clear()
-  if M.last_type then
-    local last_tag = (M.last_type == "model" or M.last_type == "response") and "response" or M.last_type;
-    M.write("\n</nzi:" .. last_tag .. ">", M.last_type, true);
-  end
-  M.last_type = nil;
   local bufnr = get_or_create_buffer();
   vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr });
+  _close_current_tag(bufnr);
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {});
   vim.api.nvim_buf_clear_namespace(bufnr, M.ns_id, 0, -1);
+  M.current_open_tag = nil;
   vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr });
 end
 
---- Replace the highlight of a range of lines
 function M.recolor_last_lines(count, type)
   local bufnr = get_or_create_buffer();
-  local line_count = vim.api.nvim_buf_line_count(bufnr);
-  local start_line = math.max(0, line_count - count);
-  local hl_group = "Nzi" .. type:sub(1,1):upper() .. type:sub(2);
-  
-  highlight_lines(bufnr, start_line, line_count - 1, hl_group);
+  local lc = vim.api.nvim_buf_line_count(bufnr);
+  local hl_group = get_hl_group(type);
+  highlight_lines(bufnr, math.max(0, lc - count), lc - 1, hl_group);
 end
 
 return M;

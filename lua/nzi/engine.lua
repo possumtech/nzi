@@ -13,7 +13,6 @@ local M = {};
 --- @param include_lsp boolean | nil
 function M.handle_question(content, include_lsp)
   local config = require("nzi.config");
-  local model_cfg = config.get_active_model();
   local model_alias = config.options.active_model or "AI";
   local ctx_list = context.gather();
   local prompt_parts = prompts.gather();
@@ -34,7 +33,7 @@ function M.handle_question(content, include_lsp)
     modal.write(context_str, "context", false);
   end
 
-  modal.write(content, "question", config.options.modal.show_context);
+  modal.write(content, "user", config.options.modal.show_context);
   
   modal.set_thinking(true);
   local start_line_count = vim.api.nvim_buf_line_count(modal.bufnr or 0);
@@ -46,15 +45,17 @@ function M.handle_question(content, include_lsp)
         -- Add to structured history for the next turn
         require("nzi.history").add("question", content, result);
         
-        -- Transition the streamed lines to the final response color
+        -- Transition the streamed lines to the final response color/tag
         local end_line_count = vim.api.nvim_buf_line_count(modal.bufnr);
-        modal.recolor_last_lines(end_line_count - start_line_count, "response");
+        modal.recolor_last_lines(end_line_count - start_line_count, "assistant");
       else
         modal.write("\nERROR: " .. result .. "\n", "system", false);
       end
+      -- Finalize the XML structure
+      modal.close_tag();
     end);
   end, function(chunk, type)
-    -- On stdout chunk, stream to modal with correct color (thought or stream)
+    -- On stdout chunk, stream to modal with correct color (reasoning_content or content)
     vim.schedule(function()
       modal.write(chunk, type, true);
     end);

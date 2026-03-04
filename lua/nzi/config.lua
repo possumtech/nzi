@@ -3,10 +3,15 @@ local M = {};
 --- Default configuration options for nzi
 M.defaults = {
   -- The currently active model alias
-  active_model = "qwenzel",
+  active_model = "coder",
 
   -- Pre-configured models with aliases
   models = {
+    coder = {
+      model = "qwen/qwen-2.5-coder-32b-instruct",
+      api_base = "https://openrouter.ai/api/v1",
+      api_key = vim.env.OPENROUTER_API_KEY,
+    },
     qwenzel = {
       model = "qwenzel:latest",
       api_base = "http://localhost:11434/v1",
@@ -16,11 +21,6 @@ M.defaults = {
       model = "gpt-4-turbo",
       api_base = "https://api.openai.com/v1",
       api_key = vim.env.OPENAI_API_KEY,
-    },
-    openrouter = {
-      model = "google/gemini-2.0-flash-001",
-      api_base = "https://openrouter.ai/api/v1",
-      api_key = vim.env.OPENROUTER_API_KEY,
     },
   },
 

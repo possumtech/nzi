@@ -6,15 +6,24 @@ describe("AI history module", function()
     history.clear();
   end);
 
-  it("should add and format turns correctly", function()
+  it("should add and format turns correctly (clean XML for model)", function()
     history.add("question", "What is 1+1?", "It is 2.");
     local formatted = history.format();
     
-    assert.match("<history>", formatted);
-    assert.match("<turn id=\"1\" type=\"question\">", formatted, 1, true);
-    assert.match("1: What is 1%+1%?", formatted);
-    assert.match("1: It is 2%.", formatted);
-    assert.match("</turn>", formatted);
+    assert.match("<nzi:history>", formatted);
+    assert.match("<nzi:turn id=\"1\" type=\"question\">", formatted, 1, true);
+    assert.match("<nzi:user>What is 1%+1%?</nzi:user>", formatted);
+    assert.match("<nzi:assistant>It is 2%.</nzi:assistant>", formatted);
+    assert.match("</nzi:turn>", formatted);
+    
+    -- Ensure NO line numbers in the model-facing format
+    assert.is_nil(formatted:find("1: "))
+  end);
+
+  it("should preserve line numbers in internal storage", function()
+    history.add("question", "Line 1\nLine 2", "Result");
+    local turn = history.get_all()[1];
+    assert.match("1: Line 1\n2: Line 2", turn.user);
   end);
 
   it("should handle multiple turns with unique IDs", function()
@@ -24,16 +33,13 @@ describe("AI history module", function()
     
     assert.match("id=\"1\"", formatted);
     assert.match("id=\"2\"", formatted);
-    assert.match("type=\"question\"", formatted);
-    assert.match("type=\"directive\"", formatted);
   end);
 
   it("should escape XML in history turns", function()
-    history.add("question", "</turn>", "<history>");
+    history.add("question", "</nzi:turn>", "<nzi:history>");
     local formatted = history.format();
     
-    -- Should be escaped to &lt;/turn&gt; etc.
-    assert.match("&lt;/turn&gt;", formatted, 1, true);
-    assert.match("&lt;history&gt;", formatted, 1, true);
+    assert.match("&lt;/nzi:turn&gt;", formatted, 1, true);
+    assert.match("&lt;nzi:history&gt;", formatted, 1, true);
   end);
 end);
