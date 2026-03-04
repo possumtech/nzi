@@ -50,11 +50,16 @@ def main():
     # Ensure stream is True for the bridge
     options.pop("stream", None)
 
-    # Advanced options
+    # Advanced options - Ensure they are dicts (Lua empty tables can become lists)
     extra_body = request.get("extra_body", {})
+    if not isinstance(extra_body, dict):
+        extra_body = {}
+        
     extra_headers = request.get("extra_headers", {})
+    if not isinstance(extra_headers, dict):
+        extra_headers = {}
     
-    # Aider-inspired metadata mapping: pass the UI alias to the provider
+    # Metadata mapping: pass the UI alias to the provider
     if "X-Title" not in extra_headers:
         extra_headers["X-Title"] = f"nzi: {alias}"
     if "X-Description" not in extra_headers:

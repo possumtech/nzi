@@ -4,29 +4,19 @@ M.bufnr = nil;
 M.winid = nil;
 M.timer = nil;
 M.current_open_tag = nil;
-M.pending_cleanup = nil;
 M.ns_id = vim.api.nvim_create_namespace("nzi_modal");
 
 -- Categorized Opaque Highlights
 local function setup_highlights()
-  -- 1. INTERNAL / INFRASTRUCTURE (White on Black)
   vim.api.nvim_set_hl(0, "NziTelemetry", { bg = "#1d2021", fg = "#ebdbb2", ctermbg = 234, ctermfg = 15, bold = true });
-
-  -- 2. EXTERNAL DATA (Distinct Opaque Backgrounds)
   vim.api.nvim_set_hl(0, "NziSystem", { bg = "#3c3836", fg = "#ebdbb2", ctermbg = 237, ctermfg = 15 });
   vim.api.nvim_set_hl(0, "NziContext", { bg = "#32302f", fg = "#a89984", ctermbg = 235, ctermfg = 246 }); 
   vim.api.nvim_set_hl(0, "NziHistory", { bg = "#32302f", fg = "#a89984", ctermbg = 235, ctermfg = 246 });
   vim.api.nvim_set_hl(0, "NziUser", { bg = "#427b58", fg = "#ffffff", ctermbg = 22, ctermfg = 15 });
   vim.api.nvim_set_hl(0, "NziAssistant", { bg = "#076678", fg = "#ebdbb2", ctermbg = 30, ctermfg = 15 });
-  
-  -- 3. ERROR STATE (Red)
   vim.api.nvim_set_hl(0, "NziError", { bg = "#fb4934", fg = "#ffffff", ctermbg = 1, ctermfg = 15, bold = true });
-
-  -- 4. STREAM COMPONENTS
   vim.api.nvim_set_hl(0, "NziReasoningContent", { bg = "#83a598", fg = "#282828", ctermbg = 12, ctermfg = 0 }); 
   vim.api.nvim_set_hl(0, "NziContent", { bg = "#458588", fg = "#ffffff", ctermbg = 18, ctermfg = 15 });
-  
-  -- Thinking state indicator
   vim.api.nvim_set_hl(0, "NziThinking", { fg = "#fe8019", ctermfg = 214, bold = true });
 end
 
@@ -119,13 +109,6 @@ local function highlight_lines(bufnr, start_line, end_line, hl_group)
   end
 end
 
-function M.cancel_pending_prompt()
-  if M.pending_cleanup then
-    M.pending_cleanup();
-    M.pending_cleanup = nil;
-  end
-end
-
 --- Lexicon Mapping
 local function get_tag_name(type)
   local map = {
@@ -159,24 +142,6 @@ local function get_hl_group(type)
   return map[type] or "Normal";
 end
 
---- Internal helper to close the currently open section
-local function _close_current_tag(bufnr)
-  if not M.current_open_tag then return end
-  local tag = get_tag_name(M.current_open_tag);
-  local lc = vim.api.nvim_buf_line_count(bufnr);
-  local tag_line = "</" .. tag .. ">";
-  vim.api.nvim_buf_set_lines(bufnr, lc, lc, false, { tag_line });
-  highlight_lines(bufnr, lc, lc, "NziTelemetry");
-  M.current_open_tag = nil;
-end
-
-function M.close_tag()
-  local bufnr = get_or_create_buffer();
-  vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr });
-  _close_current_tag(bufnr);
-  vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr });
-end
-
 local function get_telemetry_line(type)
   local config = require("nzi.config");
   local model_alias = config.options.active_model or "unknown";
@@ -196,16 +161,31 @@ local function get_telemetry_line(type)
   end
 end
 
+--- Internal helper to close the currently open section
+local function _close_current_tag(bufnr)
+  if not M.current_open_tag then return end
+  local tag = get_tag_name(M.current_open_tag);
+  local lc = vim.api.nvim_buf_line_count(bufnr);
+  local tag_line = "</" .. tag .. ">";
+  vim.api.nvim_buf_set_lines(bufnr, lc, lc, false, { tag_line });
+  highlight_lines(bufnr, lc, lc, "NziTelemetry");
+  M.current_open_tag = nil;
+end
+
+function M.close_tag()
+  local bufnr = get_or_create_buffer();
+  vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr });
+  _close_current_tag(bufnr);
+  vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr });
+end
+
 function M.write(text, type, append)
   local bufnr = get_or_create_buffer();
-  local tag = get_tag_name(type);
-  if not append then M.cancel_pending_prompt(); end
   vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr });
 
   -- 1. Structural Transitions
   if (M.current_open_tag and M.current_open_tag ~= type) or (not append and M.current_open_tag) then
     _close_current_tag(bufnr);
-    append = false; -- Force fresh start for new section
   end
 
   if not M.current_open_tag then
@@ -213,15 +193,14 @@ function M.write(text, type, append)
     local is_empty = (lc == 1 and vim.api.nvim_buf_get_lines(bufnr, 0, 1, false)[1] == "");
     
     local telemetry = get_telemetry_line(type);
-    local open_tag = "<" .. tag .. ">";
-    local lines_to_add = is_empty and { telemetry, open_tag } or { "", telemetry, open_tag };
+    local open_tag = "<" .. get_tag_name(type) .. ">";
+    local header = is_empty and { telemetry, open_tag } or { "", telemetry, open_tag };
     local start_idx = is_empty and 0 or lc;
     
-    vim.api.nvim_buf_set_lines(bufnr, start_idx, -1, false, lines_to_add);
-    highlight_lines(bufnr, start_idx, start_idx + #lines_to_add - 1, "NziTelemetry");
-    
+    vim.api.nvim_buf_set_lines(bufnr, start_idx, -1, false, header);
+    highlight_lines(bufnr, start_idx, start_idx + #header - 1, "NziTelemetry");
     M.current_open_tag = type;
-    append = false; 
+    append = false; -- First write in a section is never an "append" to existing text
   end
 
   -- 2. Content Injection
@@ -230,21 +209,24 @@ function M.write(text, type, append)
   local lc = vim.api.nvim_buf_line_count(bufnr);
   
   if append and lc > 0 then
+    -- Merge with last line
     local last_idx = lc - 1;
     local last_line = vim.api.nvim_buf_get_lines(bufnr, last_idx, lc, false)[1] or "";
     vim.api.nvim_buf_set_lines(bufnr, last_idx, lc, false, { last_line .. content_lines[1] });
     highlight_lines(bufnr, last_idx, last_idx, hl_group);
+    
     if #content_lines > 1 then
-      local rem = {};
-      for i = 2, #content_lines do table.insert(rem, content_lines[i]); end
-      local current_lc = vim.api.nvim_buf_line_count(bufnr);
-      vim.api.nvim_buf_set_lines(bufnr, current_lc, -1, false, rem);
-      highlight_lines(bufnr, current_lc, current_lc + #rem - 1, hl_group);
+      local remaining = {};
+      for i = 2, #content_lines do table.insert(remaining, content_lines[i]); end
+      local new_lc = vim.api.nvim_buf_line_count(bufnr);
+      vim.api.nvim_buf_set_lines(bufnr, new_lc, new_lc, false, remaining);
+      highlight_lines(bufnr, new_lc, new_lc + #remaining - 1, hl_group);
     end
   else
-    local current_lc = vim.api.nvim_buf_line_count(bufnr);
-    vim.api.nvim_buf_set_lines(bufnr, current_lc, -1, false, content_lines);
-    highlight_lines(bufnr, current_lc, current_lc + #content_lines - 1, hl_group);
+    -- Append as new lines
+    local start_lc = vim.api.nvim_buf_line_count(bufnr);
+    vim.api.nvim_buf_set_lines(bufnr, start_lc, start_lc, false, content_lines);
+    highlight_lines(bufnr, start_lc, start_lc + #content_lines - 1, hl_group);
   end
 
   vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr });
@@ -256,19 +238,10 @@ end
 function M.clear()
   local bufnr = get_or_create_buffer();
   vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr });
-  _close_current_tag(bufnr);
+  M.current_open_tag = nil;
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {});
   vim.api.nvim_buf_clear_namespace(bufnr, M.ns_id, 0, -1);
-  M.current_open_tag = nil;
-  M.last_type = nil;
   vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr });
-end
-
-function M.recolor_last_lines(count, type)
-  local bufnr = get_or_create_buffer();
-  local lc = vim.api.nvim_buf_line_count(bufnr);
-  local hl_group = get_hl_group(type);
-  highlight_lines(bufnr, math.max(0, lc - count), lc - 1, hl_group);
 end
 
 return M;

@@ -73,7 +73,7 @@ function M.setup(opts)
       return;
     end
 
-    -- 3. Handle direct command-line prompts
+    -- 3. Handle direct command-line prompts (AI? or AI:)
     if args ~= "" then
       local first_char = args:sub(1,1);
       if first_char == "?" or first_char == ":" then
