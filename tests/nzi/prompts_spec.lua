@@ -39,17 +39,20 @@ describe("AI prompts module", function()
   end);
 
   it("should build a code modification directive prompt", function()
-    local result = prompts.build_directive_prompt(
+    local result = prompts.build_messages(
       "Refactor this",
+      "directive",
       "main.lua",
-      { global = "Be concise" },
-      "CLEAN_CONTEXT"
+      false
     );
     assert.is_table(result);
+    -- Message 1: System (Rules)
+    -- Message 2: System/User (Context)
+    -- Message 3: User (New Directive)
     local last_msg = result[#result].content;
     assert.match("Refactor this", last_msg);
     assert.match("main.lua", last_msg);
-    assert.match("<agent:context>", last_msg);
+    assert.match("<agent:project_directives>", last_msg);
     assert.match("<agent:user>", last_msg);
   end);
 end);

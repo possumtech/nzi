@@ -86,6 +86,40 @@ function M.run(command_str)
   elseif cmd == "toggle" then
     modal.toggle();
 
+  elseif cmd == "stop" then
+    local engine = require("nzi.engine");
+    if engine.current_job then
+      engine.current_job:kill(15);
+      engine.current_job = nil;
+      modal.set_thinking(false);
+      vim.notify("AI: Generation aborted", vim.log.levels.WARN);
+    else
+      vim.notify("AI: No active job to stop", vim.log.levels.INFO);
+    end
+
+  elseif cmd == "yank" then
+    local turns = history.get_all();
+    if #turns > 0 then
+      local last_turn = turns[#turns];
+      local assistant_raw = history.strip_line_numbers(last_turn.assistant);
+      vim.fn.setreg("+", assistant_raw);
+      vim.notify("AI: Last response yanked to + register", vim.log.levels.INFO);
+    else
+      vim.notify("AI: No history to yank", vim.log.levels.WARN);
+    end
+
+  elseif cmd == "active" or cmd == "read" or cmd == "ignore" then
+    local bufnr = vim.api.nvim_get_current_buf();
+    local name = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":.");
+    require("nzi.context").set_state(bufnr, cmd);
+    vim.notify(string.format("AI: Buffer '%s' set to %s", name, cmd), vim.log.levels.INFO);
+
+  elseif cmd == "state" then
+    local bufnr = vim.api.nvim_get_current_buf();
+    local state = require("nzi.context").get_state(bufnr);
+    local name = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":.");
+    print(string.format("AI: Buffer '%s' state is '%s'", name, state));
+
   elseif cmd == "buffers" then
     buffers.open_ui();
 

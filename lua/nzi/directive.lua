@@ -12,15 +12,9 @@ local M = {};
 --- @param include_lsp boolean | nil
 function M.run(instruction, bufnr, include_lsp)
   local config = require("nzi.config");
-  local model_cfg = config.get_active_model();
-  local model_alias = config.options.active_model or "AI";
   local target_file = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":.");
-  local ctx_list = context.gather();
-  local prompt_parts = prompts.gather();
   
-  local system_prompt = prompts.build_system_prompt(prompt_parts, model_alias);
-  local context_str = prompts.format_context(ctx_list, include_lsp);
-  local full_prompt = prompts.build_directive_prompt(instruction, target_file, prompt_parts, context_str);
+  local messages, system_prompt, context_str = prompts.build_messages(instruction, "directive", target_file, include_lsp);
   local hist_str = require("nzi.history").format();
   
   -- Use the modal for status updates
@@ -37,7 +31,7 @@ function M.run(instruction, bufnr, include_lsp)
   modal.write(instruction .. " (File: " .. target_file .. ")", "directive", config.options.modal.show_context);
   
   modal.set_thinking(true);
-  job.run(full_prompt, function(success, result)
+  job.run(messages, function(success, result)
     vim.schedule(function()
       modal.set_thinking(false);
       if success and result then

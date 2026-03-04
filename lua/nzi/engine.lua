@@ -21,38 +21,14 @@ function M.handle_question(content, include_lsp)
     M.current_job = nil;
   end
 
-  local model_cfg = config.get_active_model();
-  local model_alias = config.options.active_model or "AI";
-  
-  local ctx_list = context.gather();
-  local prompt_parts = prompts.gather();
-  
-  -- 1. Rules of Behavior (System Role)
-  local system_prompt_str = prompts.build_system_prompt(prompt_parts, model_alias);
-  
-  -- 2. Facts of the Project (User Role)
-  local context_str = prompts.format_context(ctx_list, include_lsp);
-  
-  -- Build the Message Array for the API
-  local messages = {};
-  local role = model_cfg.role_preference or "system";
-  table.insert(messages, { role = role, content = system_prompt_str });
-  
-  local history_msgs = history.get_as_messages();
-  for _, msg in ipairs(history_msgs) do
-    table.insert(messages, msg);
-  end
-  
-  -- The final user message contains context and the question
-  local user_prompt = string.format("<agent:context>\n%s\n</agent:context>\n\n<agent:user>\n%s\n</agent:user>", 
-    context_str, history.xml_escape(content));
-  table.insert(messages, { role = "user", content = user_prompt });
+  local messages, system_prompt, context_str = prompts.build_messages(content, "question", nil, include_lsp);
   
   modal.open();
   
   if config.options.modal.show_context then
-    modal.write(system_prompt_str, "system", false);
+    modal.write(system_prompt, "system", false);
     
+    local history_msgs = history.get_as_messages();
     if #history_msgs > 0 then
       for _, msg in ipairs(history_msgs) do
         modal.write(msg.content, msg.role, false);

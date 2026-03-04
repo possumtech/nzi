@@ -9,10 +9,10 @@ AI (nzi) is built on the philosophy that stream-of-consciousness conversations a
 
 Interact with the model directly inside your source files using prefixed comments:
 
-*   `ai: refactor this` — Treated as a code directive (currently routed to question handler).
-*   `ai? explain this` — Ask a specific question about the surrounding code.
-*   `ai! git log` — Execute a shell command and inject the output below the directive.
-*   `ai/model deepseek` — Send an internal command (e.g., switch models).
+*   `AI: refactor this` — Treated as a code directive (currently routed to question handler).
+*   `AI? explain this` — Ask a specific question about the surrounding code.
+*   `AI! git log` — Execute a shell command and inject the output below the directive.
+*   `AI/model deepseek` — Send an internal command (e.g., switch models).
 
 ### 2. Status Line Commands
 
@@ -22,7 +22,35 @@ The `:AI` command is your primary interface. It mirrors interpolated commands bu
 *   `:AI! ls -la` (Automatically expands to `:AI !` for shell injection)
 *   `:AI/model gpro` (Switch to a specific model alias)
 
-### 3. AGENTS.md & .ai.md
+### 3. Suggested Mappings
+
+Add these to your `init.lua` for a high-speed keyboard-driven workflow:
+
+```lua
+-- Modal & Core
+vim.keymap.set("n", "<leader>aa", ":AI/toggle<CR>", { desc = "AI: Toggle Modal" })
+vim.keymap.set("n", "<leader>ax", ":AI/stop<CR>",   { desc = "AI: Abort Generation" })
+vim.keymap.set("n", "<leader>ay", ":AI/yank<CR>",   { desc = "AI: Yank Last Response" })
+vim.keymap.set("n", "<leader>ac", ":AI/clear<CR>",  { desc = "AI: Clear History" })
+vim.keymap.set("n", "<leader>au", ":AI/undo<CR>",   { desc = "AI: Undo Last Turn" })
+
+-- Context Management
+vim.keymap.set("n", "<leader>aA", ":AI/active<CR>", { desc = "AI: Set Buffer Active" })
+vim.keymap.set("n", "<leader>aR", ":AI/read<CR>",   { desc = "AI: Set Buffer Read-only" })
+vim.keymap.set("n", "<leader>aI", ":AI/ignore<CR>", { desc = "AI: Ignore Buffer" })
+vim.keymap.set("n", "<leader>aS", ":AI/state<CR>",  { desc = "AI: View Buffer State" })
+vim.keymap.set("n", "<leader>ab", ":AI/buffers<CR>",{ desc = "AI: Buffer List UI" })
+
+-- Model Management
+vim.keymap.set("n", "<leader>am", ":AI/model<CR>",  { desc = "AI: Model Menu" })
+
+-- Rapid Model Switching (Examples)
+-- Map <leader>a + Number to your preferred aliases
+vim.keymap.set("n", "<leader>a1", ":AI/model deepseek<CR>", { desc = "AI: Switch to DeepSeek" })
+vim.keymap.set("n", "<leader>a2", ":AI/model qwenzel<CR>",  { desc = "AI: Switch to Ollama" })
+```
+
+### 4. AGENTS.md & .ai.md
 
 Your project state lives in `AGENTS.md`. This is a collaborative, living document that provides a persistent and structured project management experience. AI (nzi) also inherits rules from `~/AGENTS.md` (global) and `.ai.md` (project-specific).
 

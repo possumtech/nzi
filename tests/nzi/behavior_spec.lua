@@ -72,4 +72,28 @@ describe("AI behavioral commands", function()
     question_spy:revert();
     vim.api.nvim_buf_delete(bufnr, { force = true });
   end);
+
+  it("should manage buffer context states via AI/ commands", function()
+    local bufnr = vim.api.nvim_create_buf(true, false);
+    vim.api.nvim_buf_set_name(bufnr, "test_state.lua");
+    vim.api.nvim_set_current_buf(bufnr);
+    local context = require("nzi.context");
+
+    -- Default should be active
+    assert.are.equal("active", context.get_state(bufnr));
+
+    -- Switch to read
+    vim.cmd("AI/read");
+    assert.are.equal("read", context.get_state(bufnr));
+
+    -- Switch to ignore
+    vim.cmd("AI/ignore");
+    assert.are.equal("ignore", context.get_state(bufnr));
+
+    -- Switch back to active
+    vim.cmd("AI/active");
+    assert.are.equal("active", context.get_state(bufnr));
+
+    vim.api.nvim_buf_delete(bufnr, { force = true });
+  end);
 end);

@@ -6,10 +6,10 @@ local M = {};
 --- @return string | nil: The instruction content
 function M.parse_line(line)
   local patterns = {
-    directive = "ai:",
-    question = "ai%?",
-    shell = "ai!",
-    command = "ai/"
+    directive = "[Aa][Ii]:",
+    question = "[Aa][Ii]%?",
+    shell = "[Aa][Ii]!",
+    command = "[Aa][Ii]/"
   };
 
   for type, prefix in pairs(patterns) do

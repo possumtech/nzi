@@ -70,18 +70,51 @@ function M.format_context(ctx_list, include_lsp)
   return table.concat(parts, "\n\n");
 end
 
---- Build the full prompt for a code modification directive
-function M.build_directive_prompt(directive, target_file, prompts, context_str)
+--- Build the full array of messages for the API
+--- @param content string: The new user question or directive
+--- @param type string: 'question' or 'directive'
+--- @param target_file string | nil: Only for directives
+--- @param include_lsp boolean | nil
+--- @return table: Array of { role = string, content = string }
+function M.build_messages(content, type, target_file, include_lsp)
+  local config = require("nzi.config");
+  local model_alias = config.options.active_model or "deepseek";
+  local model_cfg = config.get_active_model();
+  local role = model_cfg.role_preference or "system";
+  
+  local ctx_list = require("nzi.context").gather();
+  local prompt_parts = M.gather();
+  
   local messages = {};
   
+  -- 1. RULES (Stable System Prompt)
+  local system_prompt = M.build_system_prompt(prompt_parts, model_alias);
+  table.insert(messages, { role = role, content = system_prompt });
+  
+  -- 2. CONTEXT (Project Facts/Buffers)
+  -- We send this as a separate message to allow providers to cache the system+context prefix
+  local context_str = M.format_context(ctx_list, include_lsp);
+  table.insert(messages, { 
+    role = role, 
+    content = string.format("<agent:context>\n%s\n</agent:context>", context_str) 
+  });
+  
+  -- 3. HISTORY (Alternating Turns)
   local history_msgs = history.get_as_messages();
   for _, m in ipairs(history_msgs) do table.insert(messages, m) end
-
-  local user_content = string.format("<agent:context>\n%s\n</agent:context>\n\n<agent:project_directives>\n%s\n</agent:project_directives>\n\n<agent:user>\nEditing file: %s\nInstruction: %s\n</agent:user>",
-    context_str, prompts.tasks or "", M.xml_escape(target_file), M.xml_escape(directive));
-
-  table.insert(messages, { role = "user", content = user_content });
-  return messages;
+  
+  -- 4. NEW TURN (Specific Question or Directive)
+  local final_user_content = "";
+  if type == "directive" and target_file then
+    final_user_content = string.format("<agent:project_directives>\n%s\n</agent:project_directives>\n\n<agent:user>\nEditing file: %s\nInstruction: %s\n</agent:user>",
+      prompt_parts.tasks or "", M.xml_escape(target_file), M.xml_escape(content));
+  else
+    final_user_content = string.format("<agent:user>\n%s\n</agent:user>", history.xml_escape(content));
+  end
+  
+  table.insert(messages, { role = "user", content = final_user_content });
+  
+  return messages, system_prompt, context_str;
 end
 
 --- Gather prompt parts from AGENTS.md and .ai.md
