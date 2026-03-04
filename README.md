@@ -22,7 +22,22 @@ The `:AI` command is your primary interface. It mirrors interpolated commands bu
 *   `:AI! ls -la` (Automatically expands to `:AI !` for shell injection)
 *   `:AI/model gpro` (Switch to a specific model alias)
 
-### 3. Suggested Mappings
+### 3. Context Visibility Policy
+
+AI (nzi) follows a strict, predictable hierarchy for determine what information is sent to the model. It prioritizes project security and explicit user intent.
+
+| File Type | Not Open (Passive) | Open in Buffer (Intent) |
+| :--- | :--- | :--- |
+| **Tracked/Staged** | **Visible** (Map/Skeleton) | **Visible** (Active/Read) |
+| **Untracked** (e.g. `.swp`) | **Hidden** | **Visible** (Active/Read) |
+| **Git-Ignored** (e.g. `.env`) | **Hidden** | **Hidden** (Default `ignore`) |
+
+*   **Git Authority**: If a file is in `.gitignore`, the model **cannot see it** by default, even if the buffer is open. This prevents accidental leakage of secrets.
+*   **Passive Privacy**: Files not yet known to Git (untracked) are never included in the project map. They only enter the context if you explicitly open them.
+*   **User Overrides**: User commands (`:AI/active`, `:AI/read`, `:AI/ignore`) **always** take absolute precedence over Git. You have the ultimate power to "light up" or "darken" any file.
+*   **Empty Files**: Named empty files are included (as targets for new code), while unnamed startup/scratch buffers are aggressively ignored.
+
+### 4. Suggested Mappings
 
 Add these to your `init.lua` for a high-speed keyboard-driven workflow:
 
