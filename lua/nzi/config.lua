@@ -3,7 +3,7 @@ local M = {};
 --- Default configuration options for nzi
 M.defaults = {
   -- The currently active model alias (selected via environment)
-  active_model = vim.env.NZI_DEFAULT_MODEL or "deepseek",
+  active_model = vim.env.NZI_MODEL or "deepseek",
 
   -- OpenRouter/OpenAI identification
   referer = vim.env.NZI_REFERER or "https://github.com/possumtech/nzi",

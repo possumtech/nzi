@@ -93,10 +93,13 @@ function M.gather()
       end
 
       if state ~= "ignore" and not M.should_ignore(name, filetype) then
-        -- Skip unnamed/unsaved scratch buffers
-        if name == "" then goto continue end
+        -- Skip unnamed/unsaved scratch buffers and dot-paths
+        if name == "" or name == "." or name:match("^%s*$") then goto continue end
 
         local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false);
+        -- Skip buffers that are effectively empty (no content)
+        if #lines == 0 or (#lines == 1 and lines[1] == "") then goto continue end
+        
         local content = table.concat(lines, "\n");
         
         table.insert(context, {

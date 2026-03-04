@@ -11,7 +11,10 @@ local M = {};
 --- @param cmd_line string: The full command line
 --- @return table: List of completion candidates
 local function complete_ai_command(arg_lead, cmd_line)
-  local subcommands = { "model", "clear", "status", "buffers", "toggle", "undo", "set", "add", "config" };
+  local subcommands = { 
+    "model", "clear", "status", "buffers", "toggle", "undo", "config",
+    "active", "read", "ignore", "state", "stop", "yank", "Tree", "tree"
+  };
   
   -- If we're at the very start of the command arguments
   if arg_lead:match("^/") or (not arg_lead:match("^/") and #vim.split(cmd_line, " ") == 1) then
