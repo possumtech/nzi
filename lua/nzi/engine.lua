@@ -13,22 +13,38 @@ local M = {};
 --- @param include_lsp boolean | nil
 function M.handle_question(content, include_lsp)
   local config = require("nzi.config");
+  local history = require("nzi.history");
+  local model_cfg = config.get_active_model();
   local model_alias = config.options.active_model or "AI";
   local ctx_list = context.gather();
   local prompt_parts = prompts.gather();
   
-  local system_prompt = prompts.build_system_prompt(prompt_parts, model_alias);
-  local context_str = prompts.format_context(ctx_list, include_lsp, prompt_parts.tasks);
-  local hist_str = require("nzi.history").format();
+  -- 1. Rules of Behavior (System Role)
+  local system_prompt_str = prompts.build_system_prompt(prompt_parts, model_alias);
   
-  local full_prompt = system_prompt .. "\n\n" .. hist_str .. "\n\n" .. context_str .. "\n\n### QUESTION\n" .. content;
+  -- 2. Facts of the Project (User Role)
+  local context_str = prompts.format_context(ctx_list, include_lsp, prompt_parts.tasks);
+  
+  -- Build the Message Array for the API
+  local messages = {};
+  local role = model_cfg.role_preference or "system";
+  table.insert(messages, { role = role, content = system_prompt_str });
+  
+  local history_str = history.format();
+  if history_str ~= "" then
+    table.insert(messages, { role = "user", content = history_str });
+  end
+  
+  -- The final user message contains both the context facts and the question
+  local user_prompt = string.format("<nzi:context>\n%s\n</nzi:context>\n\n<nzi:user>\n%s\n</nzi:user>", context_str, content);
+  table.insert(messages, { role = "user", content = user_prompt });
   
   modal.open();
   
   if config.options.modal.show_context then
-    modal.write(system_prompt, "system", false);
-    if hist_str ~= "" then
-      modal.write(hist_str, "history", false);
+    modal.write(system_prompt_str, "system", false);
+    if history_str ~= "" then
+      modal.write(history_str, "history", false);
     end
     modal.write(context_str, "context", false);
   end
@@ -38,21 +54,26 @@ function M.handle_question(content, include_lsp)
   modal.set_thinking(true);
   local start_line_count = vim.api.nvim_buf_line_count(modal.bufnr or 0);
   
-  job.run(full_prompt, function(success, result)
+  local error_displayed = false;
+
+  job.run(messages, function(success, result)
     vim.schedule(function()
       modal.set_thinking(false);
       if success then
         -- Add to structured history for the next turn
         require("nzi.history").add("question", content, result);
-      else
-        modal.write("\nERROR: " .. result .. "\n", "system", false);
+      elseif not error_displayed then
+        -- Only write the final error if the stream hasn't already reported one
+        modal.write(result, "error", false);
+        error_displayed = true;
       end
       -- Finalize the XML structure
       modal.close_tag();
     end);
   end, function(chunk, type)
-    -- On stdout chunk, stream to modal with correct color (reasoning_content or content)
+    -- On stdout chunk, stream to modal with correct color (reasoning_content, content, or error)
     vim.schedule(function()
+      if type == "error" then error_displayed = true end
       modal.write(chunk, type, true);
     end);
   end);

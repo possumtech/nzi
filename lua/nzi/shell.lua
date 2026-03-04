@@ -71,7 +71,7 @@ function M.run(command, bufnr, line_idx, inject)
 
       else
         local err = (obj.stderr and obj.stderr ~= "") and obj.stderr or "Command exited with code " .. obj.code;
-        modal.write("ERROR: " .. err, "system", false);
+        modal.write(err, "error", false);
         modal.close_tag();
         vim.notify("AI!: " .. err, vim.log.levels.ERROR);
       end

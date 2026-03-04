@@ -7,7 +7,7 @@ M.current_open_tag = nil;
 M.pending_cleanup = nil;
 M.ns_id = vim.api.nvim_create_namespace("nzi_modal");
 
--- Precise background colors aligned 1:1 with OpenAI/Nzi Lexicon
+-- Categorized Opaque Highlights
 local function setup_highlights()
   -- 1. INTERNAL / INFRASTRUCTURE (White on Black)
   vim.api.nvim_set_hl(0, "NziTelemetry", { bg = "#1d2021", fg = "#ebdbb2", ctermbg = 234, ctermfg = 15, bold = true });
@@ -19,10 +19,14 @@ local function setup_highlights()
   vim.api.nvim_set_hl(0, "NziUser", { bg = "#427b58", fg = "#ffffff", ctermbg = 22, ctermfg = 15 });
   vim.api.nvim_set_hl(0, "NziAssistant", { bg = "#076678", fg = "#ebdbb2", ctermbg = 30, ctermfg = 15 });
   
-  -- 3. STREAM COMPONENTS
+  -- 3. ERROR STATE (Red)
+  vim.api.nvim_set_hl(0, "NziError", { bg = "#fb4934", fg = "#ffffff", ctermbg = 1, ctermfg = 15, bold = true });
+
+  -- 4. STREAM COMPONENTS
   vim.api.nvim_set_hl(0, "NziReasoningContent", { bg = "#83a598", fg = "#282828", ctermbg = 12, ctermfg = 0 }); 
   vim.api.nvim_set_hl(0, "NziContent", { bg = "#458588", fg = "#ffffff", ctermbg = 18, ctermfg = 15 });
   
+  -- Thinking state indicator
   vim.api.nvim_set_hl(0, "NziThinking", { fg = "#fe8019", ctermfg = 214, bold = true });
 end
 
@@ -122,6 +126,7 @@ function M.cancel_pending_prompt()
   end
 end
 
+--- Lexicon Mapping
 local function get_tag_name(type)
   local map = {
     reasoning_content = "reasoning_content",
@@ -133,6 +138,7 @@ local function get_tag_name(type)
     history = "history",
     shell = "shell_output",
     shell_output = "shell_output",
+    error = "error",
   };
   return map[type] or type;
 end
@@ -148,10 +154,12 @@ local function get_hl_group(type)
     history = "NziHistory",
     shell_output = "NziAssistant",
     shell = "NziAssistant",
+    error = "NziError",
   };
   return map[type] or "Normal";
 end
 
+--- Internal helper to close the currently open tag
 local function _close_current_tag(bufnr)
   if not M.current_open_tag then return end
   local tag = get_tag_name(M.current_open_tag);
@@ -181,6 +189,8 @@ local function get_telemetry_line(type)
     return "[ ASSISTANT | content | stream: active ]";
   elseif type == "shell" or type == "shell_output" then
     return "[ SYSTEM | shell_output | execution: complete ]";
+  elseif type == "error" then
+    return "[ SYSTEM | error | state: failure ]";
   else
     return string.format("[ %s | context: %s ]", type:upper(), model_alias);
   end
@@ -197,28 +207,26 @@ function M.write(text, type, append)
     _close_current_tag(bufnr);
     local lc = vim.api.nvim_buf_line_count(bufnr);
     local is_empty = (lc == 1 and vim.api.nvim_buf_get_lines(bufnr, 0, 1, false)[1] == "");
-    -- Telemetry + Spacing
+    
     local telemetry = get_telemetry_line(type);
     local open_tag = "<nzi:" .. tag .. ">";
-
     local lines_to_add = is_empty and { telemetry, open_tag } or { "", telemetry, open_tag };
     local start_idx = is_empty and 0 or lc;
-
+    
     vim.api.nvim_buf_set_lines(bufnr, start_idx, -1, false, lines_to_add);
-
-    -- Highlight EVERY line added here as NziTelemetry (Spacer, Telemetry, and Tag)
     highlight_lines(bufnr, start_idx, start_idx + #lines_to_add - 1, "NziTelemetry");
-
+    
     M.current_open_tag = type;
     append = false; 
-    elseif not M.current_open_tag then
+  elseif not M.current_open_tag then
     local telemetry = get_telemetry_line(type);
     local open_tag = "<nzi:" .. tag .. ">";
     vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { telemetry, open_tag });
     highlight_lines(bufnr, 0, 1, "NziTelemetry");
     M.current_open_tag = type;
     append = false;
-    end
+  end
+
   -- 2. Content Injection
   local content_lines = vim.split(text, "\n");
   local hl_group = get_hl_group(type);
@@ -255,6 +263,7 @@ function M.clear()
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {});
   vim.api.nvim_buf_clear_namespace(bufnr, M.ns_id, 0, -1);
   M.current_open_tag = nil;
+  M.last_type = nil;
   vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr });
 end
 

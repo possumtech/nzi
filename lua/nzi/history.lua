@@ -64,7 +64,7 @@ end
 function M.format()
   if #M.turns == 0 then return ""; end
 
-  local parts = { "<nzi:history>" };
+  local parts = {};
   for _, turn in ipairs(M.turns) do
     local user_clean = M.strip_line_numbers(turn.user);
     local assistant_clean = M.strip_line_numbers(turn.assistant);
@@ -75,9 +75,8 @@ function M.format()
     table.insert(parts, string.format("  <nzi:turn id=\"%d\" type=\"%s\">\n    <nzi:user>%s</nzi:user>\n    <nzi:assistant>%s</nzi:assistant>\n  </nzi:turn>",
       turn.id, turn.type, user_safe, assistant_safe));
   end
-  table.insert(parts, "</nzi:history>");
   
-  return table.concat(parts, "\n");
+  return "<nzi:history>\n" .. table.concat(parts, "\n") .. "\n</nzi:history>";
 end
 
 --- Remove the last turn from history

@@ -3,22 +3,35 @@ local nzi = require("nzi");
 local config = require("nzi.config");
 
 describe("AI configuration", function()
-  it("should allow user overrides via setup", function()
+  it("should allow user overrides for active_model and model aliases", function()
     nzi.setup({
-      model_cmd = { "custom-python", "script.py" },
-      default_model = "claude-3-opus",
+      active_model = "test-model",
+      models = {
+        ["test-model"] = {
+          model = "gpt-5",
+          api_base = "https://frontier.api",
+          role_preference = "developer"
+        }
+      }
     });
     
-    assert.are.same({ "custom-python", "script.py" }, config.options.model_cmd);
-    assert.are.equal("claude-3-opus", config.options.default_model);
+    assert.are.equal("test-model", config.options.active_model);
+    local active = config.get_active_model();
+    assert.are.equal("gpt-5", active.model);
+    assert.are.equal("developer", active.role_preference);
   end);
 
-  it("should preserve defaults for non-overridden keys", function()
+  it("should handle model_options like penalties and stop sequences", function()
     nzi.setup({
-      api_base = "http://localhost:11434",
+      model_options = {
+        frequency_penalty = 0.5,
+        stop = { "\n\n" }
+      }
     });
     
-    assert.are.equal("http://localhost:11434", config.options.api_base);
-    assert.are.equal(80, config.options.modal.width); -- Default from config.lua
+    assert.are.equal(0.5, config.options.model_options.frequency_penalty);
+    assert.are.same({ "\n\n" }, config.options.model_options.stop);
+    -- Preserve other defaults
+    assert.are.equal(0.7, config.options.model_options.temperature);
   end);
 end);

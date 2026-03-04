@@ -21,12 +21,16 @@ describe("AI prompts module", function()
     };
     local result = prompts.format_context(ctx, false, "Active Task A");
     
-    assert.match("<nzi:context>", result);
+    -- Note: <nzi:context> is added by the builder, not the formatter now
     assert.match("<nzi:project_directives>", result);
     assert.match("Active Task A", result);
     assert.match("<nzi:file name=\"test.lua\" state=\"active\">", result, 1, true);
+    -- print('hi') becomes print(&apos;hi&apos;)
     assert.match("print%(&apos;hi&apos;%)", result);
     assert.match("</nzi:file>", result);
+    
+    -- Ensure NO line numbers in model-facing context
+    assert.is_nil(result:find("1: "))
   end);
 
   it("should handle structural integrity when content contains XML tags", function()

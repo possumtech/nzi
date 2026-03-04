@@ -11,24 +11,33 @@ M.defaults = {
       model = "qwen/qwen-2.5-coder-32b-instruct",
       api_base = "https://openrouter.ai/api/v1",
       api_key = vim.env.OPENROUTER_API_KEY,
+      -- O1/O3 class models prefer 'developer', most others use 'system'
+      role_preference = "system", 
     },
     qwenzel = {
       model = "qwenzel:latest",
       api_base = "http://localhost:11434/v1",
       api_key = "ollama",
+      role_preference = "system",
     },
     default = {
       model = "gpt-4-turbo",
       api_base = "https://api.openai.com/v1",
       api_key = vim.env.OPENAI_API_KEY,
+      role_preference = "system",
     },
   },
 
-  -- Advanced Model Options (OpenAI Spec)
+  -- Advanced Model Options (OpenAI Standard)
   model_options = {
     temperature = 0.7,
     top_p = 1.0,
     max_tokens = 4096,
+    -- Frequency and presence penalties prevent repetition
+    frequency_penalty = 0.0,
+    presence_penalty = 0.0,
+    -- Custom stop sequences
+    stop = nil,
   },
   
   -- Modal window configuration
@@ -36,7 +45,7 @@ M.defaults = {
     border = "rounded",
     width = 80,
     height = 20,
-    show_context = true, -- Whether to show system prompt and context in the modal
+    show_context = true, 
   },
   
   -- Context management settings
