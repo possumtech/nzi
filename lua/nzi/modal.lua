@@ -145,36 +145,38 @@ end
 function M.write(text, type, append)
   local bufnr = get_or_create_buffer();
 
+  -- Machine-friendly tag map
+  local tag_map = {
+    thought = "thought",
+    model = "response",
+    response = "response",
+    shell = "shell",
+    system = "system",
+    context = "context",
+    history = "history",
+    question = "question",
+    directive = "directive",
+  };
+
+  local current_tag = tag_map[type] or type;
+
   -- If this is a new interaction block, cancel any pending prompts from the previous one
   if not append then
     M.cancel_pending_prompt();
   end
 
-  -- Headers for different sections
-  local emoji_map = {
-    thought = "💭 REASONING:\n",
-    model = "✨ ANSWER:\n",
-    response = "✨ ANSWER:\n",
-    shell = "🐚 SHELL OUTPUT:\n",
-    system = "⚖️ SYSTEM PROMPT:\n",
-    context = "📂 CONTEXT (BUFFERS):\n",
-    history = "⏳ HISTORY:\n",
-    question = "❓ QUESTION:\n",
-    directive = "🛠️ DIRECTIVE:\n",
-  };
-
-  -- Handle Transitions and Initial Header
+  -- Handle Transitions and Initial Tagging
   if append and M.last_type and M.last_type ~= type then
-    local transition_prefix = "\n\n" .. (emoji_map[type] or "");
-    M.last_type = type; -- Set before recursion to prevent stack overflow
+    local last_tag = tag_map[M.last_type] or M.last_type;
+    local transition_prefix = string.format("\n</nzi:%s>\n\n<nzi:%s>\n", last_tag, current_tag);
+    M.last_type = type; 
     M.write(transition_prefix, type, false);
-    append = false;
+    append = false; 
   elseif not append and not M.last_type then
     -- First write of a session
-    if emoji_map[type] then
-      M.last_type = type; -- Set before recursion to prevent stack overflow
-      M.write(emoji_map[type], type, false);
-    end
+    local initial_prefix = string.format("<nzi:%s>\n", current_tag);
+    M.last_type = type;
+    M.write(initial_prefix, type, false);
   end
   M.last_type = type;
 
@@ -229,6 +231,10 @@ function M.write(text, type, append)
 end
 
 function M.clear()
+  if M.last_type then
+    local last_tag = (M.last_type == "model" or M.last_type == "response") and "response" or M.last_type;
+    M.write("\n</nzi:" .. last_tag .. ">", M.last_type, true);
+  end
   M.last_type = nil;
   local bufnr = get_or_create_buffer();
   vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr });

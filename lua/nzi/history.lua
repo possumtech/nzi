@@ -1,6 +1,7 @@
 local M = {};
 
 -- Array of turns: { id = number, type = string, user = string, assistant = string }
+-- Content is stored WITH line numbers (e.g. "1: text")
 M.turns = {};
 local next_id = 1;
 
@@ -24,41 +25,59 @@ local function add_line_numbers(text)
   return table.concat(output, "\n");
 end
 
+--- Remove line numbers from text (inverse of add_line_numbers)
+--- @param text string
+--- @return string
+function M.strip_line_numbers(text)
+  if not text then return ""; end
+  local lines = vim.split(text, "\n");
+  local output = {};
+  for _, line in ipairs(lines) do
+    -- Matches "123: " at the start of the string
+    table.insert(output, (line:gsub("^%d+: ", "")));
+  end
+  return table.concat(output, "\n");
+end
+
 --- Add a completed turn to history
 --- @param type string: 'question', 'directive', or 'shell'
---- @param user_content string
---- @param assistant_content string
+--- @param user_content string: Raw text (will be numbered before storage)
+--- @param assistant_content string: Raw text (will be numbered before storage)
 function M.add(type, user_content, assistant_content)
   table.insert(M.turns, {
     id = next_id,
     type = type,
-    user = user_content,
-    assistant = assistant_content
+    user = add_line_numbers(user_content),
+    assistant = add_line_numbers(assistant_content)
   });
   next_id = next_id + 1;
 end
 
---- Get all turns
+--- Get all turns (returns numbered text)
 --- @return table
 function M.get_all()
   return M.turns;
 end
 
---- Format history into a structured, line-numbered XML block
+--- Format history into a structured XML block for the model
+--- Note: Strips line numbers for the model per user request.
 --- @return string
 function M.format()
   if #M.turns == 0 then return ""; end
 
-  local parts = { "<history>" };
+  local parts = { "<nzi:history>" };
   for _, turn in ipairs(M.turns) do
-    -- We escape and number both user and assistant content for absolute safety
-    local user_safe = add_line_numbers(xml_escape(turn.user));
-    local assistant_safe = add_line_numbers(xml_escape(turn.assistant));
+    -- Strip numbers for model consumption
+    local user_clean = M.strip_line_numbers(turn.user);
+    local assistant_clean = M.strip_line_numbers(turn.assistant);
     
-    table.insert(parts, string.format("  <turn id=\"%d\" type=\"%s\">\n    <user>\n%s\n    </user>\n    <assistant>\n%s\n    </assistant>\n  </turn>",
+    local user_safe = xml_escape(user_clean);
+    local assistant_safe = xml_escape(assistant_clean);
+    
+    table.insert(parts, string.format("  <nzi:turn id=\"%d\" type=\"%s\">\n    <nzi:user>%s</nzi:user>\n    <nzi:assistant>%s</nzi:assistant>\n  </nzi:turn>",
       turn.id, turn.type, user_safe, assistant_safe));
   end
-  table.insert(parts, "</history>");
+  table.insert(parts, "</nzi:history>");
   
   return table.concat(parts, "\n");
 end
