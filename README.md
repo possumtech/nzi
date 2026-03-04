@@ -81,10 +81,10 @@ vim.keymap.set("n", "<leader>a2", ":AI/model qwenzel<CR>",  { desc = "AI: Switch
 AI (nzi) provides high-signal indicators for your statusline to reflect the AI state of the current buffer. This provides immediate peripheral feedback about what the model can see.
 
 Standard indicator colors:
-*   **Green**: [AI:A] Active (Target for edits).
-*   **Orange**: [AI:R] Read-only (Reference context).
-*   **Red**: [AI:I] Ignored (Invisible to model).
-*   **Blue**: [AI:DIFF] Unresolved Agent Diff (Pending review).
+*   **Deep Green**: [AI:A] Active (Target for edits).
+*   **Deep Orange**: [AI:R] Read-only (Reference context).
+*   **Crimson Red**: [AI:I] Ignored (Invisible to model).
+*   **Royal Blue**: [AI:DIFF] Unresolved Agent Diff (Pending review).
 
 #### Statusline Integration
 
