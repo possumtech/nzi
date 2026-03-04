@@ -49,10 +49,24 @@ function M.run(messages, callback, on_stdout)
     api_key = model_cfg.api_key,
     model_options = opts.model_options or {},
     extra_body = model_cfg.extra_body or {},
-    extra_headers = model_cfg.extra_headers or {},
+    extra_headers = vim.tbl_deep_extend("force", {
+      ["HTTP-Referer"] = opts.referer,
+      ["X-Title"] = opts.title,
+    }, model_cfg.extra_headers or {}),
   };
 
   local request_json = vim.json.encode(payload);
+  
+  -- Tracing: Log request if debug is enabled
+  if os.getenv("NZI_DEBUG") == "1" then
+    local log_path = vim.fn.getcwd() .. "/nzi_debug.log";
+    local f = io.open(log_path, "a");
+    if f then
+      f:write("\n--- [REQUEST] ---\n" .. request_json .. "\n");
+      f:close();
+    end
+  end
+
   local info = debug.getinfo(M.run);
   local script_dir = info.source:match("@?(.*/)")
   local script_path = vim.fn.fnamemodify(script_dir .. "bridge.py", ":p");
