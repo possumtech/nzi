@@ -89,6 +89,16 @@ function M.run(messages, callback, on_stdout)
     if not data then return end
     state.partial_data = state.partial_data .. data;
     
+    -- Tracing: Log raw chunk if debug is enabled
+    if os.getenv("NZI_DEBUG") == "1" then
+      local log_path = vim.fn.getcwd() .. "/nzi_debug.log";
+      local f = io.open(log_path, "a");
+      if f then
+        f:write("\n[CHUNK] " .. data .. "\n");
+        f:close();
+      end
+    end
+    
     while true do
       local nl_pos = state.partial_data:find("\n");
       if not nl_pos then break end

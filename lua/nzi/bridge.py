@@ -5,9 +5,13 @@ import json
 import os
 import time
 import warnings
+import logging
 
-# Suppress Pydantic and other library warnings that clutter stdout
-warnings.filter_ignore = True
+# Suppress all library logging and warnings
+os.environ["LITELLM_LOG"] = "ERROR"
+logging.getLogger("litellm").setLevel(logging.ERROR)
+warnings.filterwarnings("ignore")
+
 try:
     from pydantic import PydanticDeprecationWarning
     warnings.filterwarnings("ignore", category=PydanticDeprecationWarning)

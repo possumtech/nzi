@@ -21,10 +21,12 @@ describe("AI job wrapper (LiteLLM Bridge)", function()
     -- This test verifies the parsing logic without network calls
     local messages = {{ role = "user", content = "Hello Mock" }};
     
+    local expected_python = require("nzi.config").options.python_cmd[1] or "python3";
+
     -- Mock the system call to simulate a bridge response
     local original_system = vim.system;
     vim.system = function(cmd, opts, on_exit)
-      assert.are.equal("python3", cmd[1]);
+      assert.are.equal(expected_python, cmd[1]);
       
       -- Bridge outputs raw JSON chunks (one per line)
       opts.stdout(nil, "{\"choices\":[{\"delta\":{\"content\":\"Hello\"}}]}\n");

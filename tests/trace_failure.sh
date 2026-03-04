@@ -41,6 +41,6 @@ CONSTRAINTS="## OPERATIONAL CONSTRAINTS\n* Focus exclusively on providing new in
 GLOBAL_RULES="### GLOBAL ENGINEERING STANDARDS\nBe concise."
 PROJECT_RULES="### PROJECT-SPECIFIC RULES\n$(cat AGENTS.md)"
 
-USER_PROMPT="I have added these files to the context:\nvault_a.txt\nvault_b.txt\n\nvault_a.txt\n\`\`\`\nTEST_KEY_A = 1234\n\`\`\`\n\nvault_b.txt\n\`\`\`\nTEST_KEY_B = 5678\n\`\`\`\n\nWhat are the values of TEST_KEY_A and TEST_KEY_B? Answer with the keys and values."
+USER_PROMPT="I have added these files to the context:\nvault_a.txt\nvault_b.txt\n\nvault_a.txt\n\`\`\`\nTEST_KEY_A = ABC-123\n\`\`\`\n\nvault_b.txt\n\`\`\`\nTEST_KEY_B = DEF-456\n\`\`\`\n\nWhat are the values of TEST_KEY_A and TEST_KEY_B? Answer with the keys and values."
 
-run_trace "Markdown Context Framing" "$(jq -n --arg m "$MODEL" --arg s "$IDENTITY\n\n$CONSTRAINTS\n\n$GLOBAL_RULES\n\n$PROJECT_RULES" --arg u "$USER_PROMPT" '{model: $m, stream: true, messages: [{role: "developer", content: $s}, {role: "user", content: $u}]}')"
+run_trace "Markdown Context Framing" "$(jq -n --arg m "$MODEL" --arg s "$IDENTITY\n\n$CONSTRAINTS\n\n$GLOBAL_RULES\n\n$PROJECT_RULES" --arg u "$USER_PROMPT" '{model: $m, stream: true, messages: [{role: "system", content: $s}, {role: "user", content: $u}]}')"

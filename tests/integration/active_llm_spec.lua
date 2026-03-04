@@ -127,8 +127,8 @@ describe("AI active model integration", function()
   end);
 
   it("BATTLE TEST: should see and synthesize information from multiple buffers", function()
-    create_test_buf("vault_a.txt", { "TEST_KEY_A = 1234" });
-    create_test_buf("vault_b.txt", { "TEST_KEY_B = 5678" });
+    create_test_buf("vault_a.txt", { "TEST_KEY_A = XYZ-789-ABC" });
+    create_test_buf("vault_b.txt", { "TEST_KEY_B = QRS-456-DEF" });
 
     local model_output = "";
     local modal = require("nzi.modal");
@@ -143,7 +143,7 @@ describe("AI active model integration", function()
 
     -- 30s timeout for synthesis (more realistic for complex tasks)
     local success = vim.wait(30000, function()
-      return model_output:match("1234") and model_output:match("5678")
+      return model_output:match("XYZ%-789%-ABC") and model_output:match("QRS%-456%-DEF")
     end);
 
     modal.write = original_write;
@@ -152,7 +152,7 @@ describe("AI active model integration", function()
       error("Synthesis test timed out. Model output: " .. model_output)
     end
 
-    assert.match("1234", model_output);
-    assert.match("5678", model_output);
+    assert.match("XYZ%-789%-ABC", model_output);
+    assert.match("QRS%-456%-DEF", model_output);
   end);
 end);
