@@ -9,6 +9,11 @@ if [ -f .env ]; then
     export $(grep -v '^#' .env | xargs)
 fi
 
+# Ensure tests use the local virtual environment if available
+if [ -x "$PWD/.venv/bin/python" ] && [ -z "$NZI_PYTHON_CMD" ]; then
+    export NZI_PYTHON_CMD="$PWD/.venv/bin/python"
+fi
+
 TIMEOUT_VAL="600s"
 echo "--- Starting nzi Test Suite (Timeout: $TIMEOUT_VAL) ---"
 

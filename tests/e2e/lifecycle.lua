@@ -37,6 +37,9 @@ end
 local history = require("nzi.history")
 if #history.get_all() ~= 1 then
   print("\n[E2E FAILED] Expected 1 history turn, found " .. #history.get_all())
+  if last_error then
+    print("\n[E2E ERROR TRACE] " .. tostring(last_error))
+  end
   os.exit(1)
 end
 

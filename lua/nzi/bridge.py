@@ -68,48 +68,65 @@ def main():
     # LiteLLM configuration
     litellm.drop_params = True 
     
-    try:
-        # Standardize completion call
-        completion_args = {
-            "model": model,
-            "messages": messages,
-            "stream": True,
-            **options
-        }
-        
-        if api_base:
-            completion_args["api_base"] = api_base
-        if api_key:
-            completion_args["api_key"] = api_key
-        if extra_body:
-            completion_args["extra_body"] = extra_body
-        if extra_headers:
-            completion_args["extra_headers"] = extra_headers
+    max_retries = 3
+    retry_delay = 1
+    
+    for attempt in range(max_retries):
+        try:
+            # Standardize completion call
+            completion_args = {
+                "model": model,
+                "messages": messages,
+                "stream": True,
+                **options
+            }
+            
+            if api_base:
+                completion_args["api_base"] = api_base
+            if api_key:
+                completion_args["api_key"] = api_key
+            if extra_body:
+                completion_args["extra_body"] = extra_body
+            if extra_headers:
+                completion_args["extra_headers"] = extra_headers
 
-        response = completion(**completion_args)
+            response = completion(**completion_args)
 
-        for chunk in response:
-            try:
-                # Use model_dump for Pydantic V2, fallback to dict() for V1 or others
-                if hasattr(chunk, "model_dump"):
-                    data = chunk.model_dump()
-                elif hasattr(chunk, "dict"):
-                    data = chunk.dict()
-                else:
-                    data = chunk
-                print(json.dumps(data), flush=True)
-            except Exception:
+            for chunk in response:
+                try:
+                    # Use model_dump for Pydantic V2, fallback to dict() for V1 or others
+                    if hasattr(chunk, "model_dump"):
+                        data = chunk.model_dump()
+                    elif hasattr(chunk, "dict"):
+                        data = chunk.dict()
+                    else:
+                        data = chunk
+                    print(json.dumps(data), flush=True)
+                except Exception:
+                    continue
+            
+            # If we reach here, the stream finished successfully
+            return
+
+        except Exception as e:
+            error_msg = str(e)
+            
+            # Check if it's a retryable error (500, 502, 503, 504 or rate limit)
+            is_retryable = any(err in error_msg for err in ["500", "502", "503", "504", "RateLimitError", "rate_limit"])
+            
+            if is_retryable and attempt < max_retries - 1:
+                time.sleep(retry_delay)
+                retry_delay *= 2 # Exponential backoff
                 continue
 
-    except Exception as e:
-        error_msg = str(e)
-        if "AuthenticationError" in error_msg:
-            error_msg = f"Authentication Error: Check your API key for {model}."
-        elif "NotFoundError" in error_msg:
-            error_msg = f"Model Not Found: '{model}' is invalid or inaccessible."
-        
-        print(json.dumps({"error": error_msg}), flush=True)
-        sys.exit(1)
+            # If not retryable or last attempt, report the error
+            if "AuthenticationError" in error_msg:
+                error_msg = f"Authentication Error: Check your API key for {model}."
+            elif "NotFoundError" in error_msg:
+                error_msg = f"Model Not Found: '{model}' is invalid or inaccessible."
+            
+            print(json.dumps({"error": error_msg}), flush=True)
+            sys.exit(1)
 
 if __name__ == "__main__":
     main()
