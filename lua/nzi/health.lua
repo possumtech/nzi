@@ -19,12 +19,6 @@ function M.check()
     health.error("plenary.nvim not found. Required for async jobs and tests.");
   end
 
-  if vim.fn.exists(":G") == 2 then
-    health.ok("vim-fugitive found (Required for diff/merge workflow)");
-  else
-    health.warn("vim-fugitive not found. Recommended for the best diff experience.");
-  end
-
   -- Check Curl (Primary for API communication)
   if vim.fn.executable("curl") == 1 then
     health.ok("curl found");

@@ -145,7 +145,6 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
   "possumtech/nzi",
   dependencies = {
     "nvim-lua/plenary.nvim",   -- Core async/test utilities
-    "tpope/vim-fugitive",      -- Recommended for diff workflows
   },
   config = function()
     require("nzi").setup({

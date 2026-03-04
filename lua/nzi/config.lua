@@ -52,11 +52,6 @@ M.defaults = {
     ignore_files = {}, -- User overrides only
   },
   
-  -- Fugitive integration settings
-  fugitive = {
-    auto_diff = true,
-  },
-
   -- Visual Context settings
   visuals = {
     enabled = true, -- Highlight buffer backgrounds based on AI state

@@ -43,7 +43,7 @@ This is the living document for AI (nzi) development. We use this to track tasks
 - [ ] **Interpolation:** When AI?, AI:, AI!, or AI/ appears on a new line of a filed that's saved, catch and handle it.
 - [ ] **Visual Interpolation:** Visual mode where you select lines/region and then <>AI?:!/
 - [ ] **Git or LSP project integration:** 
-- [ ] **Fugitive-Diff Workflow (Refinement):** Re-implement surgical edits once a stable strategy is devised. (Currently unified with question handler).
+- [ ] **Surgical Edit Workflow:** Implement Search/Replace markers for agnostic file updates.
 
 ### Phase 5: Agentic Tools & Plugins
 - [ ] **Tool/Function Calling Infrastructure:** Core logic to register and dispatch Lua functions as LLM tools.
@@ -67,7 +67,7 @@ This is the living document for AI (nzi) development. We use this to track tasks
 ## Issue Log
 
 - [ ] (Pending) Surgical Edits: Devise a strategy for applying partial file updates. 
-    - *Idea:* Use Git Conflict Markers (`<<<<<<<`, `=======`) as the edit format. Models are heavily trained on this syntax, making it more robust than line-number-based unified diffs. Fugitive integration can then be used to resolve these merges natively.
+    - *Idea:* Use Search/Replace markers (`<<<<<<< SEARCH`, `=======`, `>>>>>>> REPLACE`) as the edit format. Models are heavily trained on this syntax, making it more robust than line-number-based unified diffs. These can be applied and resolved via Neovim's native diffing.
 
 ## Future Architectural Enhancements
 
