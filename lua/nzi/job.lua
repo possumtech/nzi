@@ -2,67 +2,118 @@ local config = require("nzi.config");
 
 local M = {};
 
---- Execute a model command asynchronously
+--- Extract content or reasoning from a single line of OpenAI-compatible SSE data
+--- @param line string: A single line from the stream (e.g., "data: {...}")
+--- @return table: { content = string, reasoning = string }
+local function parse_sse_line(line)
+  local result = { content = "", reasoning = "" };
+  
+  if line:match("^data: %[DONE%]$") then
+    return result;
+  end
+  
+  local data = line:match("^data: (.+)$");
+  if data then
+    local ok, json = pcall(vim.json.decode, data);
+    if ok and json.choices and json.choices[1] and json.choices[1].delta then
+      local delta = json.choices[1].delta;
+      
+      -- Capture reasoning (OpenAI/O1 style or common extensions)
+      local reasoning = delta.reasoning_content or delta.thought;
+      if reasoning then
+        result.reasoning = reasoning;
+      end
+      
+      -- Capture standard content
+      local content = delta.content or "";
+      if content then
+        result.content = content;
+      end
+    end
+  end
+  
+  return result;
+end
+
+--- Execute a model command asynchronously via Pure Lua + Curl (OpenAI Spec)
 --- @param prompt string: The full prompt (including system prompt and context)
 --- @param callback function: Function to call with the result (success, result_or_error)
 --- @param on_stdout function | nil: Optional function called with each chunk of stdout
 function M.run(prompt, callback, on_stdout)
   local opts = config.options;
   
-  -- Clone the base command table
-  local cmd = {};
-  for _, part in ipairs(opts.model_cmd) do
-    table.insert(cmd, part);
-  end
+  -- 1. Prepare Request Body
+  local body = {
+    model = opts.default_model,
+    messages = {
+      { role = "user", content = prompt }
+    },
+    stream = true,
+  };
 
-  -- Append arguments
-  table.insert(cmd, "--model");
-  table.insert(cmd, opts.default_model);
-
-  if opts.api_base then
-    table.insert(cmd, "--api_base");
-    table.insert(cmd, opts.api_base);
-  end
-
+  -- 2. Prepare Headers
+  local headers = {
+    ["Content-Type"] = "application/json",
+  };
   if opts.api_key then
-    table.insert(cmd, "--api_key");
-    table.insert(cmd, opts.api_key);
+    headers["Authorization"] = "Bearer " .. opts.api_key;
   end
 
-  -- Use vim.system for modern, clean async job management
+  -- 3. Execute via curl
+  -- Using -N/--no-buffer to ensure we get chunks immediately
+  -- Using -s to keep it silent
+  local cmd = { 
+    "curl", "-s", "-N", "-X", "POST", 
+    opts.api_base .. "/chat/completions",
+    "-d", vim.json.encode(body)
+  };
+
+  for k, v in pairs(headers) do
+    table.insert(cmd, "-H");
+    table.insert(cmd, k .. ": " .. v);
+  end
+
+  local full_stdout = "";
+  local partial_data = ""; -- Buffer for incomplete SSE lines
+
   local job = vim.system(cmd, {
-    stdin = prompt,
-    text = true, -- Handle as text, not bytes
+    text = true,
     stdout = function(err, data)
-      if data and on_stdout then
-        -- Handle tagged streaming data
-        -- Note: Chunks might be partial, but for these specific markers
-        -- we check each chunk for the presence of the tag.
-        local type = "model";
-        local clean_data = data;
+      if not data then return end
+      
+      partial_data = partial_data .. data;
+      
+      -- Process complete lines
+      while true do
+        local nl_pos = partial_data:find("\n");
+        if not nl_pos then break end
         
-        if data:match("<NZ_THOUGHT>") then
-          type = "thought";
-          clean_data = data:gsub("<NZ_THOUGHT>", "");
-        elseif data:match("<NZ_CONTENT>") then
-          type = "model";
-          clean_data = data:gsub("<NZ_CONTENT>", "");
-        end
+        local line = partial_data:sub(1, nl_pos - 1);
+        partial_data = partial_data:sub(nl_pos + 1);
         
-        if clean_data ~= "" then
-          on_stdout(clean_data, type);
+        if line ~= "" then
+          local parsed = parse_sse_line(line);
+          
+          if parsed.reasoning ~= "" then
+            if on_stdout then on_stdout(parsed.reasoning, "thought"); end
+          end
+          
+          if parsed.content ~= "" then
+            full_stdout = full_stdout .. parsed.content;
+            if on_stdout then on_stdout(parsed.content, "model"); end
+          end
         end
       end
     end,
   }, function(obj)
-    -- Callback is called when the process exits
-    if obj.code == 0 then
-      callback(true, obj.stdout);
-    else
-      -- Provide useful error feedback including stderr
-      local err_msg = string.format("Job failed with code %d: %s", obj.code, obj.stderr or "unknown error");
-      callback(false, err_msg);
-    end
+    vim.schedule(function()
+      if obj.code == 0 then
+        callback(true, full_stdout);
+      else
+        local err_msg = string.format("API failed with code %d: %s", obj.code, obj.stderr or "unknown error");
+        callback(false, err_msg);
+      end
+    end);
   end);
 
   return job;

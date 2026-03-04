@@ -18,12 +18,16 @@ function M.run(instruction, bufnr, include_lsp)
   local prompt_parts = prompts.gather();
   
   local system_prompt = prompts.build_system_prompt(prompt_parts, model_name);
-  local context_str = prompts.format_context(ctx_list, include_lsp);
+  local context_str = prompts.format_context(ctx_list, include_lsp, prompt_parts.tasks);
   local full_prompt = prompts.build_directive_prompt(instruction, target_file, prompt_parts, context_str);
+  local hist_str = require("nzi.history").format();
   
   -- Use the modal for status updates
   modal.open();
   modal.write(system_prompt .. "\n", "system", false);
+  if hist_str ~= "" then
+    modal.write(hist_str .. "\n", "system", false);
+  end
   modal.write(context_str .. "\n", "context", false);
   modal.write(instruction .. " (File: " .. target_file .. ")\n", "directive", false);
   
@@ -31,12 +35,15 @@ function M.run(instruction, bufnr, include_lsp)
   job.run(full_prompt, function(success, result)
     vim.schedule(function()
       modal.set_thinking(false);
-      if success then
+      if success and result then
+        -- Add to structured history for the next turn
+        require("nzi.history").add("directive", instruction, result);
+        
         modal.write("Code change received. Opening diff view...\n", "system", false);
         modal.write(result .. "\n", "response", false);
         diff.open_diff(bufnr, result);
       else
-        modal.write("\nERROR: " .. result .. "\n", "system", false);
+        modal.write("\nERROR: " .. (result or "no response received") .. "\n", "system", false);
       end
     end);
   end);

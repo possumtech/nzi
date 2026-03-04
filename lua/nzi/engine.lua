@@ -19,12 +19,16 @@ function M.handle_question(content, include_lsp)
   local prompt_parts = prompts.gather();
   
   local system_prompt = prompts.build_system_prompt(prompt_parts, model_name);
-  local context_str = prompts.format_context(ctx_list, include_lsp);
+  local context_str = prompts.format_context(ctx_list, include_lsp, prompt_parts.tasks);
+  local hist_str = require("nzi.history").format();
   
-  local full_prompt = system_prompt .. "\n\n" .. context_str .. "\n\n### QUESTION\n" .. content;
+  local full_prompt = system_prompt .. "\n\n" .. hist_str .. "\n\n" .. context_str .. "\n\n### QUESTION\n" .. content;
   
   modal.open();
   modal.write(system_prompt .. "\n", "system", false);
+  if hist_str ~= "" then
+    modal.write(hist_str .. "\n", "system", false);
+  end
   modal.write(context_str .. "\n", "context", false);
   modal.write(content .. "\n", "question", false);
   
@@ -35,6 +39,9 @@ function M.handle_question(content, include_lsp)
     vim.schedule(function()
       modal.set_thinking(false);
       if success then
+        -- Add to structured history for the next turn
+        require("nzi.history").add("question", content, result);
+        
         -- Transition the streamed lines to the final response color
         local end_line_count = vim.api.nvim_buf_line_count(modal.bufnr);
         modal.recolor_last_lines(end_line_count - start_line_count, "response");

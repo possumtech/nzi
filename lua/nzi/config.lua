@@ -1,25 +1,15 @@
 local M = {};
 
--- Determine default python path
-local python_cmd = "python3";
-local venv_path = vim.fn.getcwd() .. "/.venv/bin/python";
-if vim.fn.executable(venv_path) == 1 then
-  python_cmd = venv_path;
-end
-
 --- Default configuration options for nzi
 M.defaults = {
-  -- Command to execute for model completion
-  model_cmd = { python_cmd, vim.fn.getcwd() .. "/scripts/complete.py" },
-  
   -- The default model to use
   default_model = "gpt-4-turbo",
   
-  -- The API base URL (for local models like Ollama)
-  api_base = nil,
+  -- The API base URL (Standard OpenAI endpoint)
+  api_base = "https://api.openai.com/v1",
   
-  -- API Key if needed
-  api_key = nil,
+  -- API Key if needed (defaults to environment variable)
+  api_key = vim.env.OPENAI_API_KEY,
   
   -- Modal window configuration
   modal = {

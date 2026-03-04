@@ -25,14 +25,11 @@ function M.check()
     health.warn("vim-fugitive not found. Recommended for the best diff experience.");
   end
 
-  -- Check LiteLLM (or the configured CLI)
-  local config = require("nzi.config");
-  local litellm_cmd = config.options.litellm_cmd;
-  if vim.fn.executable(litellm_cmd) == 1 then
-    health.ok(string.format("Model CLI executable '%s' found", litellm_cmd));
+  -- Check Curl (Primary for API communication)
+  if vim.fn.executable("curl") == 1 then
+    health.ok("curl found");
   else
-    health.error(string.format("Model CLI executable '%s' not found in PATH.", litellm_cmd));
-    health.info("Install LiteLLM with: pip install litellm");
+    health.error("curl not found in PATH. Required for model communication.");
   end
 end
 

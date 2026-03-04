@@ -4,7 +4,7 @@ local engine = require("nzi"); -- This triggers setup and command registration
 describe("nzi behavioral commands", function()
   before_each(function()
     require("nzi").setup({
-      litellm_cmd = "echo", -- Mock CLI
+      model_cmd = { "echo" }, -- Mock CLI
     });
   end);
 
