@@ -13,7 +13,8 @@ local M = {};
 local function complete_ai_command(arg_lead, cmd_line)
   local subcommands = { 
     "model", "clear", "status", "buffers", "toggle", "undo", "config",
-    "active", "read", "ignore", "state", "stop", "yank", "Tree", "tree"
+    "active", "read", "ignore", "state", "stop", "yank", "Tree", "tree",
+    "next", "prev"
   };
   
   -- If we're at the very start of the command arguments
@@ -54,6 +55,7 @@ end
 function M.setup(opts)
   config.setup(opts);
   buffers.setup();
+  require("nzi.visuals").setup();
   
   -- Register the primary AI command with native completion
   vim.api.nvim_create_user_command("AI", function(opts)

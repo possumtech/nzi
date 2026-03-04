@@ -12,21 +12,16 @@ function M.open_ui()
   local items = {};
 
   for _, b in ipairs(buffers) do
-    if vim.api.nvim_buf_is_loaded(b) then
+    if context.is_real_buffer(b) then
       local name = vim.api.nvim_buf_get_name(b);
-      local filetype = vim.api.nvim_get_option_value("filetype", { buf = b });
+      local state = context.get_state(b);
+      local short_name = vim.fn.fnamemodify(name, ":.");
       
-      -- Only show buffers that are not globally ignored
-      if not context.should_ignore(name, filetype) then
-        local state = context.get_state(b);
-        local short_name = name ~= "" and vim.fn.fnamemodify(name, ":.") or "[No Name]";
-        
-        -- Map state to a pretty label
-        local state_label = state:sub(1,1):upper() .. state:sub(2);
-        local label = string.format("[%s] %s", state_label, short_name);
-        
-        table.insert(items, { label = label, bufnr = b, name = short_name });
-      end
+      -- Map state to a pretty label
+      local state_label = state:sub(1,1):upper() .. state:sub(2);
+      local label = string.format("[%s] %s", state_label, short_name);
+      
+      table.insert(items, { label = label, bufnr = b, name = short_name });
     end
   end
 

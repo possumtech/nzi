@@ -62,18 +62,45 @@ vim.keymap.set("n", "<leader>aI", ":AI/ignore<CR>", { desc = "AI: Ignore Buffer"
 vim.keymap.set("n", "<leader>aS", ":AI/state<CR>",  { desc = "AI: View Buffer State" })
 vim.keymap.set("n", "<leader>at", ":AI/tree<CR>",   { desc = "AI: Context Tree (Active/Read)" })
 vim.keymap.set("n", "<leader>aT", ":AI/Tree<CR>",   { desc = "AI: Universe Tree (All Mapped)" })
-vim.keymap.set("n", "<leader>ab", ":AI/buffers<CR>",{ desc = "AI: Buffer List UI" })
+vim.keymap.set("n", "<leader>ab", ":AI/buffers<CR>",{ desc = "AI: Buffer Context Manager" })
+
+-- Navigation (Review Queue)
+vim.keymap.set("n", "<leader>an", ":AI/next<CR>",   { desc = "AI: Next Pending Diff" })
+vim.keymap.set("n", "<leader>ap", ":AI/prev<CR>",   { desc = "AI: Prev Pending Diff" })
 
 -- Model Management
 vim.keymap.set("n", "<leader>am", ":AI/model<CR>",  { desc = "AI: Model Menu" })
 
 -- Rapid Model Switching (Examples)
--- Map <leader>a + Number to your preferred aliases
 vim.keymap.set("n", "<leader>a1", ":AI/model deepseek<CR>", { desc = "AI: Switch to DeepSeek" })
 vim.keymap.set("n", "<leader>a2", ":AI/model qwenzel<CR>",  { desc = "AI: Switch to Ollama" })
 ```
 
-### 4. AGENTS.md & .ai.md
+### 5. Visual Context (Backgrounds)
+
+AI (nzi) can optionally highlight your buffer backgrounds to reflect their AI state. This provides high-signal peripheral feedback about what the model can see.
+
+Suggested subtle colors (customizable in `setup()`):
+*   **Green Tint**: Active (Target for edits).
+*   **Orange/Brown Tint**: Read-only (Reference context).
+*   **Red Tint**: Ignored (Invisible to model).
+*   **Blue Tint**: Unresolved Agent Diff (Pending review).
+
+#### Statusline Integration
+
+You can add the AI state to your statusline using the native Lua API:
+
+```lua
+-- Example for native statusline
+set statusline+=%{luaeval('require(\"nzi.visuals\").get_statusline()')}
+
+-- Example for lualine.nvim
+sections = {
+  lualine_x = { { function() return require("nzi.visuals").get_statusline() end } }
+}
+```
+
+### 6. AGENTS.md & .ai.md
 
 Your project state lives in `AGENTS.md`. This is a collaborative, living document that provides a persistent and structured project management experience. AI (nzi) also inherits rules from `~/AGENTS.md` (global) and `.ai.md` (project-specific).
 

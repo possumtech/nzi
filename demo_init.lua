@@ -38,6 +38,9 @@ require("nzi").setup({
   },
   modal = {
     show_context = true,
+  },
+  visuals = {
+    enabled = true,
   }
 });
 
@@ -64,11 +67,18 @@ vim.keymap.set("n", "<leader>at", ":AI/tree<CR>",   { desc = "AI: Context Tree (
 vim.keymap.set("n", "<leader>aT", ":AI/Tree<CR>",   { desc = "AI: Universe Tree (All Mapped)" })
 vim.keymap.set("n", "<leader>ab", ":AI/buffers<CR>",{ desc = "AI: Buffer Context Manager" })
 
+-- Navigation (Review Queue)
+vim.keymap.set("n", "<leader>an", ":AI/next<CR>",   { desc = "AI: Next Pending Diff" })
+vim.keymap.set("n", "<leader>ap", ":AI/prev<CR>",   { desc = "AI: Prev Pending Diff" })
+
 -- Model Management
 vim.keymap.set("n", "<leader>am", ":AI/model<CR>",  { desc = "AI: Model Menu" })
 vim.keymap.set("n", "<leader>a1", ":AI/model deepseek<CR>", { desc = "AI: Switch to DeepSeek" })
 vim.keymap.set("n", "<leader>a2", ":AI/model qwenzel<CR>",  { desc = "AI: Switch to Ollama" })
 
+-- Statusline setup for demo
+vim.opt.statusline:append("%{luaeval('require(\"nzi.visuals\").get_statusline()')}")
+
 print("AI (nzi) Loaded! Use <leader>aa to toggle the AI Modal.");
-print("Context filtered: Blank and unsaved buffers are now ignored.");
-print("Universe: All git files are mapped via Tree-sitter skeletons.");
+print("Visual Context: Backgrounds reflect AI state (Green=Active, Orange=Read, Red=Ignore, Blue=Diff).");
+print("Review Queue: Use <leader>an and <leader>ap to navigate pending changes.");
