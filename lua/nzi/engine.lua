@@ -44,10 +44,6 @@ function M.handle_question(content, include_lsp)
       if success then
         -- Add to structured history for the next turn
         require("nzi.history").add("question", content, result);
-        
-        -- Transition the streamed lines to the final response color/tag
-        local end_line_count = vim.api.nvim_buf_line_count(modal.bufnr);
-        modal.recolor_last_lines(end_line_count - start_line_count, "assistant");
       else
         modal.write("\nERROR: " .. result .. "\n", "system", false);
       end

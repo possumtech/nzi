@@ -197,29 +197,28 @@ function M.write(text, type, append)
     _close_current_tag(bufnr);
     local lc = vim.api.nvim_buf_line_count(bufnr);
     local is_empty = (lc == 1 and vim.api.nvim_buf_get_lines(bufnr, 0, 1, false)[1] == "");
-    
+    -- Telemetry + Spacing
     local telemetry = get_telemetry_line(type);
     local open_tag = "<nzi:" .. tag .. ">";
+
     local lines_to_add = is_empty and { telemetry, open_tag } or { "", telemetry, open_tag };
     local start_idx = is_empty and 0 or lc;
-    
+
     vim.api.nvim_buf_set_lines(bufnr, start_idx, -1, false, lines_to_add);
-    
-    -- Highlight Telemetry + Open Tag (White on Black)
-    local h_start = start_idx + (is_empty and 0 or 1);
-    highlight_lines(bufnr, h_start, h_start + 1, "NziTelemetry");
-    
+
+    -- Highlight EVERY line added here as NziTelemetry (Spacer, Telemetry, and Tag)
+    highlight_lines(bufnr, start_idx, start_idx + #lines_to_add - 1, "NziTelemetry");
+
     M.current_open_tag = type;
     append = false; 
-  elseif not M.current_open_tag then
+    elseif not M.current_open_tag then
     local telemetry = get_telemetry_line(type);
     local open_tag = "<nzi:" .. tag .. ">";
     vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { telemetry, open_tag });
     highlight_lines(bufnr, 0, 1, "NziTelemetry");
     M.current_open_tag = type;
     append = false;
-  end
-
+    end
   -- 2. Content Injection
   local content_lines = vim.split(text, "\n");
   local hl_group = get_hl_group(type);
