@@ -60,11 +60,18 @@ M.defaults = {
   -- Visual Context settings
   visuals = {
     enabled = true, -- Highlight buffer backgrounds based on AI state
+    bold = false,    -- Use more vibrant colors (set to true for high contrast)
     colors = {
       active = "#1e2a1e", -- Subtle green
       read   = "#2a241e", -- Subtle orange/brown
       ignore = "#2a1e1e", -- Subtle red
       diff   = "#1e1e2a", -- Subtle blue
+    },
+    bold_colors = {
+      active = "#2e4a2e", -- Vibrant green
+      read   = "#4a3a2e", -- Vibrant orange/brown
+      ignore = "#4a2e2e", -- Vibrant red
+      diff   = "#2e2e4a", -- Vibrant blue
     },
   },
 };

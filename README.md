@@ -76,27 +76,34 @@ vim.keymap.set("n", "<leader>a1", ":AI/model deepseek<CR>", { desc = "AI: Switch
 vim.keymap.set("n", "<leader>a2", ":AI/model qwenzel<CR>",  { desc = "AI: Switch to Ollama" })
 ```
 
-### 5. Visual Context (Backgrounds)
+### 5. Visual Context (Statusline)
 
-AI (nzi) can optionally highlight your buffer backgrounds to reflect their AI state. This provides high-signal peripheral feedback about what the model can see.
+AI (nzi) provides high-signal indicators for your statusline to reflect the AI state of the current buffer. This provides immediate peripheral feedback about what the model can see.
 
-Suggested subtle colors (customizable in `setup()`):
-*   **Green Tint**: Active (Target for edits).
-*   **Orange/Brown Tint**: Read-only (Reference context).
-*   **Red Tint**: Ignored (Invisible to model).
-*   **Blue Tint**: Unresolved Agent Diff (Pending review).
+Standard indicator colors:
+*   **Green**: [AI:A] Active (Target for edits).
+*   **Orange**: [AI:R] Read-only (Reference context).
+*   **Red**: [AI:I] Ignored (Invisible to model).
+*   **Blue**: [AI:DIFF] Unresolved Agent Diff (Pending review).
 
 #### Statusline Integration
 
-You can add the AI state to your statusline using the native Lua API:
+You can add the colored AI state to your statusline using the native Lua API. This is the recommended "Spartan" way to see your context state:
 
 ```lua
--- Example for native statusline
-set statusline+=%{luaeval('require(\"nzi.visuals\").get_statusline()')}
+-- Modern idiomatic integration (v:lua)
+-- This syntax ensures colored blocks are correctly expanded
+vim.opt.statusline:append("%{%v:lua.require('nzi.visuals').get_statusline()%}")
 
--- Example for lualine.nvim
+-- For plugin users (e.g. lualine.nvim)
+-- We provide a data helper for structured integration
 sections = {
-  lualine_x = { { function() return require("nzi.visuals").get_statusline() end } }
+  lualine_x = { 
+    { 
+      function() return require("nzi.visuals").get_status_data().text end,
+      color = function() return { fg = require("nzi.visuals").get_status_data().color } end
+    } 
+  }
 }
 ```
 

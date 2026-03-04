@@ -4,7 +4,7 @@ vim.opt.runtimepath:prepend(current_dir);
 
 -- Load AI with environment-aware config
 require("nzi").setup({
-  active_model = "deepseek",
+  active_model = os.getenv("NZI_MODEL") or "deepseek",
   models = {
     -- Primary Model (Local)
     qwenzel = {
@@ -77,7 +77,9 @@ vim.keymap.set("n", "<leader>a1", ":AI/model deepseek<CR>", { desc = "AI: Switch
 vim.keymap.set("n", "<leader>a2", ":AI/model qwenzel<CR>",  { desc = "AI: Switch to Ollama" })
 
 -- Statusline setup for demo
-vim.opt.statusline:append("%{luaeval('require(\"nzi.visuals\").get_statusline()')}")
+-- %{% ... %} is the magic syntax that tells Neovim to interpret 
+-- the highlight tags returned by the Lua function.
+vim.opt.statusline = "%f %m %r %= %{%v:lua.require('nzi.visuals').get_statusline()%} %y %p%% %l:%c"
 
 print("AI (nzi) Loaded! Use <leader>aa to toggle the AI Modal.");
 print("Visual Context: Backgrounds reflect AI state (Green=Active, Orange=Read, Red=Ignore, Blue=Diff).");
