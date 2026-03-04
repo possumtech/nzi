@@ -56,6 +56,17 @@ M.defaults = {
   fugitive = {
     auto_diff = true,
   },
+
+  -- Visual Context settings
+  visuals = {
+    enabled = true, -- Highlight buffer backgrounds based on AI state
+    colors = {
+      active = "#1e2a1e", -- Subtle green
+      read   = "#2a241e", -- Subtle orange/brown
+      ignore = "#2a1e1e", -- Subtle red
+      diff   = "#1e1e2a", -- Subtle blue
+    },
+  },
 };
 
 M.options = M.defaults;

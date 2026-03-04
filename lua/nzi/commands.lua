@@ -112,7 +112,14 @@ function M.run(command_str)
     local bufnr = vim.api.nvim_get_current_buf();
     local name = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":.");
     require("nzi.context").set_state(bufnr, cmd);
+    require("nzi.visuals").refresh();
     vim.notify(string.format("AI: Buffer '%s' set to %s", name, cmd), vim.log.levels.INFO);
+
+  elseif cmd == "next" then
+    require("nzi.diff").next();
+
+  elseif cmd == "prev" then
+    require("nzi.diff").prev();
 
   elseif cmd == "state" then
     local bufnr = vim.api.nvim_get_current_buf();
