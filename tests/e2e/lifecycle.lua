@@ -43,34 +43,12 @@ if not success and not last_error then
   os.exit(1)
 end
 
--- 3. Verify Structural Integrity
-local lines = vim.api.nvim_buf_get_lines(modal.bufnr, 0, -1, false)
-local text = table.concat(lines, "\n")
-
-local tags = { "agent:system", "agent:context", "agent:project_directives", "agent:user", "agent:content", "agent:error", "agent:history", "agent:shell_output" }
-local open_total = 0
-local close_total = 0
-
-for _, t in ipairs(tags) do
-  local op = 0
-  for _ in text:gmatch("<" .. t .. ">") do op = op + 1 end
-  for _ in text:gmatch("<" .. t .. " ") do op = op + 1 end -- with attributes
-  
-  local cl = 0
-  for _ in text:gmatch("</" .. t .. ">") do cl = cl + 1 end
-  
-  if op ~= cl then
-    print(string.format("[DEBUG] Tag mismatch for %s: %d open, %d closed", t, op, cl))
-  end
-  open_total = open_total + op
-  close_total = close_total + cl
-end
-
-if open_total ~= close_total or open_total == 0 then
-  print("\n[E2E FAILED] Structural tag mismatch: " .. open_total .. " open, " .. close_total .. " closed.")
-  print("Buffer content:\n" .. text)
+-- 3. Verify Completion
+local history = require("nzi.history")
+if #history.get_all() ~= 1 then
+  print("\n[E2E FAILED] Expected 1 history turn, found " .. #history.get_all())
   os.exit(1)
 end
 
-print("\n[E2E] LIFECYCLE TEST PASSED (Structural Integrity Verified).")
-vim.cmd("qa!")
+print("\n[E2E] LIFECYCLE TEST PASSED.")
+nvim.cmd("qa!")

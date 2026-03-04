@@ -159,7 +159,7 @@ local function get_hl_group(type)
   return map[type] or "Normal";
 end
 
---- Internal helper to close the currently open tag
+--- Internal helper to close the currently open section
 local function _close_current_tag(bufnr)
   if not M.current_open_tag then return end
   local tag = get_tag_name(M.current_open_tag);
@@ -205,7 +205,7 @@ function M.write(text, type, append)
   -- 1. Structural Transitions
   if (M.current_open_tag and M.current_open_tag ~= type) or (not append and M.current_open_tag) then
     _close_current_tag(bufnr);
-    append = false; -- Force fresh start for new tag
+    append = false; -- Force fresh start for new section
   end
 
   if not M.current_open_tag then

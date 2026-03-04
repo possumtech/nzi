@@ -37,10 +37,10 @@ describe("AI history module", function()
   end);
 
   it("should escape XML in history turns", function()
-    history.add("question", "</nzi:turn>", "<nzi:history>");
+    history.add("question", "</tag>", "<tag>");
     local formatted = history.format();
     
-    assert.match("&lt;/nzi:turn&gt;", formatted, 1, true);
-    assert.match("&lt;nzi:history&gt;", formatted, 1, true);
+    assert.match("&lt;/tag&gt;", formatted, 1, true);
+    assert.match("&lt;tag&gt;", formatted, 1, true);
   end);
 end);

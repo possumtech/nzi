@@ -31,7 +31,5 @@ describe("AI configuration", function()
     
     assert.are.equal(0.5, config.options.model_options.frequency_penalty);
     assert.are.same({ "\n\n" }, config.options.model_options.stop);
-    -- Preserve other defaults
-    assert.are.equal(0.7, config.options.model_options.temperature);
   end);
 end);

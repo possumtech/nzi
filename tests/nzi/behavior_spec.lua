@@ -49,12 +49,11 @@ describe("AI behavioral commands", function()
     end);
 
     assert.is_true(success, "Modal never showed BANG_SUCCESS with correct tags.");
-    
+
     local lines = vim.api.nvim_buf_get_lines(modal.bufnr, 0, -1, false);
     local text = table.concat(lines, "\n");
     assert.match("<agent:shell_output>", text, 1, true);
-    
-    vim.api.nvim_buf_delete(bufnr, { force = true });
+    assert.match("BANG_SUCCESS", text, 1, true);    vim.api.nvim_buf_delete(bufnr, { force = true });
   end);
 
   it("should handle direct command-line arguments as directives", function()

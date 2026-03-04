@@ -34,13 +34,8 @@ M.defaults = {
 
   -- Advanced Model Options (OpenAI Standard)
   model_options = {
-    temperature = 0.7,
-    max_tokens = 4096,
-    -- penalties and top_p left as nil to use model defaults unless overridden
-    frequency_penalty = nil,
-    presence_penalty = nil,
-    top_p = nil,
-    stop = nil,
+    stream = true,
+    -- penalties, top_p, and max_tokens left as nil to use model defaults
   },
   
   -- Modal window configuration

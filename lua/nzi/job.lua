@@ -8,7 +8,8 @@ local M = {};
 local function parse_sse_line(line)
   local result = { content = "", reasoning_content = "", error = nil };
   
-  if line:match("^data: %[DONE%]$") then
+  -- Skip HTTP status line and other non-data lines
+  if line:match("^HTTP_STATUS:") or line:match("^%d%d%d$") or line:match("^data: %[DONE%]$") then
     return result;
   end
   
@@ -26,15 +27,15 @@ local function parse_sse_line(line)
     if json.choices and json.choices[1] and json.choices[1].delta then
       local delta = json.choices[1].delta;
       
-      -- Capture reasoning
+      -- Capture reasoning (OpenAI O1/O3 style or OpenRouter thought)
       local reasoning = delta.reasoning_content or delta.thought or delta.reasoning;
       if reasoning then
         result.reasoning_content = reasoning;
       end
       
       -- Capture standard content
-      local content = delta.content or "";
-      if content then
+      local content = delta.content;
+      if content and content ~= vim.NIL then
         result.content = content;
       end
     end
@@ -59,8 +60,8 @@ function M.run(messages, callback, on_stdout)
   };
 
   -- Merge model options (temperature, top_p, etc.) and filter out nils
-  if opts.model_options then
-    for k, v in pairs(opts.model_options) do
+  if config.options.model_options then
+    for k, v in pairs(config.options.model_options) do
       if v ~= nil then body[k] = v; end
     end
   end
@@ -81,10 +82,10 @@ function M.run(messages, callback, on_stdout)
   if f then f:write(request_body); f:close(); end
 
   local cmd = { 
-    "curl", "-s", "-N", "-X", "POST", 
-    "-w", "\\n%{http_code}", -- Write status code on a new line at the end
+    "curl", "-s", "-N", "--no-buffer", "-X", "POST", 
+    "-w", "\\nHTTP_STATUS:%{http_code}", -- Write status code with prefix
     model_cfg.api_base .. "/chat/completions",
-    "-d", request_body
+    "-d", "@-" -- Read from stdin
   };
 
   for k, v in pairs(headers) do
@@ -108,7 +109,7 @@ function M.run(messages, callback, on_stdout)
       partial_data = partial_data:sub(nl_pos + 1);
       
       -- Catch the HTTP status code added by -w
-      local status_code = line:match("^(%d%d%d)$");
+      local status_code = line:match("^HTTP_STATUS:(%d%d%d)$") or line:match("^(%d%d%d)$");
       if status_code then
         http_status = tonumber(status_code);
       elseif line ~= "" then
@@ -147,7 +148,8 @@ function M.run(messages, callback, on_stdout)
   end
 
   job_ref.handle = vim.system(cmd, {
-    text = true,
+    text = false, -- Use raw bytes to avoid \r\n vs \n issues in SSE
+    stdin = request_body,
     stdout = function(err, data)
       if not data then return end
       partial_data = partial_data .. data;

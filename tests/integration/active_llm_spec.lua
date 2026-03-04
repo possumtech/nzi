@@ -2,22 +2,22 @@ local assert = require("luassert");
 local ai = require("nzi");
 local job = require("nzi.job");
 
--- This test requires a local model to be running.
-local run_local = os.getenv("NZI_TEST_LOCAL");
-
-describe("AI local model integration", function()
+describe("AI active model integration", function()
   -- These tests use the active model alias configured in the environment
   local config = require("nzi.config");
   local model_alias = config.options.active_model;
 
-  if model_alias ~= "local_coder" then
-    pending("Skipping integration tests (NZI_MODEL not set to local_coder)");
+  if not model_alias or model_alias == "" then
+    pending("Skipping integration tests (NZI_MODEL not set)");
     return;
   end
 
   local created_buffers = {};
 
   before_each(function()
+    require("nzi").setup({
+      modal = { show_context = false }
+    });
     require("nzi.history").clear();
     created_buffers = {};
   end);
@@ -35,6 +35,10 @@ describe("AI local model integration", function()
     vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines);
     vim.api.nvim_buf_set_name(bufnr, vim.fn.getcwd() .. "/" .. name);
     vim.api.nvim_set_option_value("buflisted", true, { buf = bufnr });
+    
+    -- Explicitly set state to active to ensure it's gathered
+    require("nzi.context").set_state(bufnr, "active");
+    
     table.insert(created_buffers, bufnr);
     return bufnr;
   end
@@ -54,7 +58,8 @@ describe("AI local model integration", function()
 
     engine.handle_question("Say only the word 'INTEGRATED'", false);
 
-    vim.wait(30000, function()
+    -- Fast 10s timeout
+    vim.wait(10000, function()
       return model_output:upper():match("INTEGRATED") ~= nil
     end);
 
@@ -77,7 +82,8 @@ describe("AI local model integration", function()
 
     require("nzi.directive").run("Say only the word 'MODIFIED'", bufnr, false);
 
-    vim.wait(30000, function()
+    -- Fast 10s timeout
+    vim.wait(10000, function()
       return diff_called
     end);
 
@@ -104,7 +110,7 @@ describe("AI local model integration", function()
     setup_capture();
     engine.handle_question("My favorite color is Crimson. Remember that.", false);
     
-    vim.wait(30000, function() 
+    vim.wait(10000, function() 
       return #history.get_all() == 1 
     end);
     
@@ -114,7 +120,7 @@ describe("AI local model integration", function()
     setup_capture();
     engine.handle_question("What is my favorite color? Answer in one word.", false);
     
-    vim.wait(30000, function() 
+    vim.wait(10000, function() 
       return model_output:upper():match("CRIMSON") ~= nil 
     end);
 
@@ -123,8 +129,8 @@ describe("AI local model integration", function()
   end);
 
   it("BATTLE TEST: should see and synthesize information from multiple buffers", function()
-    create_test_buf("vault_a.txt", { "SECRET_CODE_A = 1234" });
-    create_test_buf("vault_b.txt", { "SECRET_CODE_B = 5678" });
+    create_test_buf("vault_a.txt", { "TEST_KEY_A = 1234" });
+    create_test_buf("vault_b.txt", { "TEST_KEY_B = 5678" });
 
     local model_output = "";
     local modal = require("nzi.modal");
@@ -135,8 +141,9 @@ describe("AI local model integration", function()
       end
     end
 
-    require("nzi.engine").handle_question("What are the values of SECRET_CODE_A and SECRET_CODE_B? Answer with the codes.", false);
+    require("nzi.engine").handle_question("What are the values of TEST_KEY_A and TEST_KEY_B? Answer with the keys and values.", false);
 
+    -- 30s timeout for synthesis (more realistic for complex tasks)
     local success = vim.wait(30000, function()
       return model_output:match("1234") and model_output:match("5678")
     end);

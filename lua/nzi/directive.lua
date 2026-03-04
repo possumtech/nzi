@@ -19,7 +19,7 @@ function M.run(instruction, bufnr, include_lsp)
   local prompt_parts = prompts.gather();
   
   local system_prompt = prompts.build_system_prompt(prompt_parts, model_alias);
-  local context_str = prompts.format_context(ctx_list, include_lsp, prompt_parts.tasks);
+  local context_str = prompts.format_context(ctx_list, include_lsp);
   local full_prompt = prompts.build_directive_prompt(instruction, target_file, prompt_parts, context_str);
   local hist_str = require("nzi.history").format();
   

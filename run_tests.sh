@@ -43,8 +43,8 @@ else
 fi
 
 # Integration tests (if a model is selected for testing)
-if [[ "$NZI_MODEL" == "local_coder" ]]; then
-    echo "Running integration tests against $NZI_MODEL..."
+if [[ -n "$NZI_MODEL" ]]; then
+    echo "Running integration tests using model alias: $NZI_MODEL..."
     nvim --headless -i NONE --noplugin -u tests/init.lua \
         -c "lua require('plenary.test_harness').test_directory('tests/integration', { progressive = true, halt_on_error = true })" \
         -c "qa!"

@@ -31,7 +31,7 @@ function M.handle_question(content, include_lsp)
   local system_prompt_str = prompts.build_system_prompt(prompt_parts, model_alias);
   
   -- 2. Facts of the Project (User Role)
-  local context_str = prompts.format_context(ctx_list, include_lsp, prompt_parts.tasks);
+  local context_str = prompts.format_context(ctx_list, include_lsp);
   
   -- Build the Message Array for the API
   local messages = {};
@@ -43,8 +43,9 @@ function M.handle_question(content, include_lsp)
     table.insert(messages, msg);
   end
   
-  -- The final user message contains both the context facts and the question
-  local user_prompt = string.format("<agent:context>\n%s\n</agent:context>\n\n<agent:user>\n%s\n</agent:user>", context_str, history.xml_escape(content));
+  -- The final user message contains context, directives, and the question
+  local user_prompt = string.format("<agent:context>\n%s\n</agent:context>\n\n<agent:project_directives>\n%s\n</agent:project_directives>\n\n<agent:user>\n%s\n</agent:user>", 
+    context_str, prompt_parts.tasks or "", history.xml_escape(content));
   table.insert(messages, { role = "user", content = user_prompt });
   
   modal.open();
@@ -73,7 +74,7 @@ function M.handle_question(content, include_lsp)
       modal.set_thinking(false);
       if success then
         -- Add to structured history for the next turn
-        require("nzi.history").add("question", content, result);
+        history.add("question", content, result);
       elseif not error_displayed then
         -- Only write the final error if the stream hasn't already reported one
         modal.write(result, "error", false);
