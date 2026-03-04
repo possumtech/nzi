@@ -16,6 +16,13 @@ This is the living document for AI (nzi) development. We use this to track tasks
 - [ ] **LSP Integration:** Deep symbol harvesting (Partial: initial logic in `lsp.lua`).
 - [x] **Prompt Inheritance:** Merging layered markdown prompts (`~/AGENTS.md`, `.ai.md`).
 
+### Phase 1.5: Universe Mapping
+- [x] **Git-Native Universe Discovery:** Use `git ls-tree` to define the model's project boundaries.
+- [x] **State Hierarchy:** Implement `active` (edit), `read` (ref), `map` (skeleton), and `ignore` (hidden).
+- [x] **Tree-sitter Skeletonization:** Generate metadata-only "maps" for non-open project files.
+- [x] **Universe UI (`:AI/tree`):** Scrollable dropdown tree showing the project's relationship with the model.
+- [x] **Universe E2E Repo:** Robust test infrastructure with real git states.
+
 ### Phase 2: The Interpolation & Unified Command
 - [x] **Directive Parsing:** Efficiently scan for `AI:`, `AI?`, `AI!`, and `AI/`.
 - [x] **Unified `:AI` Command:** Single entry point for questions, directives, and shell.
@@ -33,6 +40,9 @@ This is the living document for AI (nzi) development. We use this to track tasks
 - [x] **Local Model Integration:** Test `qwenzel` at `http://192.168.1.17:11434`.
 - [x] **Fast Model Testing:** Use `deepseek` alias for integration and e2e tests.
 - [x] **Integration Suite:** Real LLM round-trips verified in `tests/integration/`.
+- [ ] **Interpolation:** When AI?, AI:, AI!, or AI/ appears on a new line of a filed that's saved, catch and handle it.
+- [ ] **Visual Interpolation:** Visual mode where you select lines/region and then <>AI?:!/
+- [ ] **Git or LSP project integration:** 
 - [ ] **Fugitive-Diff Workflow (Refinement):** Re-implement surgical edits once a stable strategy is devised. (Currently unified with question handler).
 
 ### Phase 5: Agentic Tools & Plugins

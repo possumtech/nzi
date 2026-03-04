@@ -123,6 +123,32 @@ function M.run(command_str)
   elseif cmd == "buffers" then
     buffers.open_ui();
 
+  elseif cmd == "tree" or cmd == "Tree" then
+    local ctx = require("nzi.context").gather();
+    local items = {};
+    local show_all = (cmd == "Tree");
+
+    for _, item in ipairs(ctx) do
+      if show_all or item.state == "active" or item.state == "read" then
+        local state_icon = (item.state == "active" and "(A)" or (item.state == "read" and "(R)" or "(M)"));
+        table.insert(items, string.format("%s %s", state_icon, item.name));
+      end
+    end
+
+    if #items == 0 then
+      vim.notify("AI: No files in " .. (show_all and "project" or "active context"), vim.log.levels.WARN);
+      return;
+    end
+
+    vim.ui.select(items, {
+      prompt = "AI Project Universe (" .. (show_all and "All" or "Active/Read") .. "):",
+    }, function(choice)
+      if choice then
+        local path = choice:sub(5);
+        vim.cmd("edit " .. path);
+      end
+    end);
+
   elseif cmd == "install" then
     local info = debug.getinfo(M.run);
     local script_dir = info.source:match("@?(.*/)")

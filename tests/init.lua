@@ -1,8 +1,8 @@
 -- Initialize test environment
-local current_dir = vim.fn.getcwd();
+local current_dir = vim.fn.fnamemodify(vim.fn.getcwd(), ":p");
 
--- Add nzi to runtimepath
-vim.opt.runtimepath:append(current_dir);
+-- Add nzi to runtimepath (absolute path)
+vim.opt.runtimepath:prepend(current_dir);
 
 -- Ensure plenary is available for tests
 local plenary_path = "/tmp/plenary.nvim";

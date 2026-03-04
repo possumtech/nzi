@@ -1,4 +1,5 @@
 local config = require("nzi.config");
+local sitter = require("nzi.sitter");
 
 local M = {};
 
@@ -43,17 +44,49 @@ function M.should_ignore(name, filetype)
   return false;
 end
 
+--- Get the "Universe" of files in the current project
+--- @return table: List of relative paths in the git repo
+function M.get_universe()
+  -- Get all files known to git (committed, staged, and untracked)
+  local files = vim.fn.systemlist("git ls-files --cached --others --exclude-standard 2>/dev/null");
+  if vim.v.shell_error ~= 0 then return {}; end
+
+  local universe = {};
+  local seen = {};
+
+  for _, path in ipairs(files) do
+    if path ~= "" and not seen[path] then
+      table.insert(universe, path);
+      seen[path] = true;
+    end
+  end
+  
+  table.sort(universe);
+  return universe;
+end
+
 --- Gather all relevant buffer content for the model context
 --- @return table: List of buffer objects with name, state, and content
 function M.gather()
+  local universe = M.get_universe();
   local buffers = vim.api.nvim_list_bufs();
   local context = {};
 
+  -- Track which files we've handled (including ignored ones)
+  local handled_files = {};
+
+  -- 1. Process Open Buffers (Highest Priority)
   for _, bufnr in ipairs(buffers) do
     if vim.api.nvim_buf_is_loaded(bufnr) and vim.api.nvim_get_option_value("buflisted", { buf = bufnr }) then
-      local name = vim.api.nvim_buf_get_name(bufnr);
+      local full_path = vim.api.nvim_buf_get_name(bufnr);
+      local name = vim.fn.fnamemodify(full_path, ":.");
       local filetype = vim.api.nvim_get_option_value("filetype", { buf = bufnr });
       local state = M.get_state(bufnr);
+
+      -- Mark as handled regardless of state (active, read, or ignore)
+      if name ~= "" then
+        handled_files[name] = true;
+      end
 
       if state ~= "ignore" and not M.should_ignore(name, filetype) then
         -- Skip unnamed/unsaved scratch buffers
@@ -70,6 +103,21 @@ function M.gather()
         });
       end
       ::continue::
+    end
+  end
+
+  -- 2. Process Remaining Universe Files (Project Map)
+  for _, path in ipairs(universe) do
+    if not handled_files[path] then
+      local filetype = vim.filetype.match({ filename = path });
+      if not M.should_ignore(path, filetype or "") then
+        table.insert(context, {
+          bufnr = nil, -- Not in an open buffer
+          name = path,
+          state = "map",
+          content = sitter.get_skeleton(path),
+        });
+      end
     end
   end
 
