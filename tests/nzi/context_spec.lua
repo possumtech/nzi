@@ -15,14 +15,34 @@ describe("AI context engine", function()
   end);
 
   it("should ignore buffers based on config filetypes", function()
-    assert.is_true(context.should_ignore("anyname", "NvimTree"));
-    assert.is_false(context.should_ignore("anyname", "lua"));
+    local bufnr = vim.api.nvim_create_buf(true, false);
+    vim.api.nvim_set_option_value("filetype", "NvimTree", { buf = bufnr });
+    assert.is_false(context.is_real_buffer(bufnr));
+    
+    vim.api.nvim_set_option_value("filetype", "lua", { buf = bufnr });
+    vim.api.nvim_buf_set_name(bufnr, "test.lua");
+    assert.is_true(context.is_real_buffer(bufnr));
+    vim.api.nvim_buf_delete(bufnr, { force = true });
   end);
 
-  it("should ignore buffers based on config names", function()
-    assert.is_true(context.should_ignore(".git/config", "gitconfig"));
-    assert.is_true(context.should_ignore("node_modules/pkg/index.js", "javascript"));
-    assert.is_false(context.should_ignore("src/main.lua", "lua"));
+  it("should ignore blank unnamed buffers but include empty named ones", function()
+    local bufnr = vim.api.nvim_create_buf(true, false);
+    -- No name: ignore
+    assert.is_false(context.is_real_buffer(bufnr));
+    
+    -- Has name but empty content: INCLUDE (user created it for a reason)
+    vim.api.nvim_buf_set_name(bufnr, "empty_file.lua");
+    assert.is_true(context.is_real_buffer(bufnr));
+    
+    vim.api.nvim_buf_delete(bufnr, { force = true });
+  end);
+
+  it("should ignore buffers with special buftypes (UI elements)", function()
+    local bufnr = vim.api.nvim_create_buf(true, false);
+    vim.api.nvim_buf_set_name(bufnr, "test.txt");
+    vim.api.nvim_set_option_value("buftype", "nofile", { buf = bufnr });
+    assert.is_false(context.is_real_buffer(bufnr));
+    vim.api.nvim_buf_delete(bufnr, { force = true });
   end);
 
   it("should not gather content from unlisted or invalid buffers", function()
@@ -37,6 +57,20 @@ describe("AI context engine", function()
     end
     assert.is_false(found);
     vim.api.nvim_buf_delete(bufnr, { force = true });
+  end);
+
+  it("should ignore files based on git authority", function()
+    local helper = require("tests.universe_helper");
+    local root = helper.setup_test_repo();
+    local old_cwd = vim.fn.getcwd();
+    vim.cmd("cd " .. root);
+
+    -- .env is in .gitignore in the test repo
+    assert.is_true(context.is_git_ignored(".env"));
+    assert.is_false(context.is_git_ignored("main.lua"));
+
+    vim.cmd("cd " .. old_cwd);
+    helper.teardown_test_repo(root);
   end);
 
   it("should gather content from loaded and non-ignored buffers", function()

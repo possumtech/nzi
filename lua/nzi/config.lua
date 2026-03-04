@@ -48,8 +48,8 @@ M.defaults = {
   
   -- Context management settings
   context = {
-    ignore_filetypes = { "NvimTree", "TelescopePrompt" },
-    ignore_files = { ".git", "node_modules", ".aider.tags.cache.v4" },
+    ignore_filetypes = { "NvimTree", "TelescopePrompt", "TelescopeResults", "fzf", "qf" },
+    ignore_files = {}, -- User overrides only
   },
   
   -- Fugitive integration settings
