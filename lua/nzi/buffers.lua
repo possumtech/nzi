@@ -5,14 +5,11 @@ local M = {};
 -- Mapping of line numbers in the UI buffer to actual buffer numbers
 local line_to_bufnr = {};
 
---- Refresh the content of the buffer list UI
---- @param ui_bufnr number
-function M.refresh(ui_bufnr)
-  vim.api.nvim_set_option_value("modifiable", true, { buf = ui_bufnr });
-  
+--- Open the buffer management UI in an idiomatic fuzzy-finder style list
+function M.open_ui()
+  local context = require("nzi.context");
   local buffers = vim.api.nvim_list_bufs();
-  local lines = { " AI Buffer Context Manager", " ---------------------------", "" };
-  line_to_bufnr = {};
+  local items = {};
 
   for _, b in ipairs(buffers) do
     if vim.api.nvim_buf_is_loaded(b) then
@@ -26,61 +23,60 @@ function M.refresh(ui_bufnr)
         
         -- Map state to a pretty label
         local state_label = state:sub(1,1):upper() .. state:sub(2);
-        local line = string.format(" [%-7s] %d: %s", state_label, b, short_name);
+        local label = string.format("[%s] %s", state_label, short_name);
         
-        table.insert(lines, line);
-        line_to_bufnr[#lines] = b;
+        table.insert(items, { label = label, bufnr = b, name = short_name });
       end
     end
   end
 
-  table.insert(lines, "");
-  table.insert(lines, " Actions: (a)active (r)read (i)ignore (q)quit");
-
-  vim.api.nvim_buf_set_lines(ui_bufnr, 0, -1, false, lines);
-  vim.api.nvim_set_option_value("modifiable", false, { buf = ui_bufnr });
-end
-
---- Open the buffer management UI in a floating window
-function M.open_ui()
-  local ui_bufnr = vim.api.nvim_create_buf(false, true);
-  vim.api.nvim_set_option_value("filetype", "aiBuffers", { buf = ui_bufnr });
-  vim.api.nvim_set_option_value("buftype", "nofile", { buf = ui_bufnr });
-
-  local function set_state_and_refresh(state)
-    local cursor = vim.api.nvim_win_get_cursor(0);
-    local target_buf = line_to_bufnr[cursor[1]];
-    if target_buf then
-      context.set_state(target_buf, state);
-      M.refresh(ui_bufnr);
-      vim.api.nvim_win_set_cursor(0, cursor);
-    end
+  if #items == 0 then
+    vim.notify("AI: No manageable buffers found.", vim.log.levels.WARN);
+    return;
   end
 
-  -- Define UI keybindings
-  local map_opts = { buffer = ui_bufnr, silent = true };
-  vim.keymap.set("n", "a", function() set_state_and_refresh("active") end, map_opts);
-  vim.keymap.set("n", "r", function() set_state_and_refresh("read") end, map_opts);
-  vim.keymap.set("n", "i", function() set_state_and_refresh("ignore") end, map_opts);
-  vim.keymap.set("n", "q", ":q<CR>", map_opts);
+  -- Sort items: Active first, then Read, then Name
+  table.sort(items, function(a, b)
+    local sa = context.get_state(a.bufnr);
+    local sb = context.get_state(b.bufnr);
+    if sa ~= sb then return sa < sb end -- alphabetical active < read
+    return a.name < b.name
+  end);
 
-  M.refresh(ui_bufnr);
+  local labels = {};
+  for _, item in ipairs(items) do table.insert(labels, item.label) end
 
-  -- Configure floating window
-  local width = math.min(80, vim.o.columns - 4);
-  local height = math.min(20, vim.o.lines - 4);
-  
-  vim.api.nvim_open_win(ui_bufnr, true, {
-    relative = "editor",
-    width = width,
-    height = height,
-    col = (vim.o.columns - width) / 2,
-    row = (vim.o.lines - height) / 2,
-    style = "minimal",
-    border = "rounded",
-    title = " AI Buffers ",
-    title_pos = "center",
-  });
+  vim.ui.select(labels, {
+    prompt = "AI Buffer Context (Manage):",
+  }, function(choice)
+    if choice then
+      -- Identify selected buffer
+      local selected = nil;
+      for _, item in ipairs(items) do
+        if item.label == choice then selected = item; break end
+      end
+      
+      if not selected then return end
+
+      -- Provide sub-menu for the selected buffer
+      local actions = { "Set Active", "Set Read-only", "Ignore (Remove)", "Wipeout Buffer", "Jump to Buffer" };
+      vim.ui.select(actions, {
+        prompt = string.format("Action for '%s':", selected.name),
+      }, function(action)
+        if action == "Set Active" then
+          context.set_state(selected.bufnr, "active");
+        elseif action == "Set Read-only" then
+          context.set_state(selected.bufnr, "read");
+        elseif action == "Ignore (Remove)" then
+          context.set_state(selected.bufnr, "ignore");
+        elseif action == "Wipeout Buffer" then
+          vim.api.nvim_buf_delete(selected.bufnr, { force = true });
+        elseif action == "Jump to Buffer" then
+          vim.api.nvim_set_current_buf(selected.bufnr);
+        end
+      end);
+    end
+  end);
 end
 
 function M.setup()

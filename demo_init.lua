@@ -1,6 +1,6 @@
 -- demo_init.lua for AI plugin
-local current_dir = vim.fn.getcwd();
-vim.opt.runtimepath:append(current_dir);
+local current_dir = vim.fn.fnamemodify(vim.fn.getcwd(), ":p");
+vim.opt.runtimepath:prepend(current_dir);
 
 -- Load AI with environment-aware config
 require("nzi").setup({
@@ -41,11 +41,28 @@ require("nzi").setup({
   }
 });
 
--- Keybindings for demo
-vim.keymap.set("n", "<leader>a", ":AI/toggle<CR>", { silent = true });
-vim.keymap.set("n", "<leader>c", ":AI/clear<CR>", { silent = true });
-vim.keymap.set("n", "<leader>s", ":AI/status<CR>", { silent = true });
+-- SUGGESTED WORKFLOW MAPPINGS
+-- Modal & Core
+vim.keymap.set("n", "<leader>aa", ":AI/toggle<CR>", { desc = "AI: Toggle Modal" })
+vim.keymap.set("n", "<leader>ax", ":AI/stop<CR>",   { desc = "AI: Abort Generation" })
+vim.keymap.set("n", "<leader>ay", ":AI/yank<CR>",   { desc = "AI: Yank Last Response" })
+vim.keymap.set("n", "<leader>ac", ":AI/clear<CR>",  { desc = "AI: Clear History" })
+vim.keymap.set("n", "<leader>au", ":AI/undo<CR>",   { desc = "AI: Undo Last Turn" })
 
-print("AI (nzi) Loaded! Use <leader>a to toggle the Model Stream.");
+-- Context Management
+vim.keymap.set("n", "<leader>aA", ":AI/active<CR>", { desc = "AI: Set Buffer Active" })
+vim.keymap.set("n", "<leader>aR", ":AI/read<CR>",   { desc = "AI: Set Buffer Read-only" })
+vim.keymap.set("n", "<leader>aI", ":AI/ignore<CR>", { desc = "AI: Ignore Buffer" })
+vim.keymap.set("n", "<leader>aS", ":AI/state<CR>",  { desc = "AI: View Buffer State" })
+vim.keymap.set("n", "<leader>at", ":AI/tree<CR>",   { desc = "AI: Context Tree (Active/Read)" })
+vim.keymap.set("n", "<leader>aT", ":AI/Tree<CR>",   { desc = "AI: Universe Tree (All Mapped)" })
+vim.keymap.set("n", "<leader>ab", ":AI/buffers<CR>",{ desc = "AI: Buffer Context Manager" })
+
+-- Model Management
+vim.keymap.set("n", "<leader>am", ":AI/model<CR>",  { desc = "AI: Model Menu" })
+vim.keymap.set("n", "<leader>a1", ":AI/model deepseek<CR>", { desc = "AI: Switch to DeepSeek" })
+vim.keymap.set("n", "<leader>a2", ":AI/model qwenzel<CR>",  { desc = "AI: Switch to Ollama" })
+
+print("AI (nzi) Loaded! Use <leader>aa to toggle the AI Modal.");
 print("Context filtered: Blank and unsaved buffers are now ignored.");
-print("Providers standardized: Using Ollama and OpenRouter for all models.");
+print("Universe: All git files are mapped via Tree-sitter skeletons.");
