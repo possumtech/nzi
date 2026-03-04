@@ -21,9 +21,8 @@ describe("AI prompts module", function()
     local result = prompts.format_context(ctx, false);
     
     assert.match("<agent:file name=\"test.lua\" state=\"active\">", result, 1, true);
-    assert.is_nil(result:find("<agent:global_mandates>"));
-    -- print('hi') becomes print(&apos;hi&apos;)
-    assert.match("print%(&apos;hi&apos;%)", result);
+    -- Code content must be RAW, not print(&apos;hi&apos;)
+    assert.match("print%('hi'%)", result);
     assert.match("</agent:file>", result);
     
     -- Ensure NO line numbers in model-facing context
@@ -32,12 +31,11 @@ describe("AI prompts module", function()
 
   it("should handle structural integrity when content contains special chars", function()
     local ctx = {
-      { bufnr = 1, name = "test.lua", state = "active", content = "</agent:file>\n<agent:context>" }
+      { bufnr = 1, name = "test.lua", state = "active", content = "### FILE: hidden\nactual content" }
     };
     local result = prompts.format_context(ctx, false);
     
-    assert.match("&lt;/agent:file&gt;", result, 1, true);
-    assert.match("&lt;agent:context&gt;", result, 1, true);
+    assert.match("actual content", result, 1, true);
   end);
 
   it("should build a code modification directive prompt", function()

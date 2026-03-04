@@ -2,12 +2,10 @@ local assert = require("luassert");
 local ai = require("nzi");
 local job = require("nzi.job");
 
-describe("AI job wrapper (Pure Lua)", function()
+describe("AI job wrapper (LiteLLM Bridge)", function()
   
   before_each(function()
     ai.setup({
-      api_base = "http://localhost:11434/v1",
-      api_key = "test-key",
       active_model = "default",
       models = {
         default = {
@@ -19,25 +17,24 @@ describe("AI job wrapper (Pure Lua)", function()
     });
   end);
 
-  it("should successfully parse OpenAI-compatible SSE chunks", function(done)
+  it("should successfully parse bridge output", function(done)
     -- This test verifies the parsing logic without network calls
-    local prompt = "Hello Mock";
+    local messages = {{ role = "user", content = "Hello Mock" }};
     
-    -- Mock the system call to simulate a curl response
+    -- Mock the system call to simulate a bridge response
     local original_system = vim.system;
     vim.system = function(cmd, opts, on_exit)
-      assert.are.equal("curl", cmd[1]);
+      assert.are.equal("python3", cmd[1]);
       
-      -- Simulate two chunks of SSE data
-      opts.stdout(nil, "data: {\"choices\":[{\"delta\":{\"content\":\"Hello\"}}]}\n");
-      opts.stdout(nil, "data: {\"choices\":[{\"delta\":{\"content\":\" World\"}}]}\n");
-      opts.stdout(nil, "data: [DONE]\n");
+      -- Bridge outputs raw JSON chunks (one per line)
+      opts.stdout(nil, "{\"choices\":[{\"delta\":{\"content\":\"Hello\"}}]}\n");
+      opts.stdout(nil, "{\"choices\":[{\"delta\":{\"content\":\" World\"}}]}\n");
       
-      on_exit({ code = 0, stdout = "ignored", stderr = "" });
-      return { stop = function() end };
+      on_exit({ code = 0, stdout = "", stderr = "" });
+      return { kill = function() end };
     end
 
-    job.run(prompt, function(success, result)
+    job.run(messages, function(success, result)
       assert.is_true(success);
       assert.are.equal("Hello World", result);
       
@@ -49,20 +46,19 @@ describe("AI job wrapper (Pure Lua)", function()
     end);
   end);
 
-  it("should handle reasoning/thought tokens in SSE stream", function(done)
+  it("should handle reasoning/thought tokens from bridge", function(done)
     local original_system = vim.system;
     vim.system = function(cmd, opts, on_exit)
-      -- DeepSeek/OpenAI O1 style reasoning
-      opts.stdout(nil, "data: {\"choices\":[{\"delta\":{\"reasoning_content\":\"I am thinking\"}}]}\n");
-      opts.stdout(nil, "data: {\"choices\":[{\"delta\":{\"content\":\"Final answer\"}}]}\n");
-      opts.stdout(nil, "data: [DONE]\n");
+      -- Bridge outputs raw JSON chunks
+      opts.stdout(nil, "{\"choices\":[{\"delta\":{\"reasoning_content\":\"I am thinking\"}}]}\n");
+      opts.stdout(nil, "{\"choices\":[{\"delta\":{\"content\":\"Final answer\"}}]}\n");
       
-      on_exit({ code = 0, stdout = "ignored", stderr = "" });
-      return { stop = function() end };
+      on_exit({ code = 0, stdout = "", stderr = "" });
+      return { kill = function() end };
     end
 
     local thoughts = "";
-    job.run("Think about it", function(success, result)
+    job.run({{role="user", content="Think"}}, function(success, result)
       assert.is_true(success);
       assert.are.equal("Final answer", result);
       assert.are.equal("I am thinking", thoughts);
@@ -70,20 +66,20 @@ describe("AI job wrapper (Pure Lua)", function()
       vim.system = original_system;
       done();
     end, function(chunk, type)
-      if type == "thought" then thoughts = thoughts .. chunk end
+      if type == "reasoning_content" then thoughts = thoughts .. chunk end
     end);
   end);
 
   it("should fail gracefully on non-zero exit code", function(done)
     local original_system = vim.system;
     vim.system = function(cmd, opts, on_exit)
-      on_exit({ code = 7, stdout = "", stderr = "Failed to connect" });
-      return { stop = function() end };
+      on_exit({ code = 1, stdout = "", stderr = "ModuleNotFoundError: No module named 'litellm'" });
+      return { kill = function() end };
     end
 
-    job.run("FAIL", function(success, result)
+    job.run({{role="user", content="FAIL"}}, function(success, result)
       assert.is_false(success);
-      assert.match("API failed with code 7", result);
+      assert.match("Dependency missing: LiteLLM not found", result);
       
       vim.system = original_system;
       done();

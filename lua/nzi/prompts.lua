@@ -4,8 +4,8 @@ local config = require("nzi.config");
 
 local M = {};
 
---- Escape special characters for XML safety
-local function xml_escape(text)
+--- Escape special characters for XML metadata safety
+function M.xml_escape(text)
   if not text then return ""; end
   return text:gsub("&", "&amp;")
              :gsub("<", "&lt;")
@@ -35,11 +35,11 @@ function M.build_system_prompt(prompts, model_alias)
     "* Focus exclusively on providing new information or applying requested changes.",
     "* Adhere strictly to the engineering standards provided below."
   };
-
+  
   if prompts.global then
     table.insert(parts, "\n### GLOBAL ENGINEERING STANDARDS\n" .. prompts.global);
   end
-
+  
   if prompts.project then
     table.insert(parts, "\n### PROJECT-SPECIFIC RULES\n" .. prompts.project);
   end
@@ -53,12 +53,13 @@ function M.format_context(ctx_list, include_lsp)
   table.sort(ctx_list, function(a, b) return a.name < b.name end);
 
   local parts = {};
-
+  
   -- 1. Open buffer contents
   for _, item in ipairs(ctx_list) do
     local short_name = vim.fn.fnamemodify(item.name, ":.")
+    -- XML standard tags are anchors, but code content must be RAW for LLM reasoning
     table.insert(parts, string.format("<agent:file name=\"%s\" state=\"%s\">\n%s\n</agent:file>", 
-      short_name, item.state, xml_escape(item.content)));
+      short_name, item.state, item.content));
   end
 
   -- 2. LSP info
@@ -66,7 +67,7 @@ function M.format_context(ctx_list, include_lsp)
     local lsp_info = lsp.get_symbol_definition();
     if lsp_info then
       table.insert(parts, string.format("<agent:lsp_definition uri=\"%s\" line=\"%d\">\n%s\n</agent:lsp_definition>", 
-        lsp_info.uri, lsp_info.line, xml_escape(lsp_info.content)));
+        lsp_info.uri, lsp_info.line, lsp_info.content));
     end
   end
 
@@ -80,8 +81,8 @@ function M.build_directive_prompt(directive, target_file, prompts, context_str)
   local history_msgs = history.get_as_messages();
   for _, m in ipairs(history_msgs) do table.insert(messages, m) end
 
-  local user_content = string.format("<agent:context>\n%s\n</agent:context>\n\n<agent:user>\nEditing file: %s\nInstruction: %s\n</agent:user>",
-    context_str, xml_escape(target_file), xml_escape(directive));
+  local user_content = string.format("<agent:context>\n%s\n</agent:context>\n\n<agent:project_directives>\n%s\n</agent:project_directives>\n\n<agent:user>\nEditing file: %s\nInstruction: %s\n</agent:user>",
+    context_str, prompts.tasks or "", M.xml_escape(target_file), M.xml_escape(directive));
 
   table.insert(messages, { role = "user", content = user_content });
   return messages;

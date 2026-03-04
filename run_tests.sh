@@ -55,6 +55,10 @@ if [[ -n "$OPENROUTER_API_KEY" ]]; then
     echo "Running OpenRouter E2E lifecycle test..."
     nvim --headless -i NONE --noplugin -u tests/init.lua \
         -l tests/e2e/lifecycle.lua
+    
+    echo "Running Mandatory Beef Test..."
+    nvim --headless -i NONE --noplugin -u tests/init.lua \
+        -l tests/e2e/beef_spec.lua
 fi
 
 echo "--- Tests Completed Successfully ---"

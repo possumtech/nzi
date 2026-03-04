@@ -15,9 +15,7 @@ describe("AI active model integration", function()
   local created_buffers = {};
 
   before_each(function()
-    require("nzi").setup({
-      modal = { show_context = false }
-    });
+    require("nzi").setup();
     require("nzi.history").clear();
     created_buffers = {};
   end);

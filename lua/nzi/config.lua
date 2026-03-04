@@ -12,24 +12,21 @@ M.defaults = {
   -- Pre-configured models with aliases
   models = {
     coder = {
-      model = "anthropic/claude-3.5-sonnet",
+      model = "qwen/qwen-2.5-coder-32b-instruct",
       api_base = "https://openrouter.ai/api/v1",
       api_key = vim.env.OPENROUTER_API_KEY,
-      role_preference = "system", 
+      role_preference = "developer", 
     },
-    local_coder = {
+    qwenzel = {
       model = "qwen2.5-coder:latest",
-      api_base = "http://192.168.1.17:11434/v1",
+      api_base = vim.env.NZI_TEST_LOCAL or "http://192.168.1.17:11434/v1",
       api_key = "ollama",
       role_preference = "developer",
-    },
-    default = {
-      model = "gpt-4-turbo",
-      api_base = "https://api.openai.com/v1",
-      api_key = vim.env.OPENAI_API_KEY,
-      role_preference = "system",
-    },
+    }
   },
+
+  -- Ecosystem settings
+  python_cmd = { "python3" }, -- Use {"uv", "run", "python"} or {"./.venv/bin/python"} if needed
 
   -- Advanced Model Options (OpenAI Standard)
   model_options = {
