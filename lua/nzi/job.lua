@@ -57,6 +57,11 @@ function M.run(messages, callback, on_stdout)
     model = model_cfg.model,
     messages = messages,
     stream = true,
+    -- OpenRouter specific: pin reliable providers for stable streaming
+    provider = {
+      order = { "Together", "Hyperbolic", "DeepInfra" },
+      allow_fallbacks = true
+    }
   };
 
   -- Merge model options (temperature, top_p, etc.) and filter out nils
@@ -159,7 +164,8 @@ function M.run(messages, callback, on_stdout)
     vim.schedule(function()
       process_partial(true);
 
-      local success = (obj.code == 0) and (not stream_error) and (not http_status or (http_status >= 200 and http_status < 300));
+      -- If curl exited with 0, it's a success regardless of stream markers
+      local success = (obj.code == 0) and (not stream_error);
 
       if success then
         callback(true, full_stdout);

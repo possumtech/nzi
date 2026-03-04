@@ -2,19 +2,7 @@
 local current_dir = vim.fn.getcwd()
 vim.opt.runtimepath:append(current_dir)
 
--- 1. Setup
-require("nzi").setup({
-  active_model = "coder",
-  models = {
-    coder = {
-      model = "qwen/qwen-2.5-coder-32b-instruct",
-      api_base = "https://openrouter.ai/api/v1",
-      api_key = os.getenv("OPENROUTER_API_KEY"),
-      role_preference = "developer",
-    }
-  }
-})
-
+-- 1. Use the already initialized environment from tests/init.lua
 local engine = require("nzi.engine")
 local modal = require("nzi.modal")
 local history = require("nzi.history")
@@ -32,11 +20,13 @@ engine.handle_question("What is the origin of \"Where is the beef?\"", false)
 
 -- Wait for completion or error (Fast 30s timeout)
 local success = vim.wait(30000, function()
-  return last_error ~= nil or (modal.timer == nil and #history.get_all() == 1)
-end, 200)
+  -- Check if history has been added
+  local h = require("nzi.history").get_all()
+  return last_error ~= nil or #h > 0
+end, 500)
 
--- Extra pause to ensure schedule tasks (like close_tag) run
-vim.wait(500, function() return false end)
+-- Final safety pause for all scheduled UI/History tasks
+vim.wait(1000, function() return false end)
 
 if not success and not last_error then
   print("\n[E2E FAILED] Interaction Timed Out.")
@@ -51,4 +41,4 @@ if #history.get_all() ~= 1 then
 end
 
 print("\n[E2E] LIFECYCLE TEST PASSED.")
-nvim.cmd("qa!")
+vim.cmd("qa!")

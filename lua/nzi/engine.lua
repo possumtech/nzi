@@ -43,9 +43,9 @@ function M.handle_question(content, include_lsp)
     table.insert(messages, msg);
   end
   
-  -- The final user message contains context, directives, and the question
-  local user_prompt = string.format("<agent:context>\n%s\n</agent:context>\n\n<agent:project_directives>\n%s\n</agent:project_directives>\n\n<agent:user>\n%s\n</agent:user>", 
-    context_str, prompt_parts.tasks or "", history.xml_escape(content));
+  -- The final user message contains context and the question
+  local user_prompt = string.format("<agent:context>\n%s\n</agent:context>\n\n<agent:user>\n%s\n</agent:user>", 
+    context_str, history.xml_escape(content));
   table.insert(messages, { role = "user", content = user_prompt });
   
   modal.open();

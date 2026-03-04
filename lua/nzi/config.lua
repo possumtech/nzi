@@ -12,11 +12,10 @@ M.defaults = {
   -- Pre-configured models with aliases
   models = {
     coder = {
-      model = "qwen/qwen-2.5-coder-32b-instruct",
+      model = "anthropic/claude-3.5-sonnet",
       api_base = "https://openrouter.ai/api/v1",
       api_key = vim.env.OPENROUTER_API_KEY,
-      -- O1/O3/4o class models prefer 'developer' in 2026
-      role_preference = "developer", 
+      role_preference = "system", 
     },
     local_coder = {
       model = "qwen2.5-coder:latest",
@@ -34,8 +33,10 @@ M.defaults = {
 
   -- Advanced Model Options (OpenAI Standard)
   model_options = {
+    temperature = 0.7,
+    top_p = 0.8,
+    max_tokens = 4096,
     stream = true,
-    -- penalties, top_p, and max_tokens left as nil to use model defaults
   },
   
   -- Modal window configuration

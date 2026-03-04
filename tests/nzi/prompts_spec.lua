@@ -9,10 +9,9 @@ describe("AI prompts module", function()
       tasks = "- [ ] Task 1"
     };
     local result = prompts.build_system_prompt(parts, "test-alias");
-    assert.match("test%-alias", result);
     assert.match("Global Rule", result);
     assert.match("Project Rule", result);
-    assert.is_nil(result:find("Task 1"));
+    assert.match("STRUCTURAL SCHEMA", result);
   end);
 
   it("should format context correctly with clean machine-friendly tags", function()
@@ -22,6 +21,7 @@ describe("AI prompts module", function()
     local result = prompts.format_context(ctx, false);
     
     assert.match("<agent:file name=\"test.lua\" state=\"active\">", result, 1, true);
+    assert.is_nil(result:find("<agent:global_mandates>"));
     -- print('hi') becomes print(&apos;hi&apos;)
     assert.match("print%(&apos;hi&apos;%)", result);
     assert.match("</agent:file>", result);

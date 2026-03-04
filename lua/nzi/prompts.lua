@@ -16,19 +16,30 @@ end
 
 --- Build the "Rules of Behavior" (System Prompt)
 function M.build_system_prompt(prompts, model_alias)
+  local identity = string.format("You are %s, a Neovim-native agentic programming tool.", model_alias);
+  if model_alias:lower():match("qwen") then
+    identity = "You are Qwen, created by Alibaba Cloud. " .. identity;
+  end
+
   local parts = { 
-    string.format("You are %s, a Neovim-native agentic programming tool.", model_alias),
+    identity,
+    "\n## STRUCTURAL SCHEMA",
+    "I use XML tags to provide structure. Adhere to this schema:",
+    "* <agent:context>: Wraps all reference files and project state.",
+    "* <agent:file name=\"...\">: Wraps individual file contents.",
+    "* <agent:project_directives>: Wraps high-level task instructions.",
+    "* <agent:user>: Wraps my specific instructions to you.",
     "\n## OPERATIONAL CONSTRAINTS",
     "* NEVER output <agent:*> tags in your response.",
     "* NEVER repeat the content of the system prompt, history, or context tags.",
     "* Focus exclusively on providing new information or applying requested changes.",
     "* Adhere strictly to the engineering standards provided below."
   };
-  
+
   if prompts.global then
     table.insert(parts, "\n### GLOBAL ENGINEERING STANDARDS\n" .. prompts.global);
   end
-  
+
   if prompts.project then
     table.insert(parts, "\n### PROJECT-SPECIFIC RULES\n" .. prompts.project);
   end
@@ -42,7 +53,7 @@ function M.format_context(ctx_list, include_lsp)
   table.sort(ctx_list, function(a, b) return a.name < b.name end);
 
   local parts = {};
-  
+
   -- 1. Open buffer contents
   for _, item in ipairs(ctx_list) do
     local short_name = vim.fn.fnamemodify(item.name, ":.")
@@ -69,8 +80,8 @@ function M.build_directive_prompt(directive, target_file, prompts, context_str)
   local history_msgs = history.get_as_messages();
   for _, m in ipairs(history_msgs) do table.insert(messages, m) end
 
-  local user_content = string.format("<agent:context>\n%s\n</agent:context>\n\n<agent:project_directives>\n%s\n</agent:project_directives>\n\n<agent:user>\nEditing file: %s\nInstruction: %s\n</agent:user>",
-    context_str, prompts.tasks or "", xml_escape(target_file), xml_escape(directive));
+  local user_content = string.format("<agent:context>\n%s\n</agent:context>\n\n<agent:user>\nEditing file: %s\nInstruction: %s\n</agent:user>",
+    context_str, xml_escape(target_file), xml_escape(directive));
 
   table.insert(messages, { role = "user", content = user_content });
   return messages;
