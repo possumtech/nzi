@@ -55,9 +55,31 @@ With LiteLLM integration, nzi supports nearly all of the models, including your 
 
 ## Installation
 
+Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 
+```lua
+{
+  "your-username/nzi",
+  dependencies = {
+    "nvim-lua/plenary.nvim",   -- Core async and job management
+    "tpope/vim-fugitive",     -- Required for the diff/merge workflow
+    "nvim-treesitter/nvim-treesitter", -- Highly recommended for directive parsing
+  },
+  config = function()
+    require("nzi").setup({
+      -- your configuration here
+    })
+  end,
+}
+```
 
-## Getting Started
+## Prerequisites
+
+- **Neovim 0.10+** (Recommended for `vim.system`)
+- **LiteLLM**: Ensure `litellm` is installed and available in your shell.
+  ```bash
+  pip install litellm
+  ```
 
 
 ## Contributing
