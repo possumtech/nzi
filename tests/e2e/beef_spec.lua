@@ -6,7 +6,7 @@ local history = require("nzi.history")
 local last_error = nil
 local original_write = modal.write
 modal.write = function(text, type, append)
-  if type == "error" then last_error = text end
+  if type == "error" and not text:match("^Warning") then last_error = text end
   original_write(text, type, append)
 end
 

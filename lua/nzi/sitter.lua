@@ -25,24 +25,25 @@ M.queries = {
 
 --- Extract a skeleton (symbols) from a file path
 --- @param path string: Relative path to the file
---- @return string: A concise summary of symbols
+--- @return string | nil: The symbol skeleton
+--- @return string | nil: Error message for user feedback
 function M.get_skeleton(path)
   local filetype = vim.filetype.match({ filename = path })
   local query_str = M.queries[filetype]
-  if not query_str then return "[No metadata available]" end
+  if not query_str then return nil, nil end
 
   -- Load file content into a temporary hidden buffer
-  local lines = vim.fn.readfile(path)
-  if #lines == 0 then return "[Empty File]" end
+  local ok_read, lines = pcall(vim.fn.readfile, path)
+  if not ok_read or #lines == 0 then return nil, nil end
 
   local bufnr = vim.api.nvim_create_buf(false, true)
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
   
   local lang = vim.treesitter.language.get_lang(filetype) or filetype
-  local ok, parser = pcall(vim.treesitter.get_parser, bufnr, lang)
-  if not ok or not parser then
+  local ok_parser, parser = pcall(vim.treesitter.get_parser, bufnr, lang)
+  if not ok_parser or not parser then
     vim.api.nvim_buf_delete(bufnr, { force = true })
-    return "[Tree-sitter parser not found]"
+    return nil, string.format("Missing Tree-sitter parser for '%s'", filetype)
   end
 
   local tree = parser:parse()[1]
@@ -59,8 +60,8 @@ function M.get_skeleton(path)
 
   vim.api.nvim_buf_delete(bufnr, { force = true })
 
-  if #symbols == 0 then return "[No symbols found]" end
-  return "Symbols: " .. table.concat(symbols, ", ")
+  if #symbols == 0 then return nil, nil end
+  return "Symbols: " .. table.concat(symbols, ", "), nil
 end
 
 return M

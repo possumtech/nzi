@@ -50,12 +50,20 @@ function M.format_context(ctx_list, include_lsp)
 
   local parts = {};
   
-  -- 1. Open buffer contents
+  -- 1. Universe Files (Open buffers and mapped project files)
   for _, item in ipairs(ctx_list) do
     local short_name = vim.fn.fnamemodify(item.name, ":.")
-    -- XML standard tags are anchors, but code content must be RAW for LLM reasoning
-    table.insert(parts, string.format("<agent:file name=\"%s\" state=\"%s\">\n%s\n</agent:file>", 
-      short_name, item.state, item.content));
+    local size_str = string.format("%d bytes", item.size or 0)
+    
+    if item.content and item.content ~= "" then
+      -- Full content (active/read) or Skeleton (map)
+      table.insert(parts, string.format("<agent:file name=\"%s\" state=\"%s\" size=\"%s\">\n%s\n</agent:file>", 
+        short_name, item.state, size_str, item.content));
+    else
+      -- Collapsed (mapped file with no metadata)
+      table.insert(parts, string.format("<agent:file name=\"%s\" state=\"%s\" size=\"%s\" />", 
+        short_name, item.state, size_str));
+    end
   end
 
   -- 2. LSP info
@@ -114,7 +122,7 @@ function M.build_messages(content, type, target_file, include_lsp)
   
   table.insert(messages, { role = "user", content = final_user_content });
   
-  return messages, system_prompt, context_str;
+  return messages, system_prompt, context_str, ctx_list;
 end
 
 --- Gather prompt parts from AGENTS.md and .ai.md

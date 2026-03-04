@@ -32,13 +32,21 @@ local function get_or_create_buffer()
   return M.bufnr;
 end
 
+local function get_title()
+  local config = require("nzi.config");
+  local model_alias = (config.options.active_model or "AI"):upper();
+  local branch = vim.fn.system("git branch --show-current 2>/dev/null"):gsub("\n", "");
+  if branch ~= "" then
+    return string.format(" %s :: %s ", model_alias, branch);
+  end
+  return string.format(" %s ", model_alias);
+end
+
 function M.open()
   local bufnr = get_or_create_buffer();
   if M.winid and vim.api.nvim_win_is_valid(M.winid) then return; end
 
-  local config = require("nzi.config");
-  local model_alias = config.options.active_model or "AI";
-  local title = " " .. model_alias:upper() .. " " ;
+  local title = get_title();
 
   M.winid = vim.api.nvim_open_win(bufnr, false, {
     relative = "editor",
@@ -56,9 +64,7 @@ function M.open()
 end
 
 function M.set_thinking(active)
-  local config = require("nzi.config");
-  local model_alias = config.options.active_model or "AI";
-  local default_title = " " .. model_alias:upper() .. " ";
+  local default_title = get_title();
 
   if active then
     if M.timer then return end

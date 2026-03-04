@@ -14,7 +14,7 @@ function M.run(instruction, bufnr, include_lsp)
   local config = require("nzi.config");
   local target_file = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":.");
   
-  local messages, system_prompt, context_str = prompts.build_messages(instruction, "directive", target_file, include_lsp);
+  local messages, system_prompt, context_str, ctx_list = prompts.build_messages(instruction, "directive", target_file, include_lsp);
   local hist_str = require("nzi.history").format();
   
   -- Use the modal for status updates
@@ -27,6 +27,17 @@ function M.run(instruction, bufnr, include_lsp)
     end
     modal.write(context_str, "context", false);
   end
+
+  -- Summary for user feedback
+  local counts = { active = 0, read = 0, map = 0 };
+  local warnings = {};
+  for _, item in ipairs(ctx_list) do
+    counts[item.state] = (counts[item.state] or 0) + 1;
+    if item.err then table.insert(warnings, string.format("Warning (%s): %s", item.name, item.err)) end
+  end
+  local summary = string.format("Context: %d active, %d read, %d mapped.", counts.active, counts.read, counts.map);
+  modal.write(summary, "system", false);
+  for _, w in ipairs(warnings) do modal.write(w, "error", false) end
 
   modal.write(instruction .. " (File: " .. target_file .. ")", "directive", config.options.modal.show_context);
   

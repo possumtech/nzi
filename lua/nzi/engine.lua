@@ -21,7 +21,7 @@ function M.handle_question(content, include_lsp)
     M.current_job = nil;
   end
 
-  local messages, system_prompt, context_str = prompts.build_messages(content, "question", nil, include_lsp);
+  local messages, system_prompt, context_str, ctx_list = prompts.build_messages(content, "question", nil, include_lsp);
   
   modal.open();
   
@@ -37,6 +37,17 @@ function M.handle_question(content, include_lsp)
     
     modal.write(context_str, "context", false);
   end
+
+  -- Summary for user feedback
+  local counts = { active = 0, read = 0, map = 0 };
+  local warnings = {};
+  for _, item in ipairs(ctx_list) do
+    counts[item.state] = (counts[item.state] or 0) + 1;
+    if item.err then table.insert(warnings, string.format("Warning (%s): %s", item.name, item.err)) end
+  end
+  local summary = string.format("Context: %d active, %d read, %d mapped.", counts.active, counts.read, counts.map);
+  modal.write(summary, "system", false);
+  for _, w in ipairs(warnings) do modal.write(w, "error", false) end
   
   -- Display the final user question
   modal.write(content, "user", false);

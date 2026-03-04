@@ -47,6 +47,10 @@ end
 --- Get the "Universe" of files in the current project
 --- @return table: List of relative paths in the git repo
 function M.get_universe()
+  -- Check if we are in a git repo first
+  local is_git = vim.fn.system("git rev-parse --is-inside-work-tree 2>/dev/null"):match("true");
+  if not is_git then return {}; end
+
   -- Get all files known to git (committed, staged, and untracked)
   local files = vim.fn.systemlist("git ls-files --cached --others --exclude-standard 2>/dev/null");
   if vim.v.shell_error ~= 0 then return {}; end
@@ -100,6 +104,7 @@ function M.gather()
           name = name,
           state = state,
           content = content,
+          size = #content,
         });
       end
       ::continue::
@@ -111,11 +116,14 @@ function M.gather()
     if not handled_files[path] then
       local filetype = vim.filetype.match({ filename = path });
       if not M.should_ignore(path, filetype or "") then
+        local content, err = sitter.get_skeleton(path);
         table.insert(context, {
           bufnr = nil, -- Not in an open buffer
           name = path,
           state = "map",
-          content = sitter.get_skeleton(path),
+          content = content,
+          err = err,
+          size = vim.fn.getfsize(path),
         });
       end
     end
