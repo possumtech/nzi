@@ -6,4 +6,5 @@ TESTS_DIR = tests/nzi
 
 test:
 	@nvim --headless --noplugin -u tests/init.lua \
-		-c "PlenaryBustedDirectory $(TESTS_DIR) { progressive = true }"
+		-c "lua require('plenary.test_harness').test_directory('$(TESTS_DIR)', { progressive = true, halt_on_error = true })" \
+		-c "qa!"

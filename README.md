@@ -70,7 +70,27 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
       -- your configuration here
     })
   end,
+  keys = {
+    { "<leader>an", ":Nzi<CR>", mode = { "n", "v" }, desc = "nzi: Execute Directive" },
+    { "<leader>at", ":NziToggle<CR>", desc = "nzi: Toggle Modal" },
+    { "<leader>ab", ":NziBuffers<CR>", desc = "nzi: Manage Buffers" },
+    { "<leader>aq", ":NziQuestion ", desc = "nzi: Ask Question" },
+  },
 }
+```
+
+## Recommended Keymaps
+
+nzi does not set any global keybindings by default. We recommend the following:
+
+```lua
+-- Normal Mode
+vim.keymap.set("n", "<leader>an", ":Nzi<CR>", { desc = "nzi: Run Directive" })
+vim.keymap.set("n", "<leader>at", ":NziToggle<CR>", { desc = "nzi: Toggle Modal" })
+vim.keymap.set("n", "<leader>ab", ":NziBuffers<CR>", { desc = "nzi: Manage Context" })
+
+-- Visual Mode
+vim.keymap.set("v", "<leader>an", ":Nzi<CR>", { desc = "nzi: Run on Selection" })
 ```
 
 ## Prerequisites

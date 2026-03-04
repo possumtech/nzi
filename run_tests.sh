@@ -3,7 +3,8 @@
 # Exit on error
 set -e
 
-echo "--- Starting nzi Test Suite ---"
+TIMEOUT_VAL="60s"
+echo "--- Starting nzi Test Suite (Timeout: $TIMEOUT_VAL) ---"
 
 # Check for Neovim
 if ! command -v nvim &> /dev/null; then
@@ -15,10 +16,15 @@ fi
 if ! command -v git &> /dev/null; then
     echo "Error: git not found in PATH."
     exit 1
-fi
+    fi
 
-# Run the tests via Makefile
+# Run the tests via Makefile with a timeout
 echo "Running tests..."
-make test
+if ! command -v timeout &> /dev/null; then
+    echo "Warning: 'timeout' command not found. Running without timeout."
+    make test
+else
+    timeout --foreground "$TIMEOUT_VAL" make test
+fi
 
 echo "--- Tests Completed Successfully ---"
