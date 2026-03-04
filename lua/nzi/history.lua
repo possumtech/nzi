@@ -25,7 +25,7 @@ local function add_line_numbers(text)
 end
 
 --- Add a completed turn to history
---- @param type string: 'question' or 'directive'
+--- @param type string: 'question', 'directive', or 'shell'
 --- @param user_content string
 --- @param assistant_content string
 function M.add(type, user_content, assistant_content)

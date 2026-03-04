@@ -4,6 +4,7 @@ M.bufnr = nil;
 M.winid = nil;
 M.timer = nil;
 M.last_type = nil;
+M.pending_cleanup = nil;
 M.ns_id = vim.api.nvim_create_namespace("nzi_modal");
 
 -- Precise background colors for categorization
@@ -132,9 +133,22 @@ local function highlight_lines(bufnr, start_line, end_line, hl_group)
   end
 end
 
+--- Cancel any outstanding interactive prompt (e.g., shell y/n)
+function M.cancel_pending_prompt()
+  if M.pending_cleanup then
+    M.pending_cleanup();
+    M.pending_cleanup = nil;
+  end
+end
+
 --- Write text to the modal buffer
 function M.write(text, type, append)
   local bufnr = get_or_create_buffer();
+
+  -- If this is a new interaction block, cancel any pending prompts from the previous one
+  if not append then
+    M.cancel_pending_prompt();
+  end
 
   -- Headers for different sections
   local emoji_map = {
