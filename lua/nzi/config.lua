@@ -3,7 +3,7 @@ local M = {};
 --- Default configuration options for nzi
 M.defaults = {
   -- The currently active model alias (selected via environment)
-  active_model = vim.env.NZI_MODEL or "coder",
+  active_model = vim.env.NZI_DEFAULT_MODEL or "coder",
 
   -- OpenRouter/OpenAI identification
   referer = vim.env.NZI_REFERER or "https://github.com/possumtech/nzi",
@@ -12,14 +12,15 @@ M.defaults = {
   -- Pre-configured models with aliases
   models = {
     coder = {
-      model = vim.env.NZI_CODER_MODEL or "openrouter/qwen/qwen-2.5-coder-32b-instruct",
-      api_base = vim.env.NZI_CODER_BASE or "https://openrouter.ai/api/v1",
+      provider = "openrouter",
+      model = "qwen/qwen-2.5-coder-32b-instruct",
+      api_base = "https://openrouter.ai/api/v1",
       api_key = vim.env.OPENROUTER_API_KEY,
       role_preference = "developer", 
     },
-    local_coder = {
-      model = vim.env.NZI_LOCAL_MODEL or "qwen2.5-coder:latest",
-      api_base = vim.env.NZI_LOCAL_BASE or "http://localhost:11434/v1",
+    qwenzel = {
+      model = "qwenzel",
+      api_base = "http://localhost:11434/v1",
       api_key = "ollama",
       role_preference = "developer",
     }

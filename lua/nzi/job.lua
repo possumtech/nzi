@@ -44,8 +44,15 @@ end
 --- @param on_stdout function | nil: Called with (chunk, type) for streaming
 --- @return table | nil: The job handle
 function M.run(messages, callback, on_stdout)
+  local model_alias = config.options.active_model or "coder";
   local model_cfg = config.get_active_model();
   local opts = config.options;
+
+  -- Construct final model string (provider/model if provider exists)
+  local model_name = model_cfg.model;
+  if model_cfg.provider then
+    model_name = model_cfg.provider .. "/" .. model_name;
+  end
 
   -- Ensure messages is an array of objects
   if type(messages) == "string" then
@@ -54,7 +61,8 @@ function M.run(messages, callback, on_stdout)
 
   -- 1. Prepare Request Payload for the Bridge
   local payload = {
-    model = model_cfg.model,
+    model = model_name,
+    alias = model_alias, -- The UI name of the model
     messages = messages,
     api_base = model_cfg.api_base,
     api_key = model_cfg.api_key,

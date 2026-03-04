@@ -37,6 +37,7 @@ def main():
         sys.exit(1)
 
     model = request.get("model")
+    alias = request.get("alias", "unknown")
     messages = request.get("messages")
     api_base = request.get("api_base")
     api_key = request.get("api_key")
@@ -49,10 +50,16 @@ def main():
     # Ensure stream is True for the bridge
     options.pop("stream", None)
 
-    # Aider-inspired additions
+    # Advanced options
     extra_body = request.get("extra_body", {})
     extra_headers = request.get("extra_headers", {})
     
+    # Aider-inspired metadata mapping: pass the UI alias to the provider
+    if "X-Title" not in extra_headers:
+        extra_headers["X-Title"] = f"nzi: {alias}"
+    if "X-Description" not in extra_headers:
+        extra_headers["X-Description"] = f"Neovim-Native Agentic Interface (nzi) using alias: {alias}"
+
     # LiteLLM configuration
     litellm.drop_params = True 
     
