@@ -11,7 +11,7 @@ function M.refresh(ui_bufnr)
   vim.api.nvim_set_option_value("modifiable", true, { buf = ui_bufnr });
   
   local buffers = vim.api.nvim_list_bufs();
-  local lines = { " nzi Buffer Context Manager", " ---------------------------", "" };
+  local lines = { " AI Buffer Context Manager", " ---------------------------", "" };
   line_to_bufnr = {};
 
   for _, b in ipairs(buffers) do
@@ -42,9 +42,9 @@ function M.refresh(ui_bufnr)
 end
 
 --- Open the buffer management UI in a floating window
-function M.open()
+function M.open_ui()
   local ui_bufnr = vim.api.nvim_create_buf(false, true);
-  vim.api.nvim_set_option_value("filetype", "nziBuffers", { buf = ui_bufnr });
+  vim.api.nvim_set_option_value("filetype", "aiBuffers", { buf = ui_bufnr });
   vim.api.nvim_set_option_value("buftype", "nofile", { buf = ui_bufnr });
 
   local function set_state_and_refresh(state)
@@ -78,9 +78,13 @@ function M.open()
     row = (vim.o.lines - height) / 2,
     style = "minimal",
     border = "rounded",
-    title = " nzi Buffers ",
+    title = " AI Buffers ",
     title_pos = "center",
   });
+end
+
+function M.setup()
+    -- Placeholder for future setup logic
 end
 
 return M;

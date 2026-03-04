@@ -1,5 +1,3 @@
-local status = require("nzi.status");
-
 local M = {};
 
 --- Open a vertical diff split between the current buffer and new content
@@ -20,7 +18,7 @@ function M.open_diff(bufnr, new_content)
   
   vim.api.nvim_buf_set_lines(temp_buf, 0, -1, false, lines);
   vim.api.nvim_set_option_value("filetype", ft, { buf = temp_buf });
-  vim.api.nvim_buf_set_name(temp_buf, original_name .. " (nzi-suggestion)");
+  vim.api.nvim_buf_set_name(temp_buf, original_name .. " (AI-suggestion)");
   
   -- Focus the original buffer and start the diff
   vim.api.nvim_set_current_buf(bufnr);
@@ -31,20 +29,10 @@ function M.open_diff(bufnr, new_content)
   vim.api.nvim_set_current_buf(temp_buf);
   vim.cmd("diffthis");
   
-  -- Track the active diff
-  status.inc();
-  vim.api.nvim_create_autocmd("BufDelete", {
-    buffer = temp_buf,
-    callback = function()
-      status.dec();
-    end,
-    once = true,
-  });
-
   -- Keybinding to close the diff view (just closes the temp window)
   vim.keymap.set("n", "q", ":q<CR>", { buffer = temp_buf, silent = true });
   
-  vim.notify("nzi: Diff opened. Use 'do' (diff obtain) or 'dp' (diff put) to merge changes.", vim.log.levels.INFO);
+  vim.notify("AI: Diff opened. Use 'do' (diff obtain) or 'dp' (diff put) to merge changes.", vim.log.levels.INFO);
 end
 
 return M;

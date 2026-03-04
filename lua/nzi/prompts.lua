@@ -1,5 +1,6 @@
 local lsp = require("nzi.lsp");
 local history = require("nzi.history");
+local config = require("nzi.config");
 
 local M = {};
 
@@ -52,10 +53,10 @@ end
 
 --- Combine gathered prompts into a single system prompt string
 --- @param prompts table: The result of M.gather()
---- @param model_name string: The name/alias of the model
+--- @param model_alias string: The name/alias of the model
 --- @return string
-function M.build_system_prompt(prompts, model_name)
-  local parts = { string.format("You are %s, a Neovim-native agentic programming tool.", model_name) };
+function M.build_system_prompt(prompts, model_alias)
+  local parts = { string.format("You are %s, a Neovim-native agentic programming tool.", model_alias) };
   
   if prompts.global then
     table.insert(parts, "\n### GLOBAL ENGINEERING STANDARDS\n" .. prompts.global);
@@ -123,8 +124,8 @@ end
 --- @param context_str string: Formatted context from format_context()
 --- @return string
 function M.build_directive_prompt(directive, target_file, prompts, context_str)
-  local model_name = require("nzi.config").options.default_model;
-  local parts = { M.build_system_prompt(prompts, model_name) };
+  local model_alias = config.options.active_model or "AI";
+  local parts = { M.build_system_prompt(prompts, model_alias) };
   
   -- 1. Conversational History (Stable if name-sorted)
   local hist_str = history.format();

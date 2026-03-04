@@ -1,14 +1,21 @@
 local assert = require("luassert");
-local nzi = require("nzi");
+local ai = require("nzi");
 local job = require("nzi.job");
 
-describe("nzi job wrapper (Pure Lua)", function()
+describe("AI job wrapper (Pure Lua)", function()
   
   before_each(function()
-    nzi.setup({
+    ai.setup({
       api_base = "http://localhost:11434/v1",
       api_key = "test-key",
-      default_model = "test-model",
+      active_model = "default",
+      models = {
+        default = {
+          model = "test-model",
+          api_base = "http://localhost:11434/v1",
+          api_key = "test-key",
+        }
+      }
     });
   end);
 

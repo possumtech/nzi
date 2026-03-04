@@ -12,24 +12,29 @@ local M = {};
 --- @param include_lsp boolean | nil
 function M.run(instruction, bufnr, include_lsp)
   local config = require("nzi.config");
-  local model_name = config.options.default_model;
+  local model_cfg = config.get_active_model();
+  local model_alias = config.options.active_model or "AI";
   local target_file = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":.");
   local ctx_list = context.gather();
   local prompt_parts = prompts.gather();
   
-  local system_prompt = prompts.build_system_prompt(prompt_parts, model_name);
+  local system_prompt = prompts.build_system_prompt(prompt_parts, model_alias);
   local context_str = prompts.format_context(ctx_list, include_lsp, prompt_parts.tasks);
   local full_prompt = prompts.build_directive_prompt(instruction, target_file, prompt_parts, context_str);
   local hist_str = require("nzi.history").format();
   
   -- Use the modal for status updates
   modal.open();
-  modal.write(system_prompt .. "\n", "system", false);
-  if hist_str ~= "" then
-    modal.write(hist_str .. "\n", "system", false);
+  
+  if config.options.modal.show_context then
+    modal.write(system_prompt, "system", false);
+    if hist_str ~= "" then
+      modal.write(hist_str, "history", false);
+    end
+    modal.write(context_str, "context", false);
   end
-  modal.write(context_str .. "\n", "context", false);
-  modal.write(instruction .. " (File: " .. target_file .. ")\n", "directive", false);
+
+  modal.write(instruction .. " (File: " .. target_file .. ")", "directive", config.options.modal.show_context);
   
   modal.set_thinking(true);
   job.run(full_prompt, function(success, result)

@@ -1,21 +1,42 @@
--- Simple init for local development
+-- demo_init.lua for AI plugin
 local current_dir = vim.fn.getcwd();
 vim.opt.runtimepath:append(current_dir);
 
--- Ensure plenary is available
-local plenary_path = "/tmp/plenary.nvim";
-if vim.fn.isdirectory(plenary_path) == 0 then
-  vim.fn.system({ "git", "clone", "--depth", "1", "https://github.com/nvim-lua/plenary.nvim", plenary_path });
-end
-vim.opt.runtimepath:append(plenary_path);
-
--- Load nzi with environment-aware config
+-- Load AI with environment-aware config
 require("nzi").setup({
-  default_model = os.getenv("NZI_DEFAULT_MODEL") or "gpt-4-turbo",
-  api_base = os.getenv("NZI_TEST_LOCAL"),
+  active_model = "qwenzel",
+  models = {
+    -- Primary Model (Local)
+    qwenzel = {
+      model = "qwenzel:latest",
+      api_base = os.getenv("NZI_TEST_LOCAL") or "http://192.168.1.17:11434/v1",
+      api_key = "ollama",
+    },
+    
+    -- OpenRouter Aliases (Standardized)
+    min = { model = "minimax/minimax-01", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
+    ccp = { model = "deepseek/deepseek-chat", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
+    ds = { model = "deepseek/deepseek-chat", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
+    r1 = { model = "deepseek/deepseek-r1", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
+    opus = { model = "anthropic/claude-3-opus", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
+    o1 = { model = "openai/o1-preview", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
+    ibm = { model = "ibm/granite-3.0-8b-instruct", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
+    coder = { model = "qwen/qwen-2.5-coder-32b-instruct", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
+    mistral = { model = "mistralai/mistral-large-2411", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
+    nova = { model = "amazon/nova-pro-v1", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
+    meta = { model = "meta-llama/llama-3.3-70b-instruct", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
+    search = { model = "openai/gpt-4o-2024-11-20", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
+  },
+  modal = {
+    show_context = true,
+  }
 });
 
--- QoL Mapping
-vim.keymap.set("n", "<leader>a", ":NziToggle<CR>", { silent = true });
+-- Keybindings for demo
+vim.keymap.set("n", "<leader>a", ":AI/toggle<CR>", { silent = true });
+vim.keymap.set("n", "<leader>c", ":AI/clear<CR>", { silent = true });
+vim.keymap.set("n", "<leader>s", ":AI/status<CR>", { silent = true });
 
-print("nzi Loaded! Use <leader>a to toggle the Model Stream.");
+print("AI (nzi) Loaded! Use <leader>a to toggle the Model Stream.");
+print("Context refined: Named whitespace buffers allowed; unnamed ignored.");
+print("Directives: Unified with questions until further notice.");

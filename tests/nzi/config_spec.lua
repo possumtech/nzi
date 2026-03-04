@@ -2,7 +2,7 @@ local assert = require("luassert");
 local nzi = require("nzi");
 local config = require("nzi.config");
 
-describe("nzi configuration", function()
+describe("AI configuration", function()
   it("should allow user overrides via setup", function()
     nzi.setup({
       model_cmd = { "custom-python", "script.py" },

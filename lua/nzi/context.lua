@@ -56,6 +56,9 @@ function M.gather()
       local state = M.get_state(bufnr);
 
       if state ~= "ignore" and not M.should_ignore(name, filetype) then
+        -- Skip unnamed/unsaved scratch buffers
+        if name == "" then goto continue end
+
         local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false);
         local content = table.concat(lines, "\n");
         
@@ -66,6 +69,7 @@ function M.gather()
           content = content,
         });
       end
+      ::continue::
     end
   end
 

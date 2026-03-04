@@ -1,7 +1,7 @@
 local assert = require("luassert");
 local history = require("nzi.history");
 
-describe("nzi history module", function()
+describe("AI history module", function()
   before_each(function()
     history.clear();
   end);

@@ -1,26 +1,22 @@
 local M = {};
 
---- Parse a single line for nzi directives
---- @param line string
---- @return string | nil: The type of directive ('directive', 'question', 'shell', 'command')
---- @return string | nil: The content of the directive
+--- Parse a single line for AI directives
+--- @param line string: The raw line text
+--- @return string | nil: The type of directive (shell, question, directive, command)
+--- @return string | nil: The instruction content
 function M.parse_line(line)
   local patterns = {
-    directive = "nzi:",
-    question = "nzi%?",
-    shell = "nzi!",
-    command = "nzi/"
+    directive = "ai:",
+    question = "ai%?",
+    shell = "ai!",
+    command = "ai/"
   };
 
   for type, prefix in pairs(patterns) do
-    -- Match the prefix and everything after it
-    local content = line:match(prefix .. "%s*(.*)");
-    if content then
-      -- Clean up trailing comment markers (e.g., ' */' in C-style languages)
-      content = content:gsub("%s*%*/%s*$", "");
-      -- Clean up trailing markdown markers if any
-      content = content:gsub("%s*-->%s*$", "");
-      
+    local match = line:match("^.*" .. prefix .. "%s*(.*)$");
+    if match then
+      -- Clean up any trailing comment tags (e.g., -->, */, #])
+      local content = match:gsub("%s*[-]*>$", ""):gsub("%s*%*/$", ""):gsub("%s*#]$", "");
       return type, content;
     end
   end
@@ -28,11 +24,11 @@ function M.parse_line(line)
   return nil, nil;
 end
 
---- Find the first nzi directive in a range of lines
---- @param lines table: List of strings
---- @return number | nil: Line index (1-based)
---- @return string | nil: Type
---- @return string | nil: Content
+--- Find the first AI directive in a range of lines
+--- @param lines table: Array of strings
+--- @return number | nil: The index of the line (1-based)
+--- @return string | nil: The type of directive
+--- @return string | nil: The instruction content
 function M.find_in_lines(lines)
   for i, line in ipairs(lines) do
     local type, content = M.parse_line(line);

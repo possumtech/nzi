@@ -2,43 +2,67 @@ local M = {};
 
 --- Default configuration options for nzi
 M.defaults = {
-  -- The default model to use
-  default_model = "gpt-4-turbo",
-  
-  -- The API base URL (Standard OpenAI endpoint)
-  api_base = "https://api.openai.com/v1",
-  
-  -- API Key if needed (defaults to environment variable)
-  api_key = vim.env.OPENAI_API_KEY,
+  -- The currently active model alias
+  active_model = "qwenzel",
+
+  -- Pre-configured models with aliases
+  models = {
+    qwenzel = {
+      model = "qwenzel:latest",
+      api_base = "http://localhost:11434/v1",
+      api_key = "ollama",
+    },
+    default = {
+      model = "gpt-4-turbo",
+      api_base = "https://api.openai.com/v1",
+      api_key = vim.env.OPENAI_API_KEY,
+    },
+    openrouter = {
+      model = "google/gemini-2.0-flash-001",
+      api_base = "https://openrouter.ai/api/v1",
+      api_key = vim.env.OPENROUTER_API_KEY,
+    },
+  },
+
+  -- Advanced Model Options (OpenAI Spec)
+  model_options = {
+    temperature = 0.7,
+    top_p = 1.0,
+    max_tokens = 4096,
+  },
   
   -- Modal window configuration
   modal = {
     border = "rounded",
     width = 80,
     height = 20,
+    show_context = true, -- Whether to show system prompt and context in the modal
   },
   
   -- Context management settings
   context = {
-    -- Automatically ignore these filetypes or names
     ignore_filetypes = { "NvimTree", "TelescopePrompt" },
     ignore_files = { ".git", "node_modules", ".aider.tags.cache.v4" },
   },
   
   -- Fugitive integration settings
   fugitive = {
-    -- Whether to automatically trigger fugitive for diffs
     auto_diff = true,
   },
 };
 
---- Current configuration state
-M.options = vim.deepcopy(M.defaults);
+M.options = M.defaults;
 
 --- Initialize or update the configuration with user options
 --- @param opts table | nil: User-provided configuration overrides
 function M.setup(opts)
   M.options = vim.tbl_deep_extend("force", M.defaults, opts or {});
+end
+
+--- Get the current active model configuration
+function M.get_active_model()
+  local alias = M.options.active_model or "qwenzel";
+  return M.options.models[alias] or M.options.models["qwenzel"];
 end
 
 return M;

@@ -1,7 +1,7 @@
 local assert = require("luassert");
 local context = require("nzi.context");
 
-describe("nzi context engine", function()
+describe("AI context engine", function()
   it("should have default buffer state as active", function()
     assert.are.equal("active", context.get_state(1));
   end);
@@ -27,6 +27,7 @@ describe("nzi context engine", function()
 
   it("should not gather content from unlisted or invalid buffers", function()
     local bufnr = vim.api.nvim_create_buf(false, true); -- unlisted
+    vim.api.nvim_set_option_value("swapfile", false, { buf = bufnr });
     vim.api.nvim_buf_set_name(bufnr, "unlisted.txt");
     
     local results = context.gather();
@@ -41,10 +42,12 @@ describe("nzi context engine", function()
   it("should gather content from loaded and non-ignored buffers", function()
     -- Create temporary buffers for testing
     local bufnr1 = vim.api.nvim_create_buf(true, false);
+    vim.api.nvim_set_option_value("swapfile", false, { buf = bufnr1 });
     vim.api.nvim_buf_set_lines(bufnr1, 0, -1, false, { "Hello World" });
     vim.api.nvim_buf_set_name(bufnr1, "test1.txt");
     
     local bufnr2 = vim.api.nvim_create_buf(true, false);
+    vim.api.nvim_set_option_value("swapfile", false, { buf = bufnr2 });
     vim.api.nvim_buf_set_lines(bufnr2, 0, -1, false, { "Ignored Content" });
     vim.api.nvim_buf_set_name(bufnr2, "test2.txt");
     context.set_state(bufnr2, "ignore");

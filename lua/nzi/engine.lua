@@ -4,33 +4,37 @@ local context = require("nzi.context");
 local prompts = require("nzi.prompts");
 local job = require("nzi.job");
 local modal = require("nzi.modal");
-local directive = require("nzi.directive");
 local commands = require("nzi.commands");
 
 local M = {};
 
---- Handle an nzi? question
+--- Handle an ai? question (or ai: directive for now)
 --- @param content string
 --- @param include_lsp boolean | nil
 function M.handle_question(content, include_lsp)
   local config = require("nzi.config");
-  local model_name = config.options.default_model;
+  local model_cfg = config.get_active_model();
+  local model_alias = config.options.active_model or "AI";
   local ctx_list = context.gather();
   local prompt_parts = prompts.gather();
   
-  local system_prompt = prompts.build_system_prompt(prompt_parts, model_name);
+  local system_prompt = prompts.build_system_prompt(prompt_parts, model_alias);
   local context_str = prompts.format_context(ctx_list, include_lsp, prompt_parts.tasks);
   local hist_str = require("nzi.history").format();
   
   local full_prompt = system_prompt .. "\n\n" .. hist_str .. "\n\n" .. context_str .. "\n\n### QUESTION\n" .. content;
   
   modal.open();
-  modal.write(system_prompt .. "\n", "system", false);
-  if hist_str ~= "" then
-    modal.write(hist_str .. "\n", "system", false);
+  
+  if config.options.modal.show_context then
+    modal.write(system_prompt, "system", false);
+    if hist_str ~= "" then
+      modal.write(hist_str, "history", false);
+    end
+    modal.write(context_str, "context", false);
   end
-  modal.write(context_str .. "\n", "context", false);
-  modal.write(content .. "\n", "question", false);
+
+  modal.write(content, "question", config.options.modal.show_context);
   
   modal.set_thinking(true);
   local start_line_count = vim.api.nvim_buf_line_count(modal.bufnr or 0);
@@ -57,7 +61,7 @@ function M.handle_question(content, include_lsp)
   end);
 end
 
---- Detect and execute the nzi directive at the current line
+--- Detect and execute the AI directive at the current line
 function M.execute_current_line()
   local bufnr = vim.api.nvim_get_current_buf();
   local cursor = vim.api.nvim_win_get_cursor(0);
@@ -66,22 +70,21 @@ function M.execute_current_line()
 
   local type, content = parser.parse_line(line);
   if not type then
-    vim.notify("No nzi directive found on current line.", vim.log.levels.WARN);
+    vim.notify("No AI directive found on current line.", vim.log.levels.WARN);
     return;
   end
 
   if type == "shell" then
     shell.run(content, bufnr, line_idx);
-  elseif type == "question" then
-    M.handle_question(content, true); -- Localized: include LSP
-  elseif type == "directive" then
-    require("nzi.directive").run(content, bufnr, true); -- Localized: include LSP
+  elseif type == "question" or type == "directive" then
+    -- Directives are currently treated as questions
+    M.handle_question(content, true);
   elseif type == "command" then
     commands.run(content);
   end
 end
 
---- Execute nzi logic on a range of lines (Visual Mode)
+--- Execute AI logic on a range of lines (Visual Mode)
 --- @param line1 number: Start line
 --- @param line2 number: End line
 function M.execute_range(line1, line2)
@@ -94,10 +97,8 @@ function M.execute_range(line1, line2)
   if type then
     if type == "shell" then
       shell.run(content, bufnr, line1 + idx - 1);
-    elseif type == "question" then
+    elseif type == "question" or type == "directive" then
       M.handle_question(content .. "\n\n### FOCUS SELECTION\n" .. table.concat(lines, "\n"));
-    elseif type == "directive" then
-      directive.run(content, bufnr);
     elseif type == "command" then
       commands.run(content);
     end
@@ -105,20 +106,12 @@ function M.execute_range(line1, line2)
   end
 
   -- 2. If no interpolated directive, prompt the user for a task
-  vim.ui.input({ prompt = "nzi (?:question, else:directive): " }, function(input)
+  vim.ui.input({ prompt = "AI (prompt): " }, function(input)
     if not input or input == "" then return; end
     
-    local first_char = input:sub(1,1);
     local selection_text = table.concat(lines, "\n");
-    
-    if first_char == "?" then
-      -- It's a question about the selection
-      M.handle_question(input:sub(2) .. "\n\n### FOCUS SELECTION\n" .. selection_text);
-    else
-      -- It's a directive to modify the selection (or project)
-      -- We still run the directive handler, which will have the selection in context
-      directive.run(input, bufnr);
-    end
+    -- Treat everything as a question/prompt about the selection
+    M.handle_question(input .. "\n\n### FOCUS SELECTION\n" .. selection_text);
   end);
 end
 

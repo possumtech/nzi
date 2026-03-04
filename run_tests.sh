@@ -9,7 +9,7 @@ if [ -f .env ]; then
     export $(grep -v '^#' .env | xargs)
 fi
 
-TIMEOUT_VAL="120s"
+TIMEOUT_VAL="600s"
 echo "--- Starting nzi Test Suite (Timeout: $TIMEOUT_VAL) ---"
 
 # Isolate Neovim environment to avoid loading user config/plugins

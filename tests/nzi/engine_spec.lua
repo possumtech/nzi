@@ -2,7 +2,7 @@ local assert = require("luassert");
 local engine = require("nzi.engine");
 local parser = require("nzi.parser");
 
-describe("nzi engine dispatcher", function()
+describe("AI engine dispatcher", function()
   it("should warn if no directive is found on current line", function()
     -- Create a clean buffer with no directives
     local bufnr = vim.api.nvim_create_buf(true, false);
@@ -14,7 +14,7 @@ describe("nzi engine dispatcher", function()
     
     engine.execute_current_line();
     
-    assert.spy(notify_spy).was_called_with("No nzi directive found on current line.", vim.log.levels.WARN);
+    assert.spy(notify_spy).was_called_with("No AI directive found on current line.", vim.log.levels.WARN);
     
     vim.api.nvim_buf_delete(bufnr, { force = true });
     notify_spy:revert();
@@ -23,7 +23,7 @@ describe("nzi engine dispatcher", function()
   it("should find and execute shell directive in range", function()
     local bufnr = vim.api.nvim_create_buf(true, false);
     vim.api.nvim_set_current_buf(bufnr);
-    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "nzi! echo 'hello'", "line 2" });
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "ai! echo 'hello'", "line 2" });
     
     -- Mock the shell run
     local shell = require("nzi.shell");

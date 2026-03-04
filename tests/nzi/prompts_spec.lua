@@ -1,15 +1,15 @@
 local assert = require("luassert");
 local prompts = require("nzi.prompts");
 
-describe("nzi prompts module", function()
+describe("AI prompts module", function()
   it("should build a standard system prompt containing only global/project rules", function()
     local parts = {
       global = "Global Rule",
       project = "Project Rule",
       tasks = "- [ ] Task 1" -- Tasks are now in Context, not System
     };
-    local result = prompts.build_system_prompt(parts, "test-model");
-    assert.match("test%-model", result);
+    local result = prompts.build_system_prompt(parts, "test-alias");
+    assert.match("test%-alias", result);
     assert.match("Global Rule", result);
     assert.match("Project Rule", result);
     -- Task 1 should NOT be here anymore
