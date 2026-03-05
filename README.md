@@ -21,6 +21,22 @@ AI (nzi) follows a strict **"Neovim is Context"** policy. The model's understand
     *   **Safety**: NZI will only "quietly close" a dropped buffer if it is **hidden** and **unmodified**. If you are currently viewing the file or have unsaved changes, the request is safely ignored.
 *   **Persistence**: Manual changes you make to buffers (saving, closing, or switching states via `AI/read`) are immediately reflected in the model's next turn.
 
+## Professional Features
+
+### 1. Interpolation on Save
+AI (nzi) automatically scans for directives when you save a buffer. If a line starts with `AI:`, `AI?`, `AI!`, or `AI/`, the tool will:
+1. Extract the directive and its content.
+2. Remove the line from your file.
+3. Execute the action (Query, Shell, or Command) and report back.
+
+This allows you to "type" your intentions directly into your code and have the agent clean them up as it works.
+
+### 2. Visual Mode Selection
+Select a block of code and press `:` or `:` to trigger an interaction.
+*   **Precision Context**: Selection is automatically sent with coordinates, e.g., `### FOCUS SELECTION (file.lua:10-20)`. This gives the model exact anchors for surgical edits.
+*   **Idiomatic**: Supports standard Neovim range commands. If no content is provided after `AI:`, the model defaults to "Analyze this."
+*   **Contextual Queries**: Highlight a method and ask `AI? What is this parameter for?`—the model receives the code and the exact location.
+
 ### Workflow in Action
 
 *   **Plan in Markdown:** You edit `AGENTS.md` to define tasks and project state.

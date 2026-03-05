@@ -116,6 +116,7 @@ function M.setup(opts)
   vim.cmd([[cnoreabbrev <expr> AI: (getcmdtype() == ':' && getcmdline() == 'AI:') ? 'AI :' : 'AI:']])
 
   -- Leader Keymaps
+  vim.keymap.set("n", "<leader>ay", function() vim.cmd("AI/yank") end, { desc = "AI: Yank last response" });
   vim.keymap.set("n", "<leader>aY", function() 
     config.options.yolo = true;
     vim.notify("AI: YOLO Mode PERMANENTLY ACTIVE for this session.", vim.log.levels.WARN);

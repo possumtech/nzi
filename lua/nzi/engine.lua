@@ -124,6 +124,7 @@ end
 --- Parse and execute the current line as a directive
 function M.execute_current_line()
   local line = vim.api.nvim_get_current_line();
+  local bufnr = vim.api.nvim_get_current_buf();
   local type, content = parser.parse_line(line);
   
   if not type then
@@ -131,41 +132,93 @@ function M.execute_current_line()
     return;
   end
   
+  -- Remove the directive line from buffer before execution
+  local row = vim.api.nvim_win_get_cursor(0)[1];
+  vim.api.nvim_buf_set_lines(0, row - 1, row, false, {});
+
+  local file_name = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":.");
+  -- Structured selection tag even for single lines
+  local selection_tag = string.format("<agent:selection file=\"%s\" line=\"%d\" end_line=\"%d\" instruction=\"%s\">\n%s\n</agent:selection>",
+    file_name, row, row, content, ""); -- No text needed for line-deletion interpolation
+
   if type == "question" then
-    M.handle_question(content, false);
+    M.handle_question(selection_tag, false);
   elseif type == "shell" then
     shell.run(content);
   elseif type == "directive" then
-    M.run_loop(content, "directive", false, vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":."));
+    M.run_loop(selection_tag, "directive", false, file_name);
+  elseif type == "command" then
+    require("nzi.commands").run(content);
   end
 end
 
 --- Execute directives in a specified line range
 function M.execute_range(start_line, end_line)
-  local lines = vim.api.nvim_buf_get_lines(0, start_line - 1, end_line, false);
-  for _, line in ipairs(lines) do
+  local bufnr = vim.api.nvim_get_current_buf();
+  local lines = vim.api.nvim_buf_get_lines(bufnr, start_line - 1, end_line, false);
+  local file_name = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":.");
+  local found_directive = false;
+  
+  -- Scan for the FIRST directive in the range (visual mode idiomatic)
+  for i, line in ipairs(lines) do
     local type, content = parser.parse_line(line);
     if type then
+      -- Remove only the directive line itself
+      local actual_row = start_line + i - 1;
+      vim.api.nvim_buf_set_lines(bufnr, actual_row - 1, actual_row, false, {});
+      
+      -- Content remaining in selection (minus the directive)
+      local context_lines = vim.api.nvim_buf_get_lines(bufnr, start_line - 1, end_line - 1, false);
+      local selection_text = table.concat(context_lines, "\n");
+      local instruction = (content == "" and "Analyze this" or content);
+      
+      local selection_tag = string.format("<agent:selection file=\"%s\" line=\"%d\" end_line=\"%d\" instruction=\"%s\">\n%s\n</agent:selection>",
+        file_name, start_line, end_line, instruction, selection_text);
+
       if type == "question" then
-        M.handle_question(content, false);
+        M.handle_question(selection_tag, false);
       elseif type == "shell" then
         shell.run(content);
       elseif type == "directive" then
-        M.run_loop(content, "directive", false, vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":."));
+        M.run_loop(selection_tag, "directive", false, file_name);
+      elseif type == "command" then
+        require("nzi.commands").run(content);
       end
+      
+      found_directive = true;
+      break; 
     end
+  end
+
+  if not found_directive then
+    -- Handle raw visual selection with no AI: prefix
+    local selection_text = table.concat(lines, "\n");
+    vim.ui.input({ prompt = "AI Question on selection: " }, function(input)
+      if input and input ~= "" then
+        local selection_tag = string.format("<agent:selection file=\"%s\" line=\"%d\" end_line=\"%d\" instruction=\"%s\">\n%s\n</agent:selection>",
+          file_name, start_line, end_line, input, selection_text);
+        M.handle_question(selection_tag, false);
+      end
+    end);
   end
 end
 
 --- Main entry point for the :AI command
 function M.dispatch(args)
   local input = args.args;
+  local line1 = args.line1;
+  local line2 = args.line2;
+  local range = args.range;
   
   if input == "" then
-    M.execute_current_line();
+    if range > 0 then
+      M.execute_range(line1, line2);
+    else
+      M.execute_current_line();
+    end
   elseif input:match("^!") then
     shell.run(input:sub(2):gsub("^%s*", ""));
-  elseif input:match("^:") then
+  elseif input:match("^:") or input:match("^%?") then
     local type, content = parser.parse_line("AI" .. input);
     if type == "question" then
       M.handle_question(content, true);
@@ -179,18 +232,9 @@ end
 
 --- Handle visual selection
 function M.handle_visual()
-  local input = vim.fn.input("AI Context Question: ");
-  if input == "" then return end
-  
-  vim.schedule(function()
-    local s_start = vim.fn.getpos("'<");
-    local s_end = vim.fn.getpos("'>");
-    local lines = vim.api.nvim_buf_get_lines(0, s_start[2]-1, s_end[2], false);
-    if #lines == 0 then return end
-    
-    local selection_text = table.concat(lines, "\n");
-    M.handle_question(input .. "\n\n### FOCUS SELECTION\n" .. selection_text);
-  end);
+  local s_start = vim.fn.getpos("'<");
+  local s_end = vim.fn.getpos("'>");
+  M.execute_range(s_start[2], s_end[2]);
 end
 
 return M;

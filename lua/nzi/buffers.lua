@@ -1,13 +1,10 @@
 local context = require("nzi.context");
+local parser = require("nzi.parser");
 
 local M = {};
 
--- Mapping of line numbers in the UI buffer to actual buffer numbers
-local line_to_bufnr = {};
-
 --- Open the buffer management UI in an idiomatic fuzzy-finder style list
 function M.open_ui()
-  local context = require("nzi.context");
   local buffers = vim.api.nvim_list_bufs();
   local items = {};
 
@@ -34,7 +31,7 @@ function M.open_ui()
   table.sort(items, function(a, b)
     local sa = context.get_state(a.bufnr);
     local sb = context.get_state(b.bufnr);
-    if sa ~= sb then return sa < sb end -- alphabetical active < read
+    if sa ~= sb then return sa < sb end 
     return a.name < b.name
   end);
 
@@ -45,7 +42,6 @@ function M.open_ui()
     prompt = "AI Buffer Context (Manage):",
   }, function(choice)
     if choice then
-      -- Identify selected buffer
       local selected = nil;
       for _, item in ipairs(items) do
         if item.label == choice then selected = item; break end
@@ -53,7 +49,6 @@ function M.open_ui()
       
       if not selected then return end
 
-      -- Provide sub-menu for the selected buffer
       local actions = { "Set Active", "Set Read-only", "Ignore (Remove)", "Wipeout Buffer", "Jump to Buffer" };
       vim.ui.select(actions, {
         prompt = string.format("Action for '%s':", selected.name),
@@ -74,8 +69,46 @@ function M.open_ui()
   end);
 end
 
+--- Scan a buffer for AI directives and process them (Interpolation)
+--- @param bufnr number
+function M.interpolate(bufnr)
+  if not vim.api.nvim_buf_is_valid(bufnr) then return end
+  
+  -- We only scan the FIRST 100 lines for performance and to avoid false positives
+  -- in deep content, but usually AI: is at the top or in a comment.
+  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, 100, false);
+  local row, type, content = parser.find_in_lines(lines);
+  
+  if type then
+    -- 1. Remove the line from the buffer
+    vim.api.nvim_buf_set_lines(bufnr, row - 1, row, false, {});
+    
+    -- 2. Execute via engine (using a schedule to ensure the buffer removal is processed)
+    vim.schedule(function()
+      local engine = require("nzi.engine");
+      if type == "question" then
+        engine.handle_question(content, false);
+      elseif type == "shell" then
+        require("nzi.shell").run(content);
+      elseif type == "directive" then
+        engine.run_loop(content, "directive", false, vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":."));
+      elseif type == "command" then
+        require("nzi.commands").run(content);
+      end
+    end);
+  end
+end
+
 function M.setup()
-    -- Placeholder for future setup logic
+  local group = vim.api.nvim_create_augroup("nzi_interpolation", { clear = true });
+  
+  vim.api.nvim_create_autocmd("BufWritePre", {
+    group = group,
+    pattern = "*",
+    callback = function(args)
+      M.interpolate(args.buf);
+    end,
+  });
 end
 
 return M;

@@ -57,6 +57,7 @@ function M.build_system_prompt(prompts, model_alias)
     "* <agent:tool name=\"toolName\">tool output</agent:tool>",
     "* <agent:context>current project structure and files</agent:context>",
     "* <agent:file name=\"path/to/filename\">content of a specific file</agent:file>",
+    "* <agent:selection file=\"path/to/filename\" line=\"10\" end_line=\"20\" instruction=\"...\">Selected code block content</agent:selection>",
     "* <agent:project_state>AGENTS.md file contents</agent:project_state>",
     "* <agent:next_task_suggest>The first pending task in the plan</agent:next_task_suggest>",
     "* <agent:user>The user's specific instruction</agent:user>",
