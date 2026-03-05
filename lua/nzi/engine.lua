@@ -75,8 +75,13 @@ function M.run_loop(content, type, include_lsp, target_file)
               if current_action_idx > #actions then
                 -- All actions for this turn complete, start next model turn
                 if #accumulated_responses > 0 then
+                  local combined_resp = table.concat(accumulated_responses, "\n\n");
                   history.add(type, current_prompt, result);
-                  current_prompt = table.concat(accumulated_responses, "\n\n");
+                  
+                  -- Faithfully record the response being sent back to the model
+                  modal.write(combined_resp, "user", false);
+                  
+                  current_prompt = combined_resp;
                   start_turn();
                 end
                 return;
@@ -150,7 +155,12 @@ function M.run_loop(content, type, include_lsp, target_file)
                   -- Pair the current prompt with the buggy response
                   history.add(type, current_prompt, result);
                   -- The next prompt is the test failure
-                  current_prompt = string.format("<agent:test>%s</agent:test>", failure_text);
+                  local resp = string.format("<agent:test>%s</agent:test>", failure_text);
+                  
+                  -- Faithfully record the response being sent back to the model
+                  modal.write(resp, "user", false);
+                  
+                  current_prompt = resp;
                   start_turn();
                   return;
                 end

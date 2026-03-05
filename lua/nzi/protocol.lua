@@ -1,6 +1,6 @@
 local M = {};
 
---- Simple state-machine parser for <model:*> tags
+--- Simple state-machine parser for <model:*> tags and markdown code blocks
 --- This handles tags being split across chunks in the stream.
 function M.create_parser()
   return {
@@ -12,35 +12,66 @@ function M.create_parser()
     feed = function(self, chunk)
       self.buffer = self.buffer .. chunk
       
-      -- Look for tags: <model:tag>content</model:tag>
-      -- We'll also handle empty tags like <model:read file="..." />
-      
-      -- 1. Check for block tags: <model:tag ...>content</model:tag>
+      -- 1. Check for markdown-fenced code blocks (sh and bash)
+      -- Strategy: If the model uses ```sh [command] ``` we treat it as <model:shell>
       while true do
-        -- find returns: start, end, cap1, cap2, cap3
-        local s_start, s_end, tag_name, attr, content = self.buffer:find("<model:([%a_]+)([^>]*)>(.-)</model:%1>")
+        local s_start, e_end, lang, content = self.buffer:find("```([sb][ha][sh]?)%s*\n(.-)```")
         if s_start then
           table.insert(self.actions, { 
-            name = tag_name, 
-            attr = attr, 
-            content = content 
+            name = "shell", 
+            attr = nil, 
+            content = content:gsub("^%s*", ""):gsub("%s*$", "") 
           })
-          self.buffer = self.buffer:sub(s_end + 1)
+          self.buffer = self.buffer:sub(e_end + 1)
+        else
+          break
+        end
+      end
+
+      local function is_inside_backticks(pos)
+        local prefix = self.buffer:sub(1, pos - 1)
+        local _, count = prefix:gsub("`", "")
+        return (count % 2) ~= 0
+      end
+
+      -- 2. Check for block tags: <model:tag ...>content</model:tag>
+      while true do
+        local s_start, s_end, tag_name, attr, content = self.buffer:find("<model:([%a_]+)([^>]*)>(.-)</model:%1>")
+        
+        if s_start then
+          if not is_inside_backticks(s_start) then
+            table.insert(self.actions, { 
+              name = tag_name, 
+              attr = attr, 
+              content = content 
+            })
+            self.buffer = self.buffer:sub(s_end + 1)
+          else
+            -- Skip examples inside backticks
+            local next_search = self.buffer:find("<model:", s_start + 1)
+            if not next_search then break end
+            break 
+          end
         else
           break
         end
       end
       
-      -- 2. Check for self-closing tags: <model:tag file="..." />
+      -- 3. Check for self-closing tags: <model:tag file="..." />
       while true do
         local s_start, e_end, tag_name, attr = self.buffer:find("<model:([%a_]+)([^>]-)%s*/>")
+        
         if s_start then
-          table.insert(self.actions, { 
-            name = tag_name, 
-            attr = attr, 
-            content = nil 
-          })
-          self.buffer = self.buffer:sub(e_end + 1)
+          if not is_inside_backticks(s_start) then
+            table.insert(self.actions, { 
+              name = tag_name, 
+              attr = attr, 
+              content = nil 
+            })
+            self.buffer = self.buffer:sub(e_end + 1)
+          else
+            break
+          end
         else
           break
         end

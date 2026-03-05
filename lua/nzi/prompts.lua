@@ -61,7 +61,9 @@ function M.build_system_prompt(prompts, model_alias)
     "* <agent:user>The user's specific instruction</agent:user>",
     "* <agent:test>Output from a failing test or lint runner</agent:test>",
     "\n## CONSTRAINTS",
+    "* ALWAYS <model:read /> a file before issuing a <model:edit /> to ensure you have the latest content.",
     "* Use the smallest possible edits.",
+    "* To provide an example of a tag without triggering an action, wrap it in markdown backticks (e.g. ` <model:read /> `).",
     "* Discovery: Use <model:env> (ls -R, git status, etc.), <model:grep />, and <model:read /> to gather facts before acting.",
     "* NEVER output <agent:*> tags.",
     "* NEVER repeat prompt, history, or context content.",
@@ -90,12 +92,13 @@ function M.format_context(ctx_list, include_lsp)
     if short_name ~= "AGENTS.md" then
       local size_str = string.format("%d bytes", item.size or 0)
       
-      if item.content and item.content ~= "" then
-        -- Full content (active/read) or Skeleton (map)
+      -- ONLY send content for active or read states. 
+      -- 'map' state should be a collapsed tag (skeleton logic removed from context transmission)
+      if (item.state == "active" or item.state == "read") and item.content and item.content ~= "" then
         table.insert(parts, string.format("<agent:file name=\"%s\" state=\"%s\" size=\"%s\">\n%s\n</agent:file>", 
           short_name, item.state, size_str, M.smart_filter(item.content)));
       else
-        -- Collapsed (mapped file with no metadata)
+        -- Collapsed (mapped file or ignored)
         table.insert(parts, string.format("<agent:file name=\"%s\" state=\"%s\" size=\"%s\" />", 
           short_name, item.state, size_str));
       end

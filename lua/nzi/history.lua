@@ -41,7 +41,7 @@ function M.strip_line_numbers(text)
 end
 
 --- Add a completed or partial turn to history
---- @param type string: 'question', 'directive', 'assistant', or 'user' (for loops)
+--- @param type string: 'question', 'directive', etc.
 --- @param user_content string | nil
 --- @param assistant_content string | nil
 function M.add(type, user_content, assistant_content)
@@ -91,16 +91,17 @@ function M.get_as_messages()
     local user_clean = M.strip_line_numbers(turn.user);
     local assistant_clean = M.strip_line_numbers(turn.assistant);
 
-    if turn.type == "assistant" or assistant_clean ~= "" then
-      table.insert(messages, { 
-        role = "assistant", 
-        content = M.strip_line_numbers(turn.assistant) 
-      });
-    end
-    if turn.type == "user" or user_clean ~= "" then
+    -- Order MUST be User then Assistant
+    if user_clean ~= "" then
       table.insert(messages, { 
         role = "user", 
-        content = M.strip_line_numbers(turn.user) 
+        content = string.format("<agent:user>\n%s\n</agent:user>", user_clean) 
+      });
+    end
+    if assistant_clean ~= "" then
+      table.insert(messages, { 
+        role = "assistant", 
+        content = assistant_clean 
       });
     end
   end
