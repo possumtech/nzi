@@ -92,7 +92,7 @@ function M.run_loop(content, type, include_lsp, target_file)
                 modal.write("Executing " .. action.name .. ": " .. action.content, "system", false);
                 local output = tools.shell(action.content, config.options.yolo);
                 if output then
-                  agent_response = string.format("<agent:%s>\n%s\n</agent:grep>", action.name, output, action.name);
+                  agent_response = string.format("<agent:%s>\n%s\n</agent:%s>", action.name, output, action.name);
                 else
                   agent_response = string.format("<agent:%s>Command executed. No output returned to context.</agent:%s>", action.name, action.name);
                 end
@@ -109,9 +109,8 @@ function M.run_loop(content, type, include_lsp, target_file)
                 modal.write("User Choice Prompt: " .. action.content, "system", false);
                 tools.choice(action.content, function(choice_res)
                   vim.schedule(function()
-                    history.add("assistant", result, nil);
-                    history.add("user", string.format("<agent:choice>%s</agent:choice>", choice_res), nil);
-                    current_prompt = "User selected: " .. choice_res;
+                    history.add(type, current_prompt, result);
+                    current_prompt = string.format("<agent:choice>%s</agent:choice>", choice_res);
                     start_turn();
                   end);
                 end);
@@ -119,12 +118,14 @@ function M.run_loop(content, type, include_lsp, target_file)
               end
               
               if agent_response then
-                -- assistant role: the tag call itself
-                history.add("assistant", result, nil);
-                -- user role: the tool's result
-                history.add("user", agent_response, nil);
-                run_next_action();
+                -- Pair the current prompt with the model's call
+                history.add(type, current_prompt, result);
+                -- The next prompt is the tool's result
+                current_prompt = agent_response;
+                start_turn();
+                return;
               else
+                -- Continue to next action in same response if no prompt change needed
                 run_next_action();
               end
             end
@@ -132,7 +133,36 @@ function M.run_loop(content, type, include_lsp, target_file)
             run_next_action();
           else
             -- No actions, this is the final response
-            history.add(type, content, result);
+            -- Trigger auto-test if configured
+            if config.options.auto_test then
+              modal.write("Running auto-test: " .. config.options.auto_test, "system", false);
+              local test_output = vim.fn.systemlist(config.options.auto_test);
+              local exit_code = vim.v.shell_error;
+              
+              if exit_code ~= 0 then
+                local failure_text = table.concat(test_output, "\n");
+                modal.write("Test failure detected.", "error", false);
+                
+                local should_retry = config.options.ralph;
+                if not should_retry then
+                  local choice = vim.fn.confirm("Test failed. Send output back to AI?", "&Yes\n&No", 1);
+                  should_retry = (choice == 1);
+                end
+                
+                if should_retry then
+                  -- Pair the current prompt with the buggy response
+                  history.add(type, current_prompt, result);
+                  -- The next prompt is the test failure
+                  current_prompt = string.format("<agent:test>%s</agent:test>", failure_text);
+                  start_turn();
+                  return;
+                end
+              else
+                modal.write("Tests passed.", "system", false);
+              end
+            end
+            
+            history.add(type, current_prompt, result);
             modal.close_tag();
           end
         elseif not error_displayed then

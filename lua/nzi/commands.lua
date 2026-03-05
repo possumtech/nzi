@@ -185,6 +185,11 @@ function M.run(command_str)
     local mode = config.options.yolo and "ON (Autopilot)" or "OFF (Safe Mode)";
     vim.notify("AI: YOLO Mode is " .. mode, vim.log.levels.INFO);
 
+  elseif cmd == "ralph" then
+    config.options.ralph = not config.options.ralph;
+    local mode = config.options.ralph and "ON (Auto-retry failures)" or "OFF";
+    vim.notify("AI: RALPH Mode is " .. mode, vim.log.levels.INFO);
+
   elseif cmd == "config" then
     print(vim.inspect(config.options));
     

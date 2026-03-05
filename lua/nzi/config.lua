@@ -73,6 +73,8 @@ M.defaults = {
   -- Agentic Loop settings
   max_turns = 5, -- Safety cap for autonomous tool loops
   yolo = false,  -- If true, skip permission prompts for shell/env tools
+  auto_test = nil, -- Command string to run after turns (e.g. "npm test")
+  ralph = false,   -- If true, automatically send test failures back to model
 };
 
 M.options = M.defaults;

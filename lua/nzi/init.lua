@@ -14,7 +14,7 @@ local function complete_ai_command(arg_lead, cmd_line)
   local subcommands = { 
     "model", "clear", "status", "buffers", "toggle", "undo", "config",
     "active", "read", "ignore", "state", "stop", "yank", "Tree", "tree",
-    "next", "prev", "yolo"
+    "next", "prev", "yolo", "ralph"
   };
   
   -- If we're at the very start of the command arguments

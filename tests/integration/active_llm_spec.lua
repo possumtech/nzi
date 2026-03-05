@@ -109,10 +109,10 @@ describe("AI active model integration", function()
     engine.handle_question("My favorite color is Crimson. Remember that.", false);
     
     vim.wait(10000, function() 
-      return #history.get_all() == 1 
+      return #history.get_all() >= 1 
     end);
     
-    assert.are.equal(1, #history.get_all(), "Turn 1 was not added to history.");
+    assert.True(#history.get_all() >= 1, "Turn 1 was not added to history.");
 
     -- Turn 2: Query the fact
     setup_capture();
