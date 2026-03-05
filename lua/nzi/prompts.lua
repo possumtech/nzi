@@ -59,6 +59,7 @@ function M.build_system_prompt(prompts, model_alias)
     "* <agent:project_state>AGENTS.md file contents</agent:project_state>",
     "* <agent:next_task_suggest>The first pending task in the plan</agent:next_task_suggest>",
     "* <agent:user>The user's specific instruction</agent:user>",
+    "* <agent:test>Output from a failing test or lint runner</agent:test>",
     "\n## CONSTRAINTS",
     "* Use the smallest possible edits.",
     "* Discovery: Use <model:env> (ls -R, git status, etc.), <model:grep />, and <model:read /> to gather facts before acting.",
