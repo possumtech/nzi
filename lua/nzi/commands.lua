@@ -2,199 +2,163 @@ local config = require("nzi.config");
 local modal = require("nzi.modal");
 local history = require("nzi.history");
 local buffers = require("nzi.buffers");
+local diff = require("nzi.diff");
 
 local M = {};
 
 --- Execute an internal AI/ command
---- @param command_str string: The command and its arguments
-function M.run(command_str)
-  local parts = vim.split(command_str, " ");
-  local cmd = parts[1];
+--- @param cmd string: The subcommand (e.g. "model", "clear")
+function M.run(cmd)
+  if not cmd or cmd == "" then
+    buffers.open_ui();
+    return;
+  end
 
-  if cmd == "model" then
-    local alias = parts[2];
-    if not alias then
-      -- List all aliases in a clean way
-      local model_list = {};
-      for name, _ in pairs(config.options.models) do
-        table.insert(model_list, name);
-      end
-      table.sort(model_list);
+  local parts = vim.split(cmd, " ");
+  local subcommand = parts[1];
+  local args = table.concat(parts, " ", 2);
+
+  if subcommand == "model" then
+    if args == "" then
+      -- Show model selection menu
+      local model_aliases = {};
+      for alias, _ in pairs(config.options.models) do table.insert(model_aliases, alias) end
+      table.sort(model_aliases);
       
-      print("Available AI Models:");
-      for _, name in ipairs(model_list) do
-        local active = (name == config.options.active_model) and "*" or " ";
-        print(string.format(" %s %s", active, name));
+      vim.ui.select(model_aliases, {
+        prompt = "Select Active AI Model:",
+      }, function(choice)
+        if choice then
+          config.options.active_model = choice;
+          vim.notify("AI: Active model set to " .. choice, vim.log.levels.INFO);
+        end
+      end);
+    else
+      if config.options.models[args] then
+        config.options.active_model = args;
+        vim.notify("AI: Active model set to " .. args, vim.log.levels.INFO);
+      else
+        vim.notify("AI: Unknown model alias: " .. args, vim.log.levels.ERROR);
       end
-      return;
     end
 
-    if config.options.models[alias] then
-      config.options.active_model = alias;
-      vim.notify("AI: Switched to model '" .. alias .. "'", vim.log.levels.INFO);
-    else
-      vim.notify("AI: Unknown model alias: " .. alias, vim.log.levels.ERROR);
-    end
-
-  elseif cmd == "set" then
-    local key = parts[2];
-    local val = parts[3];
-    if not key or not val then
-      print("Current Options: " .. vim.inspect(config.options.model_options));
-      return;
-    end
-    
-    local num_val = tonumber(val);
-    config.options.model_options[key] = num_val or val;
-    vim.notify(string.format("AI: %s set to %s", key, val), vim.log.levels.INFO);
-
-  elseif cmd == "add" then
-    local alias, model, url, key = parts[2], parts[3], parts[4], parts[5];
-    if not alias or not model or not url then
-      print("Usage: AI/add <alias> <model_name> <api_base_url> [api_key]");
-      return;
-    end
-    config.options.models[alias] = {
-      model = model,
-      api_base = url,
-      api_key = key
-    };
-    vim.notify("AI: Added model alias '" .. alias .. "'", vim.log.levels.INFO);
-
-  elseif cmd == "undo" then
-    if history.pop() then
-      vim.notify("AI: Removed last interaction from history", vim.log.levels.INFO);
-    else
-      vim.notify("AI: History is already empty", vim.log.levels.WARN);
-    end
-
-  elseif cmd == "clear" then
+  elseif subcommand == "clear" then
     history.clear();
     modal.clear();
-    vim.notify("AI: History and modal cleared", vim.log.levels.INFO);
+    vim.notify("AI: History and modal cleared.", vim.log.levels.INFO);
 
-  elseif cmd == "status" then
-    local active = config.options.active_model;
-    local model_cfg = config.get_active_model();
-    local opts = config.options.model_options;
-    print("AI Status:");
-    print("  Active Model: " .. active);
-    print("  Model Name:   " .. model_cfg.model);
-    print("  Temperature:  " .. (opts.temperature or "default"));
-    print("  Turns:        " .. #history.get_all());
+  elseif subcommand == "undo" then
+    if history.pop() then
+      vim.notify("AI: Last turn removed from history.", vim.log.levels.INFO);
+    else
+      vim.notify("AI: History is empty.", vim.log.levels.WARN);
+    end
 
-  elseif cmd == "toggle" then
+  elseif subcommand == "status" then
+    local model = config.options.active_model;
+    local turns = #history.get_all();
+    local reviews = diff.get_count();
+    vim.notify(string.format("AI: Model: %s | Turns: %d | Pending Reviews: %d", model, turns, reviews), vim.log.levels.INFO);
+
+  elseif subcommand == "toggle" then
     modal.toggle();
 
-  elseif cmd == "stop" then
+  elseif subcommand == "stop" then
     local engine = require("nzi.engine");
     if engine.current_job then
       engine.current_job:kill(15);
       engine.current_job = nil;
+      engine.is_busy = false;
       modal.set_thinking(false);
-      vim.notify("AI: Generation aborted", vim.log.levels.WARN);
+      modal.write("\n[ABORTED BY USER]\n", "error", true);
+      vim.notify("AI: Generation aborted.", vim.log.levels.WARN);
+    end
+
+  elseif subcommand == "yank" then
+    local all = history.get_all();
+    if #all > 0 then
+      local last = all[#all];
+      local text = history.strip_line_numbers(last.assistant or "");
+      vim.fn.setreg('+', text);
+      vim.fn.setreg('"', text);
+      vim.notify("AI: Last response yanked to clipboard.", vim.log.levels.INFO);
     else
-      vim.notify("AI: No active job to stop", vim.log.levels.INFO);
+      vim.notify("AI: Nothing to yank.", vim.log.levels.WARN);
     end
 
-  elseif cmd == "yank" then
-    local turns = history.get_all();
-    if #turns > 0 then
-      local last_turn = turns[#turns];
-      local assistant_raw = history.strip_line_numbers(last_turn.assistant);
-      vim.fn.setreg("+", assistant_raw);
-      vim.notify("AI: Last response yanked to + register", vim.log.levels.INFO);
-    else
-      vim.notify("AI: No history to yank", vim.log.levels.WARN);
-    end
-
-  elseif cmd == "active" or cmd == "read" or cmd == "ignore" then
-    local bufnr = vim.api.nvim_get_current_buf();
-    local name = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":.");
-    require("nzi.context").set_state(bufnr, cmd);
-    require("nzi.visuals").refresh();
-    vim.notify(string.format("AI: Buffer '%s' set to %s", name, cmd), vim.log.levels.INFO);
-
-  elseif cmd == "next" then
-    require("nzi.diff").next();
-
-  elseif cmd == "prev" then
-    require("nzi.diff").prev();
-
-  elseif cmd == "state" then
-    local bufnr = vim.api.nvim_get_current_buf();
-    local state = require("nzi.context").get_state(bufnr);
-    local name = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":.");
-    print(string.format("AI: Buffer '%s' state is '%s'", name, state));
-
-  elseif cmd == "buffers" then
-    buffers.open_ui();
-
-  elseif cmd == "tree" or cmd == "Tree" then
-    local ctx = require("nzi.context").gather();
-    local items = {};
-    local show_all = (cmd == "Tree");
-
-    for _, item in ipairs(ctx) do
-      if show_all or item.state == "active" or item.state == "read" then
-        local state_icon = (item.state == "active" and "(A)" or (item.state == "read" and "(R)" or "(M)"));
-        table.insert(items, string.format("%s %s", state_icon, item.name));
-      end
-    end
-
-    if #items == 0 then
-      vim.notify("AI: No files in " .. (show_all and "project" or "active context"), vim.log.levels.WARN);
-      return;
-    end
-
-    vim.ui.select(items, {
-      prompt = "AI Project Universe (" .. (show_all and "All" or "Active/Read") .. "):",
-    }, function(choice)
-      if choice then
-        local path = choice:sub(5);
-        vim.cmd("edit " .. path);
-      end
-    end);
-
-  elseif cmd == "install" then
-    local info = debug.getinfo(M.run);
-    local script_dir = info.source:match("@?(.*/)")
-    local plugin_root = vim.fn.fnamemodify(script_dir .. "../../", ":p");
-    local venv_path = plugin_root .. ".venv";
-    local python_bin = venv_path .. "/bin/python";
-
-    vim.notify("AI: Installing LiteLLM environment in " .. venv_path .. "...", vim.log.levels.INFO);
-    
-    local cmd_str = string.format("cd %s && python3 -m venv .venv && .venv/bin/python -m pip install litellm", plugin_root);
-    
-    vim.fn.jobstart(cmd_str, {
-      on_exit = function(_, code)
-        if code == 0 then
-          vim.notify("AI: LiteLLM installation successful! Update your config to use: " .. python_bin, vim.log.levels.INFO);
-          config.options.python_cmd = { python_bin };
-        else
-          vim.notify("AI: Installation failed (code " .. code .. "). Check your python3 and pip installation.", vim.log.levels.ERROR);
+  elseif subcommand == "next" then
+    -- Navigate to next pending review
+    local bufs = vim.api.nvim_list_bufs();
+    local current = vim.api.nvim_get_current_buf();
+    local found = false;
+    for i, b in ipairs(bufs) do
+      if b == current then
+        for j = 1, #bufs do
+          local next_b = bufs[(i + j - 1) % #bufs + 1];
+          if diff.pending_reviews[next_b] then
+            vim.api.nvim_set_current_buf(next_b);
+            found = true;
+            break;
+          end
         end
-      end,
-      stdout_buffered = true,
-      stderr_buffered = true,
-    });
+        break;
+      end
+    end
+    if not found then vim.notify("AI: No pending reviews found.", vim.log.levels.WARN) end
 
-  elseif cmd == "yolo" then
+  elseif subcommand == "prev" then
+    -- Navigate to previous pending review
+    local bufs = vim.api.nvim_list_bufs();
+    local current = vim.api.nvim_get_current_buf();
+    local found = false;
+    for i, b in ipairs(bufs) do
+      if b == current then
+        for j = 1, #bufs do
+          local prev_b = bufs[(i - j - 1) % #bufs + 1];
+          if diff.pending_reviews[prev_b] then
+            vim.api.nvim_set_current_buf(prev_b);
+            found = true;
+            break;
+          end
+        end
+        break;
+      end
+    end
+    if not found then vim.notify("AI: No pending reviews found.", vim.log.levels.WARN) end
+
+  elseif subcommand == "accept" then
+    diff.accept(vim.api.nvim_get_current_buf());
+
+  elseif subcommand == "reject" then
+    diff.reject(vim.api.nvim_get_current_buf());
+
+  elseif subcommand == "yolo" then
     config.options.yolo = not config.options.yolo;
     local mode = config.options.yolo and "ON (Autopilot)" or "OFF (Safe Mode)";
     vim.notify("AI: YOLO Mode is " .. mode, vim.log.levels.INFO);
 
-  elseif cmd == "ralph" then
+  elseif subcommand == "ralph" then
     config.options.ralph = not config.options.ralph;
     local mode = config.options.ralph and "ON (Auto-retry failures)" or "OFF";
     vim.notify("AI: RALPH Mode is " .. mode, vim.log.levels.INFO);
 
-  elseif cmd == "config" then
+  elseif subcommand == "config" then
     print(vim.inspect(config.options));
     
   else
-    vim.notify("AI: Unknown internal command: " .. cmd, vim.log.levels.WARN);
+    -- Fallback: treat as buffer context commands if not a known subcommand
+    local context = require("nzi.context");
+    if subcommand == "active" or subcommand == "read" or subcommand == "ignore" or subcommand == "state" then
+      local bufnr = vim.api.nvim_get_current_buf();
+      if subcommand == "state" then
+        vim.notify("AI: Buffer State: " .. context.get_state(bufnr), vim.log.levels.INFO);
+      else
+        context.set_state(bufnr, subcommand);
+        vim.notify("AI: Buffer set to " .. subcommand, vim.log.levels.INFO);
+      end
+    else
+      vim.notify("AI: Unknown internal command: " .. subcommand, vim.log.levels.WARN);
+    end
   end
 end
 

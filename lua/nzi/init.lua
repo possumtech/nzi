@@ -14,7 +14,7 @@ local function complete_ai_command(arg_lead, cmd_line)
   local subcommands = { 
     "model", "clear", "status", "buffers", "toggle", "undo", "config",
     "active", "read", "ignore", "state", "stop", "yank", "Tree", "tree",
-    "next", "prev", "yolo", "ralph"
+    "next", "prev", "yolo", "ralph", "accept", "reject"
   };
   
   -- If we're at the very start of the command arguments
@@ -116,6 +116,12 @@ function M.setup(opts)
   vim.cmd([[cnoreabbrev <expr> AI: (getcmdtype() == ':' && getcmdline() == 'AI:') ? 'AI :' : 'AI:']])
 
   -- Leader Keymaps
+  vim.keymap.set("n", "<leader>au", function() vim.cmd("AI/undo") end, { desc = "AI: Undo last turn" });
+  vim.keymap.set("n", "<leader>an", function() vim.cmd("AI/next") end, { desc = "AI: Next pending review" });
+  vim.keymap.set("n", "<leader>ap", function() vim.cmd("AI/prev") end, { desc = "AI: Prev pending review" });
+  vim.keymap.set("n", "ga", function() vim.cmd("AI/accept") end, { desc = "AI: Accept proposed edit" });
+  vim.keymap.set("n", "gr", function() vim.cmd("AI/reject") end, { desc = "AI: Reject proposed edit" });
+  
   vim.keymap.set("n", "<leader>ay", function() vim.cmd("AI/yank") end, { desc = "AI: Yank last response" });
   vim.keymap.set("n", "<leader>aY", function() 
     config.options.yolo = true;

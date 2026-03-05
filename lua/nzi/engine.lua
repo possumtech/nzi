@@ -76,8 +76,16 @@ function M.run_loop(content, type, include_lsp, target_file)
         
         if #actions > 0 then
           -- 1. Discovery/Action Phase
-          agent.dispatch_actions(actions, function(combined_agent_response)
+          agent.dispatch_actions(actions, function(combined_agent_response, signal)
             vim.schedule(function()
+              if signal == "ABORTED" then
+                modal.write("User aborted turn. Agent momentum halted.", "system", false);
+                modal.set_thinking(false);
+                modal.close_tag();
+                vim.schedule(function() M.is_busy = false; end);
+                return;
+              end
+
               if combined_agent_response then
                 history.add(type, current_prompt, result);
                 modal.write(combined_agent_response, "user", false);

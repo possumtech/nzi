@@ -5,12 +5,11 @@ local modal = require("nzi.modal");
 local config = require("nzi.config");
 local context = require("nzi.context");
 local editor = require("nzi.editor");
+local diff = require("nzi.diff");
 
 local M = {};
 
---- Parse SEARCH/REPLACE blocks from a string (Resilient Version)
---- @param content string
---- @return table: Array of { search = table, replace = table }
+--- Parse SEARCH/REPLACE blocks from a string (Ultra-Resilient)
 local function parse_edit_blocks(content)
   local blocks = {};
   local lines = vim.split(content, "\n");
@@ -18,12 +17,12 @@ local function parse_edit_blocks(content)
   local state = "none";
 
   for _, line in ipairs(lines) do
-    if line:match("^<<<<<<< SEARCH") then
+    if line:match("^<<<<<<<") then
       current_block = { search = {}, replace = {} };
       state = "search";
     elseif line:match("^=======") then
       state = "replace";
-    elseif line:match("^>>>>>>> REPLACE") then
+    elseif line:match("^>>>>>>>") then
       if current_block then
         table.insert(blocks, current_block);
         current_block = nil;
@@ -36,7 +35,6 @@ local function parse_edit_blocks(content)
     end
   end
   
-  -- Handle unclosed blocks (Finalization)
   if current_block and state == "replace" then
     table.insert(blocks, current_block);
   end
@@ -116,14 +114,13 @@ function M.dispatch_actions(actions, callback)
       local raw_file = protocol.get_attr(action.attr, "file");
       if raw_file then
         modal.write("Creating file: " .. raw_file, "system", false);
-        local full_path = vim.fn.getcwd() .. "/" .. raw_file;
-        local ok, err = pcall(vim.fn.writefile, vim.split(action.content or "", "\n"), full_path);
-        if ok then
-          context.set_state(raw_file, "active");
-          table.insert(accumulated_responses, "<agent:status>File created and added to context.</agent:status>");
-        else
-          table.insert(accumulated_responses, "<agent:status>Error creating file: " .. (err or "unknown") .. "</agent:status>");
-        end
+        -- For 'create', we actually create the file but treat it as a reviewable new buffer?
+        -- Actually, creation IS a mutation. We should probably stage it.
+        local bufnr = vim.fn.bufadd(raw_file);
+        vim.fn.bufload(bufnr);
+        -- Set to active and propose replacement of empty file
+        diff.propose_edit(bufnr, vim.split(action.content or "", "\n"));
+        table.insert(accumulated_responses, "<agent:status>Proposed new file content. Awaiting review.</agent:status>");
       end
       run_next();
 
@@ -132,16 +129,15 @@ function M.dispatch_actions(actions, callback)
       if raw_file then
         local file, err = resolver.resolve(raw_file);
         if file then
-          modal.write("Deleting file: " .. file, "system", false);
-          local ok = os.remove(vim.fn.getcwd() .. "/" .. file);
-          if ok then
-            context.set_state(file, "map"); 
-            table.insert(accumulated_responses, "<agent:status>File deleted successfully.</agent:status>");
+          modal.write("Requesting delete: " .. file, "system", false);
+          local confirmed = vim.fn.confirm("AI requests to DELETE file: " .. file, "&Yes\n&No", 2) == 1;
+          if confirmed then
+            os.remove(vim.fn.getcwd() .. "/" .. file);
+            context.set_state(file, "map");
+            table.insert(accumulated_responses, "<agent:status>File deleted.</agent:status>");
           else
-            table.insert(accumulated_responses, "<agent:status>Error deleting file.</agent:status>");
+            table.insert(accumulated_responses, "<agent:status>Delete request denied by user.</agent:status>");
           end
-        else
-          table.insert(accumulated_responses, string.format("<agent:status>Error resolving file for deletion: %s</agent:status>", err));
         end
       end
       run_next();
@@ -151,37 +147,44 @@ function M.dispatch_actions(actions, callback)
       if raw_file then
         local file, err = resolver.resolve(raw_file);
         if file then
-          modal.write("Editing file: " .. file, "system", false);
+          modal.write("Analyzing edits for: " .. file, "system", false);
           local bufnr = vim.fn.bufadd(file);
           vim.fn.bufload(bufnr);
           
           local blocks = parse_edit_blocks(action.content or "");
-          local applied_count = 0;
-          local failed_blocks = {};
-
-          for _, block in ipairs(blocks) do
-            local start_line, end_line = editor.find_block(bufnr, block.search);
-            if start_line then
-              editor.apply(bufnr, start_line, end_line, block.replace);
-              applied_count = applied_count + 1;
-            else
-              table.insert(failed_blocks, table.concat(block.search, "\n"));
+          
+          -- We apply edits to a TEMP COPY of the lines
+          local current_lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false);
+          
+          -- Helper to apply surgical blocks to a table of lines (Lua indices)
+          local function apply_blocks_to_lines(lines, edit_blocks)
+            local modified = false;
+            for _, block in ipairs(edit_blocks) do
+              -- We need a way to run find_block on raw lines...
+              -- I'll refactor editor.lua to handle this or just apply to a temp buffer.
+              -- Decision: Create a hidden temp buffer for the merge.
+              local temp_buf = vim.api.nvim_create_buf(false, true);
+              vim.api.nvim_buf_set_lines(temp_buf, 0, -1, false, lines);
+              
+              local s, e, q = editor.find_block(temp_buf, block.search);
+              if s then
+                editor.apply(temp_buf, s, e, block.replace);
+                lines = vim.api.nvim_buf_get_lines(temp_buf, 0, -1, false);
+                modified = true;
+              end
+              vim.api.nvim_buf_delete(temp_buf, { force = true });
             end
+            return lines, modified;
           end
 
-          if applied_count > 0 then
-            vim.api.nvim_buf_call(bufnr, function() vim.cmd("silent! write") end);
-          end
+          local final_lines, was_modified = apply_blocks_to_lines(current_lines, blocks);
 
-          if #failed_blocks == 0 then
-            table.insert(accumulated_responses, string.format("<agent:status>Applied %d edits to %s.</agent:status>", applied_count, file));
+          if was_modified then
+            diff.propose_edit(bufnr, final_lines);
+            table.insert(accumulated_responses, string.format("<agent:status>Proposed edits for %s. Awaiting review.</agent:status>", file));
           else
-            local fail_msg = string.format("<agent:status>Error: %d blocks failed to match in %s. Ensure your SEARCH block exactly matches the file content (including year/names). Failed block(s):\n%s</agent:status>", 
-              #failed_blocks, file, table.concat(failed_blocks, "\n---\n"));
-            table.insert(accumulated_responses, fail_msg);
+            table.insert(accumulated_responses, string.format("<agent:status>Error: No blocks matched in %s. Edit aborted.</agent:status>", file));
           end
-        else
-          table.insert(accumulated_responses, string.format("<agent:status>Error resolving file for edit: %s</agent:status>", err));
         end
       end
       run_next();
@@ -191,12 +194,10 @@ function M.dispatch_actions(actions, callback)
       if raw_file then
         local file, err = resolver.resolve(raw_file);
         if file then
-          modal.write("Replacing all content: " .. file, "system", false);
           local bufnr = vim.fn.bufadd(file);
           vim.fn.bufload(bufnr);
-          vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, vim.split(action.content or "", "\n"));
-          vim.api.nvim_buf_call(bufnr, function() vim.cmd("silent! write") end);
-          table.insert(accumulated_responses, string.format("<agent:status>Full file replacement applied to %s.</agent:status>", file));
+          diff.propose_edit(bufnr, vim.split(action.content or "", "\n"));
+          table.insert(accumulated_responses, string.format("<agent:status>Proposed full replacement for %s.</agent:status>", file));
         end
       end
       run_next();
@@ -205,8 +206,13 @@ function M.dispatch_actions(actions, callback)
       modal.write("User Choice Prompt: " .. action.content, "system", false);
       tools.choice(action.content, function(choice_res)
         vim.schedule(function()
-          table.insert(accumulated_responses, string.format("<agent:choice>%s</agent:choice>", choice_res));
-          run_next();
+          if choice_res == "User cancelled selection." or choice_res:match("cancelled") then
+            -- HALT SIGNAL: Return nil to callback to stop the engine loop
+            callback(nil, "ABORTED");
+          else
+            table.insert(accumulated_responses, string.format("<agent:choice>%s</agent:choice>", choice_res));
+            run_next();
+          end
         end);
       end);
     else
@@ -217,27 +223,18 @@ function M.dispatch_actions(actions, callback)
   run_next();
 end
 
---- Run automated tests and return failure output if necessary
+--- Run automated tests and return failure output
 function M.verify_state(callback)
-  if not config.options.auto_test then
-    callback(nil);
-    return;
-  end
-
+  if not config.options.auto_test then callback(nil); return end
   modal.write("Running auto-test: " .. config.options.auto_test, "system", false);
   local test_output = vim.fn.systemlist(config.options.auto_test);
-  local exit_code = vim.v.shell_error;
-
-  if exit_code ~= 0 then
+  if vim.v.shell_error ~= 0 then
     local failure_text = table.concat(test_output, "\n");
     modal.write("Test failure detected.", "error", false);
-    
     local should_retry = config.options.ralph;
     if not should_retry then
-      local choice = vim.fn.confirm("Test failed. Send output back to AI?", "&Yes\n&No", 1);
-      should_retry = (choice == 1);
+      should_retry = vim.fn.confirm("Test failed. Send output back to AI?", "&Yes\n&No", 1) == 1;
     end
-    
     if should_retry then
       callback(string.format("<agent:test>%s</agent:test>", failure_text));
     else
