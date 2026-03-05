@@ -109,15 +109,13 @@ function M.dispatch_actions(actions, callback)
     elseif action.name == "create" then
       local raw_file = protocol.get_attr(action.attr, "file");
       if raw_file then
-        local full_path = vim.fn.getcwd() .. "/" .. raw_file;
         modal.write("Creating file: " .. raw_file, "system", false);
-        local ok, err = pcall(vim.fn.writefile, vim.split(action.content or "", "\n"), full_path);
-        if ok then
-          context.set_state(raw_file, "active");
-          table.insert(accumulated_responses, "<agent:status>File created and added to context.</agent:status>");
-        else
-          table.insert(accumulated_responses, "<agent:status>Error creating file: " .. (err or "unknown") .. "</agent:status>");
-        end
+        local bufnr = vim.fn.bufadd(raw_file);
+        vim.fn.bufload(bufnr);
+        vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, vim.split(action.content or "", "\n"));
+        vim.api.nvim_buf_call(bufnr, function() vim.cmd("silent! write") end);
+        context.set_state(raw_file, "active");
+        table.insert(accumulated_responses, "<agent:status>File created and added to context.</agent:status>");
       end
       run_next();
 
@@ -159,8 +157,13 @@ function M.dispatch_actions(actions, callback)
               editor.apply(bufnr, start_line, end_line, block.replace);
               applied_count = applied_count + 1;
             else
+              print("AI: Failed to find block:\n" .. table.concat(block.search, "\n"))
               failed_count = failed_count + 1;
             end
+          end
+
+          if applied_count > 0 then
+            vim.api.nvim_buf_call(bufnr, function() vim.cmd("silent! write") end);
           end
 
           if failed_count == 0 then
@@ -183,7 +186,8 @@ function M.dispatch_actions(actions, callback)
           local bufnr = vim.fn.bufadd(file);
           vim.fn.bufload(bufnr);
           vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, vim.split(action.content or "", "\n"));
-          table.insert(accumulated_responses, "<agent:status>Full file replacement applied.</agent:status>");
+          vim.api.nvim_buf_call(bufnr, function() vim.cmd("silent! write") end);
+          table.insert(accumulated_responses, string.format("<agent:status>Full file replacement applied to %s.</agent:status>", file));
         end
       end
       run_next();

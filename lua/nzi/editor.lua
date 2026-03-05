@@ -6,9 +6,16 @@ local M = {};
 --- @return number | nil: Start line (1-indexed)
 --- @return number | nil: End line (1-indexed)
 function M.find_block(bufnr, search_lines)
-  if #search_lines == 0 then return nil end
+  if not search_lines or #search_lines == 0 then return nil end
   local buffer_lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false);
   
+  local function normalize(line)
+    if not line then return "" end
+    -- gsub returns 2 values. Wrap in () to only return the string.
+    local res = line:gsub("^%s*", ""):gsub("%s*$", ""):gsub("%s+", " ")
+    return res
+  end
+
   -- Stage 1: Exact Match
   for i = 1, #buffer_lines - #search_lines + 1 do
     local match = true;
@@ -21,13 +28,11 @@ function M.find_block(bufnr, search_lines)
     if match then return i, i + #search_lines - 1 end
   end
 
-  -- Stage 2: Normalized Indentation Match
-  local function normalize(line)
-    return line:gsub("^%s*", ""):gsub("%s*$", ""):gsub("%s+", " ")
-  end
-
+  -- Stage 2: Normalized Match
   local norm_search = {};
-  for _, l in ipairs(search_lines) do table.insert(norm_search, normalize(l)) end
+  for _, l in ipairs(search_lines) do 
+    table.insert(norm_search, normalize(l)) 
+  end
 
   for i = 1, #buffer_lines - #search_lines + 1 do
     local match = true;
@@ -40,18 +45,16 @@ function M.find_block(bufnr, search_lines)
     if match then return i, i + #search_lines - 1 end
   end
 
-  -- Stage 3: Anchor-based search (match first and last line of block)
-  -- Good for when models omit the middle of a large function
-  if #search_lines > 2 then
+  -- Stage 3: Anchor Match (First and last lines)
+  if #search_lines > 1 then
     local first = norm_search[1]
     local last = norm_search[#norm_search]
     for i = 1, #buffer_lines do
       if normalize(buffer_lines[i]) == first then
         for k = i + 1, #buffer_lines do
           if normalize(buffer_lines[k]) == last then
-            -- We found anchors. This is risky but often what the model intends.
-            -- We only accept if the distance is "reasonable" (e.g. search block size * 2)
-            if (k - i) < (#search_lines * 2) then
+            -- Reasonable distance check
+            if (k - i) < (#search_lines * 3) then
               return i, k
             end
           end
