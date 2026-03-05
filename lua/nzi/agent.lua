@@ -4,12 +4,41 @@ local protocol = require("nzi.protocol");
 local modal = require("nzi.modal");
 local config = require("nzi.config");
 local context = require("nzi.context");
+local editor = require("nzi.editor");
 
 local M = {};
 
+--- Parse SEARCH/REPLACE blocks from a string
+--- @param content string
+--- @return table: Array of { search = table, replace = table }
+local function parse_edit_blocks(content)
+  local blocks = {};
+  local lines = vim.split(content, "\n");
+  local current_block = nil;
+  local state = "none";
+
+  for _, line in ipairs(lines) do
+    if line:match("^<<<<<<< SEARCH") then
+      current_block = { search = {}, replace = {} };
+      state = "search";
+    elseif line:match("^=======") then
+      state = "replace";
+    elseif line:match("^>>>>>>> REPLACE") then
+      if current_block then
+        table.insert(blocks, current_block);
+        current_block = nil;
+      end
+      state = "none";
+    elseif state == "search" then
+      table.insert(current_block.search, line);
+    elseif state == "replace" then
+      table.insert(current_block.replace, line);
+    end
+  end
+  return blocks;
+end
+
 --- Dispatch a set of model actions and return the combined agent responses
---- @param actions table: Array of parsed actions from protocol.lua
---- @param callback function: Called with combined response string
 function M.dispatch_actions(actions, callback)
   local current_idx = 1;
   local accumulated_responses = {};
@@ -100,13 +129,61 @@ function M.dispatch_actions(actions, callback)
           modal.write("Deleting file: " .. file, "system", false);
           local ok = os.remove(vim.fn.getcwd() .. "/" .. file);
           if ok then
-            context.set_state(file, "map"); -- Clears buffer if safe
+            context.set_state(file, "map"); 
             table.insert(accumulated_responses, "<agent:status>File deleted successfully.</agent:status>");
           else
             table.insert(accumulated_responses, "<agent:status>Error deleting file.</agent:status>");
           end
         else
           table.insert(accumulated_responses, string.format("<agent:status>Error resolving file for deletion: %s</agent:status>", err));
+        end
+      end
+      run_next();
+
+    elseif action.name == "edit" then
+      local raw_file = protocol.get_attr(action.attr, "file");
+      if raw_file then
+        local file, err = resolver.resolve(raw_file);
+        if file then
+          modal.write("Editing file: " .. file, "system", false);
+          local bufnr = vim.fn.bufadd(file);
+          vim.fn.bufload(bufnr);
+          
+          local blocks = parse_edit_blocks(action.content or "");
+          local applied_count = 0;
+          local failed_count = 0;
+
+          for _, block in ipairs(blocks) do
+            local start_line, end_line = editor.find_block(bufnr, block.search);
+            if start_line then
+              editor.apply(bufnr, start_line, end_line, block.replace);
+              applied_count = applied_count + 1;
+            else
+              failed_count = failed_count + 1;
+            end
+          end
+
+          if failed_count == 0 then
+            table.insert(accumulated_responses, string.format("<agent:status>Applied %d edits to %s.</agent:status>", applied_count, file));
+          else
+            table.insert(accumulated_responses, string.format("<agent:status>Applied %d edits to %s, but %d blocks failed to match.</agent:status>", applied_count, file, failed_count));
+          end
+        else
+          table.insert(accumulated_responses, string.format("<agent:status>Error resolving file for edit: %s</agent:status>", err));
+        end
+      end
+      run_next();
+
+    elseif action.name == "replace_all" then
+      local raw_file = protocol.get_attr(action.attr, "file");
+      if raw_file then
+        local file, err = resolver.resolve(raw_file);
+        if file then
+          modal.write("Replacing all content: " .. file, "system", false);
+          local bufnr = vim.fn.bufadd(file);
+          vim.fn.bufload(bufnr);
+          vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, vim.split(action.content or "", "\n"));
+          table.insert(accumulated_responses, "<agent:status>Full file replacement applied.</agent:status>");
         end
       end
       run_next();
