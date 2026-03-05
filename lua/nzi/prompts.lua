@@ -22,10 +22,11 @@ function M.build_system_prompt(prompts, model_alias)
     identity,
     "\n## SCHEMA",
     "XML tags provide structure:",
-    "* <agent:context>: Reference files and state.",
+    "* <agent:context>: Reference files and project structure.",
     "* <agent:file name=\"...\">: Individual file content.",
-    "* <agent:project_directives>: Task instructions.",
-    "* <agent:user>: Specific instructions.",
+    "* <agent:project_state>: Persistent plan, checklists, and requirements.",
+    "* <agent:next_task_suggest>: The first pending task identified in the project plan. Use this as a suggestion for future work, but do not let it override the user instruction.",
+    "* <agent:user>: The specific instruction for this turn. ALWAYS prioritize this over the plan.",
     "\n## CONSTRAINTS",
     "* NEVER output <agent:*> tags.",
     "* NEVER repeat prompt, history, or context content.",
@@ -34,10 +35,6 @@ function M.build_system_prompt(prompts, model_alias)
   
   if prompts.global then
     table.insert(parts, "\n### GLOBAL RULES\n" .. prompts.global);
-  end
-  
-  if prompts.project then
-    table.insert(parts, "\n### PROJECT RULES\n" .. prompts.project);
   end
 
   return table.concat(parts, "\n");
@@ -53,16 +50,20 @@ function M.format_context(ctx_list, include_lsp)
   -- 1. Universe Files (Open buffers and mapped project files)
   for _, item in ipairs(ctx_list) do
     local short_name = vim.fn.fnamemodify(item.name, ":.")
-    local size_str = string.format("%d bytes", item.size or 0)
     
-    if item.content and item.content ~= "" then
-      -- Full content (active/read) or Skeleton (map)
-      table.insert(parts, string.format("<agent:file name=\"%s\" state=\"%s\" size=\"%s\">\n%s\n</agent:file>", 
-        short_name, item.state, size_str, item.content));
-    else
-      -- Collapsed (mapped file with no metadata)
-      table.insert(parts, string.format("<agent:file name=\"%s\" state=\"%s\" size=\"%s\" />", 
-        short_name, item.state, size_str));
+    -- Skip AGENTS.md as it is sent as project_state
+    if short_name ~= "AGENTS.md" then
+      local size_str = string.format("%d bytes", item.size or 0)
+      
+      if item.content and item.content ~= "" then
+        -- Full content (active/read) or Skeleton (map)
+        table.insert(parts, string.format("<agent:file name=\"%s\" state=\"%s\" size=\"%s\">\n%s\n</agent:file>", 
+          short_name, item.state, size_str, item.content));
+      else
+        -- Collapsed (mapped file with no metadata)
+        table.insert(parts, string.format("<agent:file name=\"%s\" state=\"%s\" size=\"%s\" />", 
+          short_name, item.state, size_str));
+      end
     end
   end
 
@@ -112,12 +113,23 @@ function M.build_messages(content, type, target_file, include_lsp)
   for _, m in ipairs(history_msgs) do table.insert(messages, m) end
   
   -- 4. NEW TURN (Specific Question or Directive)
+  local state_block = "";
+  if prompt_parts.project then
+    state_block = string.format("<agent:project_state>\n%s\n</agent:project_state>", prompt_parts.project);
+  end
+
+  local next_task_block = "";
+  if prompt_parts.next_task_suggest then
+    next_task_block = string.format("\n\n<agent:next_task_suggest>\n%s\n</agent:next_task_suggest>", prompt_parts.next_task_suggest);
+  end
+
   local final_user_content = "";
   if type == "directive" and target_file then
-    final_user_content = string.format("<agent:project_directives>\n%s\n</agent:project_directives>\n\n<agent:user>\nEditing file: %s\nInstruction: %s\n</agent:user>",
-      prompt_parts.tasks or "", M.xml_escape(target_file), M.xml_escape(content));
+    final_user_content = string.format("%s%s\n\n<agent:user>\nEditing file: %s\nInstruction: %s\n</agent:user>",
+      state_block, next_task_block, M.xml_escape(target_file), M.xml_escape(content));
   else
-    final_user_content = string.format("<agent:user>\n%s\n</agent:user>", history.xml_escape(content));
+    final_user_content = string.format("%s%s\n\n<agent:user>\n%s\n</agent:user>", 
+      state_block, next_task_block, history.xml_escape(content));
   end
   
   table.insert(messages, { role = "user", content = final_user_content });
@@ -125,20 +137,24 @@ function M.build_messages(content, type, target_file, include_lsp)
   return messages, system_prompt, context_str, ctx_list;
 end
 
---- Gather prompt parts from AGENTS.md and .ai.md
---- @return table: { global = string, project = string, tasks = string }
+--- Gather prompt parts from AGENTS.md
+--- @return table: { global = string, project = string, next_task_suggest = string }
 function M.gather()
-  local parts = { global = nil, project = nil, tasks = nil };
+  local parts = { global = nil, project = nil, next_task_suggest = nil };
   
-  -- 1. Project level (AGENTS.md)
+  -- 1. Project level (./AGENTS.md)
+  -- This is the "Living Document" that guides the agent.
   local project_path = vim.fn.getcwd() .. "/AGENTS.md";
   if vim.fn.filereadable(project_path) == 1 then
-    parts.project = table.concat(vim.fn.readfile(project_path), "\n");
-    parts.tasks = parts.project:match("## Project Checklist\n\n(.-)\n\n##") or parts.project;
+    local content = table.concat(vim.fn.readfile(project_path), "\n");
+    parts.project = content;
+    
+    -- Extract first unchecked task: - [ ] Task Name
+    parts.next_task_suggest = content:match("%- %[ %]%s*(.-)\r?\n") or content:match("%- %[ %]%s*(.*)$");
   end
   
-  -- 2. Global level (optional ~/.ai.md)
-  local global_path = vim.fn.expand("~/.ai.md");
+  -- 2. Global level (optional ~/AGENTS.md)
+  local global_path = vim.fn.expand("~/AGENTS.md");
   if vim.fn.filereadable(global_path) == 1 then
     parts.global = table.concat(vim.fn.readfile(global_path), "\n");
   end

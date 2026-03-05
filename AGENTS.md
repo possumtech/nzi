@@ -61,6 +61,7 @@ This is the living document for AI (nzi) development. We use this to track tasks
 - **LiteLLM Bridge:** We use a lightweight Python bridge with `litellm` to provide effortless compatibility with hundreds of LLM providers while keeping the Lua side lean and focused on Neovim integration.
 - **Buffer-is-Context:** All open buffers are sent to the model by default.
 - **OpenAI Standard Lexicon:** All internal logic and tags (`reasoning_content`, `content`, `user`) align exactly with the OpenAI API standard.
+- **Living Document State:** Your `AGENTS.md` acts as the "Project Nervous System." It is sent to the model as `<agent:project_state>` during every turn, providing persistent guidance, checklists, and requirements that survive the ephemeral chat context.
 - **Machine-Friendly UI:** The modal is designed to be parsed by machines while remaining readable for humans through strict tagging and color-coding.
 - **Telemetry Lines:** Interaction blocks are preceded by structured telemetry data (`model`, `temp`, `top_p`) for absolute transparency.
 
@@ -68,6 +69,9 @@ This is the living document for AI (nzi) development. We use this to track tasks
 
 - [ ] (Pending) Surgical Edits: Devise a strategy for applying partial file updates. 
     - *Idea:* Use Search/Replace markers (`<<<<<<< SEARCH`, `=======`, `>>>>>>> REPLACE`) as the edit format. Models are heavily trained on this syntax, making it more robust than line-number-based unified diffs. These can be applied and resolved via Neovim's native diffing.
+- [ ] (Pending) Fuzzy Block Matching: Implement a recovery ladder for Search/Replace blocks.
+    - *Idea:* If an exact match fails due to whitespace or line-ending hallucinations, fallback to semantic matching, then anchor matching, and finally Levenshtein distance.
+    - *Philosophy:* "Pragmatic Application, Human Validation." The model shouldn't waste tokens retrying slightly wonky formatting if the human is going to review the diff anyway.
 
 ## Future Architectural Enhancements
 

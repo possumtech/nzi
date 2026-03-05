@@ -1,9 +1,17 @@
 # AI (nzi)
 Neovim-Native Agentic Interface
 
-## The Anti-Agent
+## The Living Document Workflow
 
-AI (nzi) is built on the philosophy that stream-of-consciousness conversations are an anti-pattern in software development. They distract focus and bury important project information in rambling logs. With AI, your interaction is structured, surgical, and fully integrated into your Neovim environment.
+Unlike traditional AI assistants that rely on ephemeral "stream-of-consciousness" chats, **AI (nzi)** is designed around a **Living Document** approach. 
+
+The project's primary guidance comes from your **`AGENTS.md`** file. This document acts as the "Project Nervous System," containing your checklists, architectural decisions, and requirements. 
+
+1.  **Plan in Markdown:** You edit `AGENTS.md` to define tasks and project state.
+2.  **Execute in Code:** When you run an `AI:` directive, the model is automatically fed the current state of your `AGENTS.md`.
+3.  **Collaborative Update:** The model is instructed to suggest updates to your checklists as it completes tasks, ensuring your living document and your code remain synchronized.
+
+This reorients your focus back to the code and the plan, rather than a separate chat log.
 
 ### 1. Code Interpolation
 
@@ -117,6 +125,12 @@ AI (nzi) provides a sanitized but raw view of every interaction. The read-only m
 
 ```xml
 [ USER | model: deepseek | temp: 0.7 | top_p: 1.0 ]
+<nzi:project_state>
+## Project Checklist
+- [x] Task 1
+- [ ] Task 2
+</nzi:project_state>
+
 <nzi:user>
 What is the purpose of this module?
 </nzi:user>

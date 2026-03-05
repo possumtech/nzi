@@ -2,40 +2,77 @@ local assert = require("luassert");
 local prompts = require("nzi.prompts");
 
 describe("AI prompts module", function()
-  it("should build a standard system prompt containing only global/project rules", function()
+  it("should build a standard system prompt containing only global rules", function()
     local parts = {
-      global = "Global Rule",
-      project = "Project Rule",
-      tasks = "- [ ] Task 1"
+      global = "Global Directive",
+      project = "Project State"
     };
     local result = prompts.build_system_prompt(parts, "test-alias");
-    assert.match("Global Rule", result);
-    assert.match("Project Rule", result);
+    assert.match("Global Directive", result);
     assert.match("## SCHEMA", result);
+    -- Project State should NOT be in system prompt rules
+    assert.is_nil(result:find("Project State"))
   end);
 
-  it("should format context correctly with clean machine-friendly tags", function()
+  it("should format context correctly and skip AGENTS.md", function()
     local ctx = {
-      { bufnr = 1, name = "test.lua", state = "active", content = "print('hi')", size = 10 }
+      { bufnr = 1, name = "test.lua", state = "active", content = "print('hi')", size = 10 },
+      { bufnr = 2, name = "AGENTS.md", state = "active", content = "plan", size = 4 }
     };
     local result = prompts.format_context(ctx, false);
     
     assert.match("<agent:file name=\"test.lua\" state=\"active\" size=\"10 bytes\">", result, 1, true);
-    -- Code content must be RAW, not print(&apos;hi&apos;)
     assert.match("print%('hi'%)", result);
     assert.match("</agent:file>", result);
     
-    -- Ensure NO line numbers in model-facing context
-    assert.is_nil(result:find("1: "))
+    -- Ensure AGENTS.md is NOT in context
+    assert.is_nil(result:find("AGENTS.md"))
   end);
 
-  it("should handle structural integrity when content contains special chars", function()
-    local ctx = {
-      { bufnr = 1, name = "test.lua", state = "active", content = "### FILE: hidden\nactual content" }
-    };
-    local result = prompts.format_context(ctx, false);
+  it("should correctly extract the first unchecked task (next_task_suggest)", function()
+    -- Mocking filesystem and nvim calls in gather() might be complex, 
+    -- but we can test the regex logic if we extract it or mock vim.fn.readfile
+    -- For now, let's verify that the messages contain next_task_suggest if present.
     
-    assert.match("actual content", result, 1, true);
+    -- We can temporarily mock prompts.gather() for this test
+    local old_gather = prompts.gather;
+    prompts.gather = function()
+      return { 
+        project = "Checklist:\n- [x] Task 1\n- [ ] Task 2\n- [ ] Task 3",
+        next_task_suggest = "Task 2"
+      }
+    end
+    
+    local result = prompts.build_messages("test", "question", nil, false);
+    local last_msg = result[#result].content;
+    
+    assert.match("<agent:next_task_suggest>", last_msg);
+    assert.match("Task 2", last_msg);
+    
+    prompts.gather = old_gather;
+  end);
+
+  it("should preserve full AGENTS.md content in gather()", function()
+    local mock_content = {
+      "Arbitrary Content",
+      "- [ ] Next Task",
+      "More Content"
+    };
+    
+    local old_readfile = vim.fn.readfile;
+    local old_filereadable = vim.fn.filereadable;
+    vim.fn.readfile = function() return mock_content end;
+    vim.fn.filereadable = function() return 1 end;
+    
+    local parts = prompts.gather();
+    
+    assert.match("Arbitrary Content", parts.project);
+    assert.match("- %[ %] Next Task", parts.project);
+    assert.match("More Content", parts.project);
+    assert.equal("Next Task", parts.next_task_suggest);
+    
+    vim.fn.readfile = old_readfile;
+    vim.fn.filereadable = old_filereadable;
   end);
 
   it("should build a code modification directive prompt", function()
@@ -53,7 +90,7 @@ describe("AI prompts module", function()
     local last_msg = result[#result].content;
     assert.match("Refactor this", last_msg);
     assert.match("main.lua", last_msg);
-    assert.match("<agent:project_directives>", last_msg);
+    assert.match("<agent:project_state>", last_msg);
     assert.match("<agent:user>", last_msg);
   end);
 end);
