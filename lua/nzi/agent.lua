@@ -3,6 +3,7 @@ local resolver = require("nzi.resolver");
 local protocol = require("nzi.protocol");
 local modal = require("nzi.modal");
 local config = require("nzi.config");
+local context = require("nzi.context");
 
 local M = {};
 

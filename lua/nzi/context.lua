@@ -32,12 +32,27 @@ end
 --- @param bufnr_or_path any: Number or string path
 --- @param state string: 'active', 'read', 'ignore', or 'map'
 function M.set_state(bufnr_or_path, state)
-  local bufnr = type(bufnr_or_path) == "string" and vim.fn.bufadd(bufnr_or_path) or bufnr_or_path;
+  local bufnr;
+  if type(bufnr_or_path) == "number" then
+    bufnr = bufnr_or_path;
+  else
+    local num = tonumber(bufnr_or_path);
+    if num then
+      bufnr = num;
+    else
+      -- Only bufadd if it's a non-numeric string path
+      local ok, res = pcall(vim.fn.bufadd, bufnr_or_path);
+      if ok then bufnr = res; end
+    end
+  end
+  
+  -- Validation: If it's a number but not a valid buffer, we still track its state 
+  -- (for unit tests like context_spec which uses arbitrary IDs)
+  if not bufnr or type(bufnr) ~= "number" or bufnr == -1 then return end
   
   if state == "map" then
     -- "Dropping" to map means we stop holding the whole file in context.
-    -- We only close the buffer if it is hidden and unmodified.
-    if vim.api.nvim_buf_is_loaded(bufnr) then
+    if vim.api.nvim_buf_is_valid(bufnr) and vim.api.nvim_buf_is_loaded(bufnr) then
       local is_modified = vim.api.nvim_get_option_value("modified", { buf = bufnr });
       local windows = vim.fn.win_findbuf(bufnr);
       
@@ -46,7 +61,7 @@ function M.set_state(bufnr_or_path, state)
         vim.api.nvim_buf_delete(bufnr, { unload = false });
       end
     end
-    M.states[bufnr] = nil; -- Revert to default universe behavior
+    M.states[bufnr] = nil;
     return;
   end
 
@@ -55,7 +70,7 @@ function M.set_state(bufnr_or_path, state)
     M.states[bufnr] = state;
     
     -- If setting to active/read, ensure it's loaded in the background
-    if (state == "active" or state == "read") and not vim.api.nvim_buf_is_loaded(bufnr) then
+    if (state == "active" or state == "read") and vim.api.nvim_buf_is_valid(bufnr) and not vim.api.nvim_buf_is_loaded(bufnr) then
       vim.fn.bufload(bufnr);
     end
   end
