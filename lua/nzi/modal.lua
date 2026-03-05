@@ -186,6 +186,7 @@ function M.close_tag()
 end
 
 function M.write(text, type, append)
+  if not text or text == "" then return end
   local bufnr = get_or_create_buffer();
   vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr });
 
@@ -236,8 +237,16 @@ function M.write(text, type, append)
   end
 
   vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr });
+  
   if M.winid and vim.api.nvim_win_is_valid(M.winid) then
-    vim.api.nvim_win_set_cursor(M.winid, { vim.api.nvim_buf_line_count(bufnr), 0 });
+    local lc = vim.api.nvim_buf_line_count(bufnr);
+    if lc > 0 then
+      -- Ensure the window is still showing our buffer before moving cursor
+      local win_buf = vim.api.nvim_win_get_buf(M.winid);
+      if win_buf == bufnr then
+        pcall(vim.api.nvim_win_set_cursor, M.winid, { lc, 0 });
+      end
+    end
   end
 end
 

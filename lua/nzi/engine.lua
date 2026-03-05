@@ -69,63 +69,60 @@ function M.run_loop(content, type, include_lsp, target_file)
           if #actions > 0 then
             -- Handle Tool Calls
             local current_action_idx = 1;
+            local accumulated_responses = {};
             
             local function run_next_action()
               if current_action_idx > #actions then
                 -- All actions for this turn complete, start next model turn
-                current_prompt = "Tool result(s) received. Continue.";
-                start_turn();
+                if #accumulated_responses > 0 then
+                  history.add(type, current_prompt, result);
+                  current_prompt = table.concat(accumulated_responses, "\n\n");
+                  start_turn();
+                end
                 return;
               end
               
               local action = actions[current_action_idx];
               current_action_idx = current_action_idx + 1;
               
-              local agent_response = nil;
-              
               if action.name == "grep" then
                 modal.write("Searching universe: " .. action.content, "system", false);
                 local grep_res = tools.grep(action.content);
-                agent_response = string.format("<agent:grep>\n%s\n</agent:grep>", grep_res);
+                table.insert(accumulated_responses, string.format("<agent:grep>\n%s\n</agent:grep>", grep_res));
+                run_next_action();
               
               elseif action.name == "env" or action.name == "shell" then
                 modal.write("Executing " .. action.name .. ": " .. action.content, "system", false);
                 local output = tools.shell(action.content, config.options.yolo);
+                local resp = "";
                 if output then
-                  agent_response = string.format("<agent:%s>\n%s\n</agent:%s>", action.name, output, action.name);
+                  resp = string.format("<agent:%s>\n%s\n</agent:%s>", action.name, output, action.name);
                 else
-                  agent_response = string.format("<agent:%s>Command executed. No output returned to context.</agent:%s>", action.name, action.name);
+                  resp = string.format("<agent:%s>Command executed. No output returned to context.</agent:%s>", action.name, action.name);
                 end
+                table.insert(accumulated_responses, resp);
+                run_next_action();
               
               elseif action.name == "read" then
                 local file = protocol.get_attr(action.attr, "file");
                 if file then
                   modal.write("Reading file: " .. file, "system", false);
-                  vim.cmd("edit " .. file);
-                  agent_response = "<agent:status>File opened and added to context.</agent:status>";
+                  local ok = pcall(vim.cmd, "edit " .. file);
+                  local status = ok and "File opened and added to context." or "Error: Could not open file."
+                  table.insert(accumulated_responses, string.format("<agent:status>%s</agent:status>", status));
                 end
+                run_next_action();
               
               elseif action.name == "choice" then
                 modal.write("User Choice Prompt: " .. action.content, "system", false);
                 tools.choice(action.content, function(choice_res)
                   vim.schedule(function()
-                    history.add(type, current_prompt, result);
-                    current_prompt = string.format("<agent:choice>%s</agent:choice>", choice_res);
-                    start_turn();
+                    table.insert(accumulated_responses, string.format("<agent:choice>%s</agent:choice>", choice_res));
+                    run_next_action();
                   end);
                 end);
-                return; -- Wait for callback
-              end
-              
-              if agent_response then
-                -- Pair the current prompt with the model's call
-                history.add(type, current_prompt, result);
-                -- The next prompt is the tool's result
-                current_prompt = agent_response;
-                start_turn();
-                return;
               else
-                -- Continue to next action in same response if no prompt change needed
+                -- Unknown or reasoning-only action, skip
                 run_next_action();
               end
             end
