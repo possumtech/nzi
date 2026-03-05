@@ -5,13 +5,17 @@ Neovim-Native Agentic Interface
 
 Unlike traditional AI assistants that rely on ephemeral "stream-of-consciousness" chats, **AI (nzi)** is designed around a **Living Document** approach. 
 
-The project's primary guidance comes from your **`AGENTS.md`** file. This document acts as the "Project Nervous System," containing your checklists, architectural decisions, and requirements. 
+The project's primary guidance comes from your **`AGENTS.md`** files. This system reorients your focus back to the code and the plan, rather than a separate chat log.
 
-1.  **Plan in Markdown:** You edit `AGENTS.md` to define tasks and project state.
-2.  **Execute in Code:** When you run an `AI:` directive, the model is automatically fed the current state of your `AGENTS.md`.
-3.  **Collaborative Update:** The model is instructed to suggest updates to your checklists as it completes tasks, ensuring your living document and your code remain synchronized.
+1.  **Global Directive (`~/AGENTS.md`):** This file contains your high-level personal preferences, architectural mandates, and global "rules of the road." It is injected into the **System Prompt** for every interaction.
+2.  **Project Nervous System (`./AGENTS.md`):** This is the living state of your current project. It contains your plan, checklists, and architectural decisions. It is sent as `<agent:project_state>` in every user message.
+3.  **Task Escalation (`next_task_suggest`):** The tool automatically identifies the **first unchecked checkbox** (`- [ ]`) in your project document and hoists it as `<agent:next_task_suggest>`. This provides the model with a clear "next step" suggestion without it being a strict command.
 
-This reorients your focus back to the code and the plan, rather than a separate chat log.
+### Workflow in Action
+
+*   **Plan in Markdown:** You edit `AGENTS.md` to define tasks and project state.
+*   **Execute in Code:** When you run an `AI:` directive, the model is automatically fed your global rules and the current state of your project.
+*   **Collaborative Update:** The model is aware of your progress and can suggest updates to your checklists as it completes tasks.
 
 ### 1. Code Interpolation
 
@@ -115,9 +119,9 @@ sections = {
 }
 ```
 
-### 6. AGENTS.md & .ai.md
+### 6. AGENTS.md
 
-Your project state lives in `AGENTS.md`. This is a collaborative, living document that provides a persistent and structured project management experience. AI (nzi) also inherits rules from `~/AGENTS.md` (global) and `.ai.md` (project-specific).
+Your project state lives in `./AGENTS.md`. This is a collaborative, living document that provides a persistent and structured project management experience. Global rules are inherited from `~/AGENTS.md`.
 
 ## "Under the Hood" Transparency
 
