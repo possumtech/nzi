@@ -71,9 +71,42 @@ function M.dispatch_actions(actions, callback)
         local file, err = resolver.resolve(raw_file);
         if file then
           modal.write("Dropping file: " .. file, "system", false);
-          -- set_state("map") handles the safe-closing logic
           context.set_state(file, "map");
           table.insert(accumulated_responses, "<agent:status>File dropped to project map.</agent:status>");
+        end
+      end
+      run_next();
+
+    elseif action.name == "create" then
+      local raw_file = protocol.get_attr(action.attr, "file");
+      if raw_file then
+        local full_path = vim.fn.getcwd() .. "/" .. raw_file;
+        modal.write("Creating file: " .. raw_file, "system", false);
+        local ok, err = pcall(vim.fn.writefile, vim.split(action.content or "", "\n"), full_path);
+        if ok then
+          context.set_state(raw_file, "active");
+          table.insert(accumulated_responses, "<agent:status>File created and added to context.</agent:status>");
+        else
+          table.insert(accumulated_responses, "<agent:status>Error creating file: " .. (err or "unknown") .. "</agent:status>");
+        end
+      end
+      run_next();
+
+    elseif action.name == "delete" then
+      local raw_file = protocol.get_attr(action.attr, "file");
+      if raw_file then
+        local file, err = resolver.resolve(raw_file);
+        if file then
+          modal.write("Deleting file: " .. file, "system", false);
+          local ok = os.remove(vim.fn.getcwd() .. "/" .. file);
+          if ok then
+            context.set_state(file, "map"); -- Clears buffer if safe
+            table.insert(accumulated_responses, "<agent:status>File deleted successfully.</agent:status>");
+          else
+            table.insert(accumulated_responses, "<agent:status>Error deleting file.</agent:status>");
+          end
+        else
+          table.insert(accumulated_responses, string.format("<agent:status>Error resolving file for deletion: %s</agent:status>", err));
         end
       end
       run_next();
@@ -87,7 +120,6 @@ function M.dispatch_actions(actions, callback)
         end);
       end);
     else
-      -- Unknown or unimplemented tool
       run_next();
     end
   end
@@ -96,7 +128,6 @@ function M.dispatch_actions(actions, callback)
 end
 
 --- Run automated tests and return failure output if necessary
---- @param callback function: Called with test failure text or nil if success
 function M.verify_state(callback)
   if not config.options.auto_test then
     callback(nil);
