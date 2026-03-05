@@ -11,7 +11,7 @@ function M.find_block(bufnr, search_lines)
   
   local function normalize(line)
     if not line then return "" end
-    -- gsub returns 2 values. Wrap in () to only return the string.
+    -- Standard normalization: remove trailing space and flatten internal space
     local res = line:gsub("^%s*", ""):gsub("%s*$", ""):gsub("%s+", " ")
     return res
   end
@@ -45,7 +45,29 @@ function M.find_block(bufnr, search_lines)
     if match then return i, i + #search_lines - 1 end
   end
 
-  -- Stage 3: Anchor Match (First and last lines)
+  -- Stage 3: Regex/Pattern Match
+  -- Treat SEARCH lines as Lua patterns if they contain magic characters
+  local has_patterns = false;
+  for _, l in ipairs(search_lines) do
+    if l:match("[%[%]%(%)%.%*%+%-%?%^%$]") then has_patterns = true; break end
+  end
+
+  if has_patterns then
+    for i = 1, #buffer_lines - #search_lines + 1 do
+      local match = true;
+      for j = 1, #search_lines do
+        -- Escape the search line for pcall if it's a malformed regex
+        local ok, matched = pcall(string.match, buffer_lines[i + j - 1], search_lines[j]);
+        if not ok or not matched then
+          match = false;
+          break;
+        end
+      end
+      if match then return i, i + #search_lines - 1 end
+    end
+  end
+
+  -- Stage 4: Anchor Match (First and last lines)
   if #search_lines > 1 then
     local first = norm_search[1]
     local last = norm_search[#norm_search]
@@ -67,10 +89,6 @@ function M.find_block(bufnr, search_lines)
 end
 
 --- Apply a replacement to a buffer
---- @param bufnr number
---- @param start_line number: 1-indexed
---- @param end_line number: 1-indexed
---- @param replace_lines table
 function M.apply(bufnr, start_line, end_line, replace_lines)
   vim.api.nvim_buf_set_lines(bufnr, start_line - 1, end_line, false, replace_lines);
 end

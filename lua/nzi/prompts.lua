@@ -42,6 +42,7 @@ function M.build_system_prompt(prompts, model_alias)
     "* <model:edit file=\"path/to/filename\">SEARCH/REPLACE Blocks</model:edit>: Modify code.",
     "\n## SEARCH/REPLACE FORMAT",
     "To modify a file, wrap SEARCH/REPLACE blocks inside a <model:edit> tag:",
+    "SEARCH blocks support Lua patterns (regex). Use them if exact content or whitespace is unknown.",
     "<model:edit file=\"path/to/filename\">",
     "<<<<<<< SEARCH",
     "[exact lines from file]",

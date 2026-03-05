@@ -8,7 +8,7 @@ local editor = require("nzi.editor");
 
 local M = {};
 
---- Parse SEARCH/REPLACE blocks from a string
+--- Parse SEARCH/REPLACE blocks from a string (Resilient Version)
 --- @param content string
 --- @return table: Array of { search = table, replace = table }
 local function parse_edit_blocks(content)
@@ -35,6 +35,12 @@ local function parse_edit_blocks(content)
       table.insert(current_block.replace, line);
     end
   end
+  
+  -- Handle unclosed blocks (Finalization)
+  if current_block and state == "replace" then
+    table.insert(blocks, current_block);
+  end
+  
   return blocks;
 end
 
@@ -110,12 +116,14 @@ function M.dispatch_actions(actions, callback)
       local raw_file = protocol.get_attr(action.attr, "file");
       if raw_file then
         modal.write("Creating file: " .. raw_file, "system", false);
-        local bufnr = vim.fn.bufadd(raw_file);
-        vim.fn.bufload(bufnr);
-        vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, vim.split(action.content or "", "\n"));
-        vim.api.nvim_buf_call(bufnr, function() vim.cmd("silent! write") end);
-        context.set_state(raw_file, "active");
-        table.insert(accumulated_responses, "<agent:status>File created and added to context.</agent:status>");
+        local full_path = vim.fn.getcwd() .. "/" .. raw_file;
+        local ok, err = pcall(vim.fn.writefile, vim.split(action.content or "", "\n"), full_path);
+        if ok then
+          context.set_state(raw_file, "active");
+          table.insert(accumulated_responses, "<agent:status>File created and added to context.</agent:status>");
+        else
+          table.insert(accumulated_responses, "<agent:status>Error creating file: " .. (err or "unknown") .. "</agent:status>");
+        end
       end
       run_next();
 
@@ -149,7 +157,7 @@ function M.dispatch_actions(actions, callback)
           
           local blocks = parse_edit_blocks(action.content or "");
           local applied_count = 0;
-          local failed_count = 0;
+          local failed_blocks = {};
 
           for _, block in ipairs(blocks) do
             local start_line, end_line = editor.find_block(bufnr, block.search);
@@ -157,8 +165,7 @@ function M.dispatch_actions(actions, callback)
               editor.apply(bufnr, start_line, end_line, block.replace);
               applied_count = applied_count + 1;
             else
-              print("AI: Failed to find block:\n" .. table.concat(block.search, "\n"))
-              failed_count = failed_count + 1;
+              table.insert(failed_blocks, table.concat(block.search, "\n"));
             end
           end
 
@@ -166,10 +173,12 @@ function M.dispatch_actions(actions, callback)
             vim.api.nvim_buf_call(bufnr, function() vim.cmd("silent! write") end);
           end
 
-          if failed_count == 0 then
+          if #failed_blocks == 0 then
             table.insert(accumulated_responses, string.format("<agent:status>Applied %d edits to %s.</agent:status>", applied_count, file));
           else
-            table.insert(accumulated_responses, string.format("<agent:status>Applied %d edits to %s, but %d blocks failed to match.</agent:status>", applied_count, file, failed_count));
+            local fail_msg = string.format("<agent:status>Error: %d blocks failed to match in %s. Ensure your SEARCH block exactly matches the file content (including year/names). Failed block(s):\n%s</agent:status>", 
+              #failed_blocks, file, table.concat(failed_blocks, "\n---\n"));
+            table.insert(accumulated_responses, fail_msg);
           end
         else
           table.insert(accumulated_responses, string.format("<agent:status>Error resolving file for edit: %s</agent:status>", err));

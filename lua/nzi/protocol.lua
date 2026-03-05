@@ -1,7 +1,7 @@
 local M = {};
 
---- Simple state-machine parser for <model:*> tags and markdown code blocks
---- This handles tags being split across chunks in the stream.
+--- Resilient state-machine parser for <model:*> tags and markdown code blocks
+--- This version handles tags that are never explicitly closed.
 function M.create_parser()
   return {
     buffer = "",
@@ -28,14 +28,12 @@ function M.create_parser()
       end
 
       -- 2. "Secret" Full-File Replacement fallback
-      -- If model dumps ```lua [path comment] ... ```
       while true do
         local s_start, e_end, lang, content = self.buffer:find("```(%a+)%s*\n(.-)```")
         if s_start then
-          -- Check first 2 lines for a path comment: -- path/to/file or // path/to/file
           local first_lines = content:match("^[^\n]*\n?[^\n]*")
           local path = first_lines:match("[%-%/][%-%/]%s*([%a%d%_%-%./]+)")
-          if path and path:match("%.") then -- Must look like a filename
+          if path and path:match("%.") then 
             table.insert(self.actions, {
               name = "replace_all",
               attr = "file=\"" .. path .. "\"",
@@ -95,9 +93,23 @@ function M.create_parser()
           break
         end
       end
+
+      -- 5. FINALIZATION: If chunk is empty, handle unclosed tags
+      if chunk == "" then
+        -- Look for an open <model:tag> that never closed
+        local s_start, s_end, tag_name, attr = self.buffer:find("<model:([%a_]+)([^>]*)>")
+        if s_start and not is_inside_backticks(s_start) then
+          local content = self.buffer:sub(s_end + 1)
+          table.insert(self.actions, {
+            name = tag_name,
+            attr = attr,
+            content = content
+          })
+          self.buffer = ""
+        end
+      end
     end,
 
-    --- Get all collected actions and clear the list
     get_actions = function(self)
       local acts = self.actions
       self.actions = {}
@@ -106,10 +118,6 @@ function M.create_parser()
   }
 end
 
---- Extract attribute values from a tag's attribute string
---- @param attr_str string
---- @param key string
---- @return string | nil
 function M.get_attr(attr_str, key)
   if not attr_str then return nil end
   return attr_str:match(key .. "=\"([^\"]+)\"") or attr_str:match(key .. "='([^']+)'")

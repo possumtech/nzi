@@ -43,6 +43,18 @@ describe("AI Surgical Editor", function()
     assert.equals(4, e);
   end);
 
+  it("should find a match using Lua patterns (Regex)", function()
+    local lines = { "Copyright (c) 2026 PossumTech" };
+    vim.api.nvim_buf_set_lines(test_buf, 0, -1, false, lines);
+    
+    -- Model sends a pattern
+    local search = { "Copyright %(c%) %d+ Your Name" }; -- Note: model might still get Name wrong
+    -- Actually, if we use regex, the model can ignore the parts it's unsure about
+    local search_regex = { "Copyright.*%d+" };
+    local s, e = editor.find_block(test_buf, search_regex);
+    assert.equals(1, s);
+  end);
+
   it("should apply a replacement", function()
     local lines = { "old" };
     vim.api.nvim_buf_set_lines(test_buf, 0, -1, false, lines);
