@@ -28,13 +28,36 @@ function M.get_state(bufnr)
   return "active";
 end
 
---- Set the state of a buffer
---- @param bufnr number
---- @param state string: 'active', 'read', 'ignore'
-function M.set_state(bufnr, state)
+--- Set the state of a buffer and handle its lifecycle
+--- @param bufnr_or_path any: Number or string path
+--- @param state string: 'active', 'read', 'ignore', or 'map'
+function M.set_state(bufnr_or_path, state)
+  local bufnr = type(bufnr_or_path) == "string" and vim.fn.bufadd(bufnr_or_path) or bufnr_or_path;
+  
+  if state == "map" then
+    -- "Dropping" to map means we stop holding the whole file in context.
+    -- We only close the buffer if it is hidden and unmodified.
+    if vim.api.nvim_buf_is_loaded(bufnr) then
+      local is_modified = vim.api.nvim_get_option_value("modified", { buf = bufnr });
+      local windows = vim.fn.win_findbuf(bufnr);
+      
+      if not is_modified and #windows == 0 then
+        -- Safe to quietly close
+        vim.api.nvim_buf_delete(bufnr, { unload = false });
+      end
+    end
+    M.states[bufnr] = nil; -- Revert to default universe behavior
+    return;
+  end
+
   local valid_states = { active = true, read = true, ignore = true };
   if valid_states[state] then
     M.states[bufnr] = state;
+    
+    -- If setting to active/read, ensure it's loaded in the background
+    if (state == "active" or state == "read") and not vim.api.nvim_buf_is_loaded(bufnr) then
+      vim.fn.bufload(bufnr);
+    end
   end
 end
 

@@ -11,6 +11,16 @@ The project's primary guidance comes from your **`AGENTS.md`** files. This syste
 2.  **Project Nervous System (`./AGENTS.md`):** This is the living state of your current project. It contains your plan, checklists, and architectural decisions. It is sent as `<agent:project_state>` in every user message.
 3.  **Task Escalation (`next_task_suggest`):** The tool automatically identifies the **first unchecked checkbox** (`- [ ]`) in your project document and hoists it as `<agent:next_task_suggest>`. This provides the model with a clear "next step" suggestion without it being a strict command.
 
+## Context Orchestration
+
+AI (nzi) follows a strict **"Neovim is Context"** policy. The model's understanding of your project is derived directly from your open buffers and the Git-tracked universe.
+
+*   **Discovery (`<model:grep />`, `<model:definition />`)**: The model can search the project universe or look up LSP definitions to find relevant files.
+*   **Expansion (`<model:read />`)**: The model can pull a file from the "map" into active context. This creates a background buffer in Neovim, making it visible to the model.
+*   **Contraction (`<model:drop />`)**: The model can "drop" a file back to the project map to reduce context noise.
+    *   **Safety**: NZI will only "quietly close" a dropped buffer if it is **hidden** and **unmodified**. If you are currently viewing the file or have unsaved changes, the request is safely ignored.
+*   **Persistence**: Manual changes you make to buffers (saving, closing, or switching states via `AI/read`) are immediately reflected in the model's next turn.
+
 ### Workflow in Action
 
 *   **Plan in Markdown:** You edit `AGENTS.md` to define tasks and project state.

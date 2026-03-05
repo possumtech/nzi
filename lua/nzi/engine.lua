@@ -7,20 +7,18 @@ local modal = require("nzi.modal");
 local config = require("nzi.config");
 local history = require("nzi.history");
 local protocol = require("nzi.protocol");
-local tools = require("nzi.tools");
-local resolver = require("nzi.resolver");
+local agent = require("nzi.agent");
 
 local M = {};
 
 M.current_job = nil;
 
 --- Handle an ai? question or an AI: directive in a multi-turn loop
---- @param content string: The question or directive text
+--- @param content string: The initial question or directive text
 --- @param type string: 'question' or 'directive'
 --- @param include_lsp boolean: Whether to include LSP symbol info
 --- @param target_file string | nil: The target file for directives
 function M.run_loop(content, type, include_lsp, target_file)
-  -- Cancel existing job if running
   if M.current_job then
     M.current_job:kill(15);
     M.current_job = nil;
@@ -28,7 +26,6 @@ function M.run_loop(content, type, include_lsp, target_file)
 
   local turn_count = 0;
   local max_turns = config.options.max_turns or 5;
-  local last_result = nil;
   local current_prompt = content;
 
   local function start_turn()
@@ -62,131 +59,49 @@ function M.run_loop(content, type, include_lsp, target_file)
         M.current_job = nil;
         modal.set_thinking(false);
         
-        if success then
-          last_result = result;
-          tag_parser:feed(""); -- Finalize parser
-          local actions = tag_parser:get_actions();
-          
-          if #actions > 0 then
-            -- Handle Tool Calls
-            local current_action_idx = 1;
-            local accumulated_responses = {};
-            
-            local function run_next_action()
-              if current_action_idx > #actions then
-                -- All actions for this turn complete, start next model turn
-                if #accumulated_responses > 0 then
-                  local combined_resp = table.concat(accumulated_responses, "\n\n");
-                  history.add(type, current_prompt, result);
-                  
-                  -- Faithfully record the response being sent back to the model
-                  modal.write(combined_resp, "user", false);
-                  
-                  current_prompt = combined_resp;
-                  start_turn();
-                end
-                return;
-              end
-              
-              local action = actions[current_action_idx];
-              current_action_idx = current_action_idx + 1;
-              
-              if action.name == "grep" then
-                modal.write("Searching universe: " .. action.content, "system", false);
-                local grep_res = tools.grep(action.content);
-                table.insert(accumulated_responses, string.format("<agent:grep>\n%s\n</agent:grep>", grep_res));
-                run_next_action();
-              
-              elseif action.name == "definition" then
-                modal.write("LSP Lookup: " .. action.content, "system", false);
-                local def_res = tools.definition(action.content);
-                table.insert(accumulated_responses, string.format("<agent:status>%s</agent:status>", def_res));
-                run_next_action();
-
-              elseif action.name == "env" or action.name == "shell" then
-                modal.write("Executing " .. action.name .. ": " .. action.content, "system", false);
-                local output = tools.shell(action.content, config.options.yolo);
-                local resp = "";
-                if output then
-                  resp = string.format("<agent:%s>\n%s\n</agent:%s>", action.name, output, action.name);
-                else
-                  resp = string.format("<agent:%s>Command executed. No output returned to context.</agent:%s>", action.name, action.name);
-                end
-                table.insert(accumulated_responses, resp);
-                run_next_action();
-              
-              elseif action.name == "read" then
-                local raw_file = protocol.get_attr(action.attr, "file");
-                if raw_file then
-                  local file, err = resolver.resolve(raw_file);
-                  if file then
-                    modal.write("Reading file: " .. file, "system", false);
-                    local ok = pcall(vim.cmd, "edit " .. file);
-                    local status = ok and "File opened and added to context." or "Error: Could not open file."
-                    table.insert(accumulated_responses, string.format("<agent:status>%s</agent:status>", status));
-                  else
-                    table.insert(accumulated_responses, string.format("<agent:status>Error: %s</agent:status>", err));
-                  end
-                end
-                run_next_action();
-              
-              elseif action.name == "choice" then
-                modal.write("User Choice Prompt: " .. action.content, "system", false);
-                tools.choice(action.content, function(choice_res)
-                  vim.schedule(function()
-                    table.insert(accumulated_responses, string.format("<agent:choice>%s</agent:choice>", choice_res));
-                    run_next_action();
-                  end);
-                end);
-              else
-                -- Unknown or reasoning-only action, skip
-                run_next_action();
-              end
-            end
-            
-            run_next_action();
-          else
-            -- No actions, this is the final response
-            -- Trigger auto-test if configured
-            if config.options.auto_test then
-              modal.write("Running auto-test: " .. config.options.auto_test, "system", false);
-              local test_output = vim.fn.systemlist(config.options.auto_test);
-              local exit_code = vim.v.shell_error;
-              
-              if exit_code ~= 0 then
-                local failure_text = table.concat(test_output, "\n");
-                modal.write("Test failure detected.", "error", false);
-                
-                local should_retry = config.options.ralph;
-                if not should_retry then
-                  local choice = vim.fn.confirm("Test failed. Send output back to AI?", "&Yes\n&No", 1);
-                  should_retry = (choice == 1);
-                end
-                
-                if should_retry then
-                  -- Pair the current prompt with the buggy response
-                  history.add(type, current_prompt, result);
-                  -- The next prompt is the test failure
-                  local resp = string.format("<agent:test>%s</agent:test>", failure_text);
-                  
-                  -- Faithfully record the response being sent back to the model
-                  modal.write(resp, "user", false);
-                  
-                  current_prompt = resp;
-                  start_turn();
-                  return;
-                end
-              else
-                modal.write("Tests passed.", "system", false);
-              end
-            end
-            
-            history.add(type, current_prompt, result);
+        if not success then
+          if not error_displayed then
+            modal.write(result, "error", false);
             modal.close_tag();
           end
-        elseif not error_displayed then
-          modal.write(result, "error", false);
-          modal.close_tag();
+          return;
+        end
+
+        tag_parser:feed(""); -- Finalize parser
+        local actions = tag_parser:get_actions();
+        
+        if #actions > 0 then
+          -- 1. Discovery/Action Phase
+          agent.dispatch_actions(actions, function(combined_agent_response)
+            vim.schedule(function()
+              if combined_agent_response then
+                history.add(type, current_prompt, result);
+                modal.write(combined_agent_response, "user", false);
+                current_prompt = combined_agent_response;
+                start_turn();
+              else
+                -- Tools ran but no response for model (e.g. env command with no returned context)
+                history.add(type, current_prompt, result);
+                modal.close_tag();
+              end
+            end);
+          end);
+        else
+          -- 2. Final Response & Verification Phase
+          agent.verify_state(function(failure_response)
+            vim.schedule(function()
+              if failure_response then
+                history.add(type, current_prompt, result);
+                modal.write(failure_response, "user", false);
+                current_prompt = failure_response;
+                start_turn();
+              else
+                -- All good, wrap up
+                history.add(type, current_prompt, result);
+                modal.close_tag();
+              end
+            end);
+          end);
         end
       end);
     end, function(chunk, chunk_type)
