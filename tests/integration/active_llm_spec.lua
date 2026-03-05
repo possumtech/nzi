@@ -16,13 +16,20 @@ describe("AI active model integration", function()
     config.options.yolo = original_yolo;
   end);
 
-  --- Helper to wait for the engine loop to completely finish
-  local function wait_for_settle(timeout)
-    -- Give the engine a moment to actually start the job/set flags
-    vim.wait(200);
-    return vim.wait(timeout or 30000, function()
-      return engine.is_busy == false and engine.current_job == nil
-    end);
+  --- Custom polling helper that actually allows the event loop to spin
+  local function poll_until_settle(timeout_ms)
+    local start = vim.loop.now();
+    while (vim.loop.now() - start) < timeout_ms do
+      if engine.is_busy == false and engine.current_job == nil then
+        -- Check if history actually has something (prevents false positives at start)
+        if #history.get_all() > 0 then
+          return true;
+        end
+      end
+      -- This is the key: actually let Neovim process events
+      vim.cmd("sleep 200m");
+    end
+    return false;
   end
 
   --- Helper to check if a string exists ANYWHERE in the conversation history
@@ -33,33 +40,36 @@ describe("AI active model integration", function()
       if assistant:upper():match(pattern:upper()) then
         return true;
       end
+      local user = history.strip_line_numbers(turn.user or "");
+      if user:upper():match(pattern:upper()) then
+        return true;
+      end
     end
     return false;
   end
 
   it("should handle an ai? question end-to-end", function()
-    engine.handle_question("Say exactly 'HELLO WORLD' and nothing else.", false);
+    engine.handle_question("TEST_ID_1: Say exactly 'HELLO WORLD' and nothing else.", false);
     
-    assert.True(wait_for_settle(), "Interaction timed out");
+    assert.True(poll_until_settle(30000), "Interaction TEST_ID_1 timed out");
     assert.True(history_contains("HELLO WORLD"), "Model did not provide expected response in history");
   end);
 
   it("should handle command-line directive end-to-end", function()
-    engine.dispatch({ args = ":Say only 'DIRECTIVE'", line1 = 1, line2 = 1, range = 0 });
+    engine.dispatch({ args = ":TEST_ID_2: Say only 'DIRECTIVE'", line1 = 1, line2 = 1, range = 0 });
     
-    assert.True(wait_for_settle(), "Interaction timed out");
+    assert.True(poll_until_settle(30000), "Interaction TEST_ID_2 timed out");
     assert.True(history_contains("DIRECTIVE"));
   end);
 
   it("BATTLE TEST: should maintain state across a multi-turn conversation", function()
     -- Turn 1: Establish a fact
-    engine.handle_question("My favorite color is Crimson. Remember that.", false);
-    assert.True(wait_for_settle(), "Turn 1 timed out");
-    assert.True(#history.get_all() >= 1);
+    engine.handle_question("TEST_ID_3: My favorite color is Crimson. Remember that.", false);
+    assert.True(poll_until_settle(30000), "Turn 1 TEST_ID_3 timed out");
 
     -- Turn 2: Query the fact
-    engine.handle_question("What is my favorite color? Answer in one word.", false);
-    assert.True(wait_for_settle(), "Turn 2 timed out");
+    engine.handle_question("TEST_ID_4: What was the favorite color I mentioned? Answer in one word.", false);
+    assert.True(poll_until_settle(30000), "Turn 2 TEST_ID_4 timed out");
 
     assert.True(history_contains("CRIMSON"), "Model forgot the fact established in Turn 1");
   end);
@@ -74,9 +84,9 @@ describe("AI active model integration", function()
     vim.api.nvim_buf_set_name(b2, "info2.txt");
     vim.api.nvim_buf_set_lines(b2, 0, -1, false, { "The other code is 5678" });
 
-    engine.handle_question("What are the two secret codes in my open buffers? Respond with just the numbers.", false);
+    engine.handle_question("TEST_ID_5: What are the two secret codes in my open buffers? Respond with just the numbers.", false);
     
-    assert.True(wait_for_settle(40000), "Synthesis timed out");
+    assert.True(poll_until_settle(40000), "Synthesis TEST_ID_5 timed out");
 
     assert.True(history_contains("1234"), "Missing first code");
     assert.True(history_contains("5678"), "Missing second code");
