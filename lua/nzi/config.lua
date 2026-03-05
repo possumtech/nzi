@@ -69,6 +69,10 @@ M.defaults = {
       diff   = "#2e2e4a", -- Vibrant blue
     },
   },
+
+  -- Agentic Loop settings
+  max_turns = 5, -- Safety cap for autonomous tool loops
+  yolo = false,  -- If true, skip permission prompts for shell/env tools
 };
 
 M.options = M.defaults;

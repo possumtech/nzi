@@ -17,6 +17,7 @@ end
 
 --- Format text with line numbers
 local function add_line_numbers(text)
+  if not text then return nil; end
   local lines = vim.split(text, "\n");
   local output = {};
   for i, line in ipairs(lines) do
@@ -39,10 +40,10 @@ function M.strip_line_numbers(text)
   return table.concat(output, "\n");
 end
 
---- Add a completed turn to history
---- @param type string: 'question', 'directive', or 'shell'
---- @param user_content string
---- @param assistant_content string
+--- Add a completed or partial turn to history
+--- @param type string: 'question', 'directive', 'assistant', or 'user' (for loops)
+--- @param user_content string | nil
+--- @param assistant_content string | nil
 function M.add(type, user_content, assistant_content)
   table.insert(M.turns, {
     id = next_id,
@@ -69,8 +70,14 @@ function M.format()
     local user_clean = M.strip_line_numbers(turn.user);
     local assistant_clean = M.strip_line_numbers(turn.assistant);
     
-    table.insert(parts, string.format("<agent:user>\n%s\n</agent:user>\n\n<agent:assistant>\n%s\n</agent:assistant>",
-      M.xml_escape(user_clean), M.xml_escape(assistant_clean)));
+    if user_clean ~= "" and assistant_clean ~= "" then
+      table.insert(parts, string.format("<agent:user>\n%s\n</agent:user>\n\n<agent:assistant>\n%s\n</agent:assistant>",
+        M.xml_escape(user_clean), M.xml_escape(assistant_clean)));
+    elseif user_clean ~= "" then
+      table.insert(parts, string.format("<agent:user>\n%s\n</agent:user>", M.xml_escape(user_clean)));
+    elseif assistant_clean ~= "" then
+      table.insert(parts, string.format("<agent:assistant>\n%s\n</agent:assistant>", M.xml_escape(assistant_clean)));
+    end
   end
   
   return table.concat(parts, "\n\n");
@@ -84,14 +91,18 @@ function M.get_as_messages()
     local user_clean = M.strip_line_numbers(turn.user);
     local assistant_clean = M.strip_line_numbers(turn.assistant);
 
-    table.insert(messages, { 
-      role = "user", 
-      content = string.format("<agent:user>\n%s\n</agent:user>", M.xml_escape(user_clean)) 
-    });
-    table.insert(messages, { 
-      role = "assistant", 
-      content = string.format("<agent:assistant>\n%s\n</agent:assistant>", M.xml_escape(assistant_clean)) 
-    });
+    if turn.type == "assistant" or assistant_clean ~= "" then
+      table.insert(messages, { 
+        role = "assistant", 
+        content = M.strip_line_numbers(turn.assistant) 
+      });
+    end
+    if turn.type == "user" or user_clean ~= "" then
+      table.insert(messages, { 
+        role = "user", 
+        content = M.strip_line_numbers(turn.user) 
+      });
+    end
   end
   return messages;
 end

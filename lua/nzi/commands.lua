@@ -180,6 +180,11 @@ function M.run(command_str)
       stderr_buffered = true,
     });
 
+  elseif cmd == "yolo" then
+    config.options.yolo = not config.options.yolo;
+    local mode = config.options.yolo and "ON (Autopilot)" or "OFF (Safe Mode)";
+    vim.notify("AI: YOLO Mode is " .. mode, vim.log.levels.INFO);
+
   elseif cmd == "config" then
     print(vim.inspect(config.options));
     
