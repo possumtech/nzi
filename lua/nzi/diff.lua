@@ -18,39 +18,37 @@ function M.propose_edit(bufnr, new_lines)
   
   M.pending_reviews[bufnr] = suggestion_buf;
   
-  -- Trigger the diff UI in the current tab
+  -- Use native Neovim tabs/windows for the diff
   vim.cmd("tab split");
   local win_orig = vim.api.nvim_get_current_win();
   vim.api.nvim_win_set_buf(win_orig, bufnr);
-  vim.cmd("diffthis");
   
   vim.cmd("vsplit");
   local win_sugg = vim.api.nvim_get_current_win();
   vim.api.nvim_win_set_buf(win_sugg, suggestion_buf);
-  vim.cmd("diffthis");
   
-  -- Focus back on original
+  -- MUST set diff mode in BOTH windows
+  vim.api.nvim_win_call(win_orig, function() vim.cmd("diffthis") end);
+  vim.api.nvim_win_call(win_sugg, function() vim.cmd("diffthis") end);
+  
+  -- Focus the original buffer so user can use 'do' (diff obtain) to pull from suggestion
   vim.api.nvim_set_current_win(win_orig);
   
-  vim.notify("AI: Surgical edit proposed. Use 'ga' to Accept or 'gr' to Reject.", vim.log.levels.INFO);
+  vim.notify("AI: Diff mode active. Use 'do'/'dp' to merge. Close tab when finished.", vim.log.levels.INFO);
 end
 
---- Accept the pending edit for a buffer
+--- Finalize the review (Accept the current state of original buffer)
 function M.accept(bufnr)
-  local sugg_buf = M.pending_reviews[bufnr];
-  if not sugg_buf or not vim.api.nvim_buf_is_valid(sugg_buf) then return end
-  
-  local new_lines = vim.api.nvim_buf_get_lines(sugg_buf, 0, -1, false);
-  vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, new_lines);
-  
   M.cleanup(bufnr);
-  vim.notify("AI: Edit applied.", vim.log.levels.INFO);
+  vim.notify("AI: Edit review finalized.", vim.log.levels.INFO);
 end
 
---- Reject the pending edit
+--- Finalize and discard (Revert original buffer? Or just close suggestion?)
+--- Logic: We assume the user has been editing 'bufnr' directly.
+--- 'reject' just clears the suggestion.
 function M.reject(bufnr)
   M.cleanup(bufnr);
-  vim.notify("AI: Edit discarded.", vim.log.levels.INFO);
+  vim.notify("AI: Suggestion discarded.", vim.log.levels.INFO);
 end
 
 --- Cleanup diff state and close suggest buffer
@@ -64,7 +62,9 @@ function M.cleanup(bufnr)
   -- Turn off diff mode in all windows showing this buffer
   local wins = vim.fn.win_findbuf(bufnr);
   for _, win in ipairs(wins) do
-    vim.api.nvim_win_call(win, function() vim.cmd("diffoff") end);
+    if vim.api.nvim_win_is_valid(win) then
+      vim.api.nvim_win_call(win, function() vim.cmd("diffoff") end);
+    end
   end
 end
 

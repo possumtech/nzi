@@ -119,8 +119,6 @@ function M.setup(opts)
   vim.keymap.set("n", "<leader>au", function() vim.cmd("AI/undo") end, { desc = "AI: Undo last turn" });
   vim.keymap.set("n", "<leader>an", function() vim.cmd("AI/next") end, { desc = "AI: Next pending review" });
   vim.keymap.set("n", "<leader>ap", function() vim.cmd("AI/prev") end, { desc = "AI: Prev pending review" });
-  vim.keymap.set("n", "ga", function() vim.cmd("AI/accept") end, { desc = "AI: Accept proposed edit" });
-  vim.keymap.set("n", "gr", function() vim.cmd("AI/reject") end, { desc = "AI: Reject proposed edit" });
   
   vim.keymap.set("n", "<leader>ay", function() vim.cmd("AI/yank") end, { desc = "AI: Yank last response" });
   vim.keymap.set("n", "<leader>aY", function() 
