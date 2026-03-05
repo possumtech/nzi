@@ -115,4 +115,52 @@ function M.choice(content, callback)
   end);
 end
 
+--- Find the definition of a symbol using LSP
+--- @param symbol string: The symbol to look up
+--- @return string: The location or error message
+function M.definition(symbol)
+  -- We search for the symbol in all active buffers
+  -- This is slightly non-standard LSP but works well for agentic discovery
+  local results = {};
+  local params = { textDocument = vim.lsp.util.make_text_document_params(), position = nil };
+  
+  -- Heuristic: Try to find the symbol in current buffer first
+  local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false);
+  for i, line in ipairs(lines) do
+    local col = line:find(symbol, 1, true);
+    if col then
+      -- Trigger LSP request at this position
+      local win = vim.api.nvim_get_current_win();
+      local original_pos = vim.api.nvim_win_get_cursor(win);
+      vim.api.nvim_win_set_cursor(win, { i, col - 1 });
+      
+      -- Synchronous wait for LSP response (short timeout)
+      local lsp_res = vim.lsp.buf_request_sync(0, "textDocument/definition", vim.lsp.util.make_position_params(), 1000);
+      vim.api.nvim_win_set_cursor(win, original_pos);
+      
+      if lsp_res then
+        for _, server_res in pairs(lsp_res) do
+          if server_res.result then
+            local location = server_res.result[1] or server_res.result;
+            if location.uri or location.targetUri then
+              local uri = location.uri or location.targetUri;
+              local range = location.range or location.targetSelectionRange;
+              local path = vim.uri_to_fname(uri);
+              local rel_path = vim.fn.fnamemodify(path, ":.");
+              table.insert(results, string.format("%s:%d", rel_path, range.start.line + 1));
+            end
+          end
+        end
+      end
+      if #results > 0 then break end
+    end
+  end
+
+  if #results == 0 then
+    return "LSP definition not found for: " .. symbol;
+  end
+  
+  return "Definition found at: " .. table.concat(results, ", ");
+end
+
 return M;

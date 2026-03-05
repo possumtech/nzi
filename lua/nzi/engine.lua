@@ -8,6 +8,7 @@ local config = require("nzi.config");
 local history = require("nzi.history");
 local protocol = require("nzi.protocol");
 local tools = require("nzi.tools");
+local resolver = require("nzi.resolver");
 
 local M = {};
 
@@ -96,6 +97,12 @@ function M.run_loop(content, type, include_lsp, target_file)
                 table.insert(accumulated_responses, string.format("<agent:grep>\n%s\n</agent:grep>", grep_res));
                 run_next_action();
               
+              elseif action.name == "definition" then
+                modal.write("LSP Lookup: " .. action.content, "system", false);
+                local def_res = tools.definition(action.content);
+                table.insert(accumulated_responses, string.format("<agent:status>%s</agent:status>", def_res));
+                run_next_action();
+
               elseif action.name == "env" or action.name == "shell" then
                 modal.write("Executing " .. action.name .. ": " .. action.content, "system", false);
                 local output = tools.shell(action.content, config.options.yolo);
@@ -109,12 +116,17 @@ function M.run_loop(content, type, include_lsp, target_file)
                 run_next_action();
               
               elseif action.name == "read" then
-                local file = protocol.get_attr(action.attr, "file");
-                if file then
-                  modal.write("Reading file: " .. file, "system", false);
-                  local ok = pcall(vim.cmd, "edit " .. file);
-                  local status = ok and "File opened and added to context." or "Error: Could not open file."
-                  table.insert(accumulated_responses, string.format("<agent:status>%s</agent:status>", status));
+                local raw_file = protocol.get_attr(action.attr, "file");
+                if raw_file then
+                  local file, err = resolver.resolve(raw_file);
+                  if file then
+                    modal.write("Reading file: " .. file, "system", false);
+                    local ok = pcall(vim.cmd, "edit " .. file);
+                    local status = ok and "File opened and added to context." or "Error: Could not open file."
+                    table.insert(accumulated_responses, string.format("<agent:status>%s</agent:status>", status));
+                  else
+                    table.insert(accumulated_responses, string.format("<agent:status>Error: %s</agent:status>", err));
+                  end
                 end
                 run_next_action();
               

@@ -12,8 +12,7 @@ function M.create_parser()
     feed = function(self, chunk)
       self.buffer = self.buffer .. chunk
       
-      -- 1. Check for markdown-fenced code blocks (sh and bash)
-      -- Strategy: If the model uses ```sh [command] ``` we treat it as <model:shell>
+      -- 1. Check for markdown-fenced code blocks (sh and bash) -> Shell
       while true do
         local s_start, e_end, lang, content = self.buffer:find("```([sb][ha][sh]?)%s*\n(.-)```")
         if s_start then
@@ -28,13 +27,34 @@ function M.create_parser()
         end
       end
 
+      -- 2. "Secret" Full-File Replacement fallback
+      -- If model dumps ```lua [path comment] ... ```
+      while true do
+        local s_start, e_end, lang, content = self.buffer:find("```(%a+)%s*\n(.-)```")
+        if s_start then
+          -- Check first 2 lines for a path comment: -- path/to/file or // path/to/file
+          local first_lines = content:match("^[^\n]*\n?[^\n]*")
+          local path = first_lines:match("[%-%/][%-%/]%s*([%a%d%_%-%./]+)")
+          if path and path:match("%.") then -- Must look like a filename
+            table.insert(self.actions, {
+              name = "replace_all",
+              attr = "file=\"" .. path .. "\"",
+              content = content
+            })
+          end
+          self.buffer = self.buffer:sub(e_end + 1)
+        else
+          break
+        end
+      end
+
       local function is_inside_backticks(pos)
         local prefix = self.buffer:sub(1, pos - 1)
         local _, count = prefix:gsub("`", "")
         return (count % 2) ~= 0
       end
 
-      -- 2. Check for block tags: <model:tag ...>content</model:tag>
+      -- 3. Check for block tags: <model:tag ...>content</model:tag>
       while true do
         local s_start, s_end, tag_name, attr, content = self.buffer:find("<model:([%a_]+)([^>]*)>(.-)</model:%1>")
         
@@ -47,7 +67,6 @@ function M.create_parser()
             })
             self.buffer = self.buffer:sub(s_end + 1)
           else
-            -- Skip examples inside backticks
             local next_search = self.buffer:find("<model:", s_start + 1)
             if not next_search then break end
             break 
@@ -57,7 +76,7 @@ function M.create_parser()
         end
       end
       
-      -- 3. Check for self-closing tags: <model:tag file="..." />
+      -- 4. Check for self-closing tags: <model:tag file="..." />
       while true do
         local s_start, e_end, tag_name, attr = self.buffer:find("<model:([%a_]+)([^>]-)%s*/>")
         
