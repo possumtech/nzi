@@ -35,7 +35,7 @@ describe("AI behavioral commands", function()
     local bufnr = vim.api.nvim_create_buf(true, false);
     vim.api.nvim_set_current_buf(bufnr);
     
-    local modal = require("nzi.modal");
+    local modal = require("nzi.ui.modal");
     modal.clear();
 
     -- Execute the shortcut command
@@ -61,7 +61,7 @@ describe("AI behavioral commands", function()
     vim.api.nvim_set_current_buf(bufnr);
     
     -- Directives are now treated as handle_question
-    local engine_mod = require("nzi.engine");
+    local engine_mod = require("nzi.engine.engine");
     local question_spy = require("luassert.spy").on(engine_mod, "handle_question");
     
     -- Simulate :AI :Hello World
@@ -77,7 +77,7 @@ describe("AI behavioral commands", function()
     local bufnr = vim.api.nvim_create_buf(true, false);
     vim.api.nvim_buf_set_name(bufnr, "test_state.lua");
     vim.api.nvim_set_current_buf(bufnr);
-    local context = require("nzi.context");
+    local context = require("nzi.context.context");
 
     -- Default should be active
     assert.are.equal("active", context.get_state(bufnr));

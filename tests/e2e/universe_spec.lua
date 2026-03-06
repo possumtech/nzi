@@ -1,7 +1,7 @@
 -- tests/e2e/universe_spec.lua
 local assert = require("luassert")
 local helper = require("tests.universe_helper")
-local context = require("nzi.context")
+local context = require("nzi.context.context")
 
 describe("Universe Mapping E2E", function()
   local test_repo_root = nil

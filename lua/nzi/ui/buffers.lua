@@ -1,5 +1,5 @@
-local context = require("nzi.context");
-local parser = require("nzi.parser");
+local context = require("nzi.context.context");
+local parser = require("nzi.engine.parser");
 
 local M = {};
 
@@ -85,15 +85,15 @@ function M.interpolate(bufnr)
     
     -- 2. Execute via engine (using a schedule to ensure the buffer removal is processed)
     vim.schedule(function()
-      local engine = require("nzi.engine");
+      local engine = require("nzi.engine.engine");
       if type == "question" then
         engine.handle_question(content, false);
       elseif type == "shell" then
-        require("nzi.shell").run(content);
+        require("nzi.tools.shell").run(content);
       elseif type == "directive" then
         engine.run_loop(content, "directive", false, vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":."));
       elseif type == "command" then
-        require("nzi.commands").run(content);
+        require("nzi.core.commands").run(content);
       end
     end);
   end

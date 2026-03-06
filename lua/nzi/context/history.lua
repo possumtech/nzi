@@ -15,9 +15,11 @@ function M.xml_escape(text)
              :gsub("'", "&apos;")
 end
 
---- Format text with line numbers
+--- Format text with line numbers (skips if already numbered or structured)
 local function add_line_numbers(text)
   if not text then return nil; end
+  if text:match("^<agent:selection") or text:match("^%d+: ") then return text; end
+  
   local lines = vim.split(text, "\n");
   local output = {};
   for i, line in ipairs(lines) do
@@ -26,11 +28,14 @@ local function add_line_numbers(text)
   return table.concat(output, "\n");
 end
 
---- Remove line numbers from text
+--- Remove line numbers from text (only if it was numbered by us)
 --- @param text string
 --- @return string
 function M.strip_line_numbers(text)
-  if not text then return ""; end
+  if not text or text == "" then return ""; end
+  -- If it looks like a selection block, don't touch it
+  if text:match("^<agent:selection") then return text; end
+  
   local lines = vim.split(text, "\n");
   local output = {};
   for _, line in ipairs(lines) do

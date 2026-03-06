@@ -1,5 +1,5 @@
-local config = require("nzi.config");
-local sitter = require("nzi.sitter");
+local config = require("nzi.core.config");
+local sitter = require("nzi.context.sitter");
 
 local M = {};
 

@@ -1,5 +1,5 @@
 local assert = require("luassert");
-local config = require("nzi.config");
+local config = require("nzi.core.config");
 
 describe("STRESS E2E: Context and Synthesis", function()
   
@@ -8,8 +8,8 @@ describe("STRESS E2E: Context and Synthesis", function()
 
   before_each(function()
     require("nzi").setup();
-    require("nzi.history").clear();
-    require("nzi.modal").clear();
+    require("nzi.context.history").clear();
+    require("nzi.ui.modal").clear();
     pcall(vim.cmd, "close");
   end);
 
@@ -28,7 +28,7 @@ describe("STRESS E2E: Context and Synthesis", function()
     vim.cmd("AI? summarize Phase 0 from AGENTS.md exactly as written.");
 
     -- 3. Wait for full completion
-    local modal = require("nzi.modal")
+    local modal = require("nzi.ui.modal")
     local success = vim.wait(60000, function()
       local b = modal.bufnr
       if b and vim.api.nvim_buf_is_valid(b) then

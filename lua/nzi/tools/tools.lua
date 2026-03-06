@@ -1,5 +1,5 @@
-local context = require("nzi.context");
-local config = require("nzi.config");
+local context = require("nzi.context.context");
+local config = require("nzi.core.config");
 
 local M = {};
 

@@ -1,6 +1,6 @@
 local assert = require("luassert");
 local ai = require("nzi");
-local job = require("nzi.job");
+local job = require("nzi.engine.job");
 
 describe("AI job wrapper (LiteLLM Bridge)", function()
   
@@ -21,7 +21,7 @@ describe("AI job wrapper (LiteLLM Bridge)", function()
     -- This test verifies the parsing logic without network calls
     local messages = {{ role = "user", content = "Hello Mock" }};
     
-    local expected_python = require("nzi.config").options.python_cmd[1] or "python3";
+    local expected_python = require("nzi.core.config").options.python_cmd[1] or "python3";
 
     -- Mock the system call to simulate a bridge response
     local original_system = vim.system;

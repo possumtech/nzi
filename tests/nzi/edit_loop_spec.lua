@@ -1,8 +1,8 @@
 local assert = require("luassert");
-local engine = require("nzi.engine");
-local history = require("nzi.history");
-local config = require("nzi.config");
-local job = require("nzi.job");
+local engine = require("nzi.engine.engine");
+local history = require("nzi.context.history");
+local config = require("nzi.core.config");
+local job = require("nzi.engine.job");
 
 describe("AI Edit Loop Integration", function()
   local test_file = "test_edit.lua";

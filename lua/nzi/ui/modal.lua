@@ -60,8 +60,8 @@ local function get_or_create_buffer()
 end
 
 local function get_title()
-  local config = require("nzi.config");
-  local diff = require("nzi.diff");
+  local config = require("nzi.core.config");
+  local diff = require("nzi.ui.diff");
   local model_alias = (config.options.active_model or "AI"):upper();
   local branch = vim.fn.system("git branch --show-current 2>/dev/null"):gsub("\n", "");
   local diff_count = diff.get_count();
@@ -185,7 +185,7 @@ local function get_hl_group(type)
 end
 
 local function get_telemetry_line(type)
-  local config = require("nzi.config");
+  local config = require("nzi.core.config");
   local model_alias = config.options.active_model or "unknown";
   local opts = config.options.model_options or {};
   if type == "user" or type == "question" or type == "directive" then

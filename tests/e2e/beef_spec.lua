@@ -1,6 +1,6 @@
 -- tests/e2e/beef_spec.lua
-local modal = require("nzi.modal")
-local history = require("nzi.history")
+local modal = require("nzi.ui.modal")
+local history = require("nzi.context.history")
 
 -- Track errors via the actual UI path
 local last_error = nil

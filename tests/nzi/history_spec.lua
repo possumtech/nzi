@@ -1,5 +1,5 @@
 local assert = require("luassert");
-local history = require("nzi.history");
+local history = require("nzi.context.history");
 
 describe("AI history module", function()
   before_each(function()

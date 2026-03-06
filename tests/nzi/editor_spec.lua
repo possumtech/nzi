@@ -1,5 +1,5 @@
 local assert = require("luassert");
-local editor = require("nzi.editor");
+local editor = require("nzi.ui.editor");
 
 describe("AI Surgical Editor", function()
   local test_buf;

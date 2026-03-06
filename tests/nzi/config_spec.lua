@@ -1,6 +1,6 @@
 local assert = require("luassert");
 local nzi = require("nzi");
-local config = require("nzi.config");
+local config = require("nzi.core.config");
 
 describe("AI configuration", function()
   it("should allow user overrides for active_model and model aliases", function()

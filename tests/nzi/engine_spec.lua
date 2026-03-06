@@ -1,6 +1,6 @@
 local assert = require("luassert");
-local engine = require("nzi.engine");
-local shell = require("nzi.shell");
+local engine = require("nzi.engine.engine");
+local shell = require("nzi.tools.shell");
 
 describe("AI engine dispatcher", function()
   it("should warn if no directive is found on current line", function()

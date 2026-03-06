@@ -21,7 +21,7 @@ end
 --- @param bufnr number
 --- @param result string
 function M.open_diff(bufnr, result)
-  local config = require("nzi.config");
+  local config = require("nzi.core.config");
   local lines = vim.split(result, "\n");
   if config.options.yolo then
     M.apply_immediately(bufnr, lines);

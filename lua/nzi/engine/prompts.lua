@@ -1,6 +1,6 @@
-local lsp = require("nzi.lsp");
-local history = require("nzi.history");
-local config = require("nzi.config");
+local lsp = require("nzi.tools.lsp");
+local history = require("nzi.context.history");
+local config = require("nzi.core.config");
 
 local M = {};
 
@@ -130,12 +130,12 @@ end
 --- @param selection table | nil: Visual selection metadata
 --- @return table: Array of { role = string, content = string }
 function M.build_messages(content, type, target_file, include_lsp, selection)
-  local config = require("nzi.config");
+  local config = require("nzi.core.config");
   local model_alias = config.options.active_model or "deepseek";
   local model_cfg = config.get_active_model();
   local role = model_cfg.role_preference or "system";
   
-  local ctx_list = require("nzi.context").gather();
+  local ctx_list = require("nzi.context.context").gather();
   local prompt_parts = M.gather();
   
   local messages = {};

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# lua/nzi/bridge.py
+# lua/nzi/protocol/bridge.py
 import sys
 import json
 import os

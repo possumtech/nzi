@@ -1,8 +1,8 @@
-local context = require("nzi.context");
-local prompts = require("nzi.prompts");
-local job = require("nzi.job");
-local diff = require("nzi.diff");
-local modal = require("nzi.modal");
+local context = require("nzi.context.context");
+local prompts = require("nzi.engine.prompts");
+local job = require("nzi.engine.job");
+local diff = require("nzi.ui.diff");
+local modal = require("nzi.ui.modal");
 
 local M = {};
 
@@ -11,11 +11,11 @@ local M = {};
 --- @param bufnr number: The buffer to apply the diff against
 --- @param include_lsp boolean | nil
 function M.run(instruction, bufnr, include_lsp)
-  local config = require("nzi.config");
+  local config = require("nzi.core.config");
   local target_file = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":.");
   
   local messages, system_prompt, context_str, ctx_list = prompts.build_messages(instruction, "directive", target_file, include_lsp);
-  local hist_str = require("nzi.history").format();
+  local hist_str = require("nzi.context.history").format();
   
   -- Use the modal for status updates
   modal.open();
@@ -47,7 +47,7 @@ function M.run(instruction, bufnr, include_lsp)
       modal.set_thinking(false);
       if success and result then
         -- Add to structured history for the next turn
-        require("nzi.history").add("directive", instruction, result);
+        require("nzi.context.history").add("directive", instruction, result);
         
         modal.write("Code change received. Opening diff view...\n", "system", false);
         modal.write(result .. "\n", "response", false);

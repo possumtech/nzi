@@ -1,5 +1,5 @@
 -- lua/nzi/visuals.lua
-local config = require("nzi.config");
+local config = require("nzi.core.config");
 local M = {};
 
 --- Setup visual context highlight groups
@@ -30,14 +30,14 @@ end
 --- Get the raw status data for plugin integration
 --- @return table: { text = string, hl = string }
 function M.get_status_data()
-  local context = require("nzi.context");
+  local context = require("nzi.context.context");
   local bufnr = vim.api.nvim_get_current_buf();
   
   if not context.is_real_buffer(bufnr) then 
     return { text = "", hl = "" }; 
   end
   
-  local diff = require("nzi.diff");
+  local diff = require("nzi.ui.diff");
   if diff.has_pending_diff(bufnr) then
     return { text = "[AI:DIFF]", hl = "NziStatusDiff" };
   end

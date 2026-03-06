@@ -1,7 +1,7 @@
 local assert = require("luassert");
 local ai = require("nzi");
-local job = require("nzi.job");
-local config = require("nzi.config");
+local job = require("nzi.engine.job");
+local config = require("nzi.core.config");
 
 describe("BEEF E2E: Real LLM Integration", function()
   
@@ -12,7 +12,7 @@ describe("BEEF E2E: Real LLM Integration", function()
   before_each(function()
     -- Ensure we are using the environment variables
     require("nzi").setup();
-    require("nzi.history").clear();
+    require("nzi.context.history").clear();
   end);
 
   it("should answer 'Where's the beef?' using a real LLM call", function()

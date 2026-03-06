@@ -1,5 +1,5 @@
 local assert = require("luassert");
-local config = require("nzi.config");
+local config = require("nzi.core.config");
 
 describe("TRUE E2E: Full UI Lifecycle", function()
   
@@ -8,8 +8,8 @@ describe("TRUE E2E: Full UI Lifecycle", function()
 
   before_each(function()
     require("nzi").setup();
-    require("nzi.history").clear();
-    require("nzi.modal").clear();
+    require("nzi.context.history").clear();
+    require("nzi.ui.modal").clear();
     -- Close the modal window if it's open
     pcall(vim.cmd, "close");
     
@@ -29,7 +29,7 @@ describe("TRUE E2E: Full UI Lifecycle", function()
     vim.cmd("AI? Say exactly 'Where's the beef?' and nothing else.");
 
     -- 2. Wait for the modal buffer to appear and finish streaming
-    local modal = require("nzi.modal")
+    local modal = require("nzi.ui.modal")
     local success = vim.wait(45000, function()
       local b = modal.bufnr
       if b and vim.api.nvim_buf_is_valid(b) then

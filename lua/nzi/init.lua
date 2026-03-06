@@ -1,8 +1,8 @@
-local config = require("nzi.config");
-local buffers = require("nzi.buffers");
-local engine = require("nzi.engine");
-local modal = require("nzi.modal");
-local commands = require("nzi.commands");
+local config = require("nzi.core.config");
+local buffers = require("nzi.ui.buffers");
+local engine = require("nzi.engine.engine");
+local modal = require("nzi.ui.modal");
+local commands = require("nzi.core.commands");
 
 local M = {};
 
@@ -55,7 +55,7 @@ end
 function M.setup(opts)
   config.setup(opts);
   buffers.setup();
-  require("nzi.visuals").setup();
+  require("nzi.ui.visuals").setup();
   
   -- Register the primary AI command with native completion
   vim.api.nvim_create_user_command("AI", function(opts)
@@ -74,7 +74,7 @@ function M.setup(opts)
       local shell_cmd = args:sub(2):gsub("^%s*", "");
       local bufnr = vim.api.nvim_get_current_buf();
       local cursor = vim.api.nvim_win_get_cursor(0);
-      require("nzi.shell").run(shell_cmd, bufnr, cursor[1], false);
+      require("nzi.tools.shell").run(shell_cmd, bufnr, cursor[1], false);
       return;
     end
 

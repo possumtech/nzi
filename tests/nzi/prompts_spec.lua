@@ -1,5 +1,5 @@
 local assert = require("luassert");
-local prompts = require("nzi.prompts");
+local prompts = require("nzi.engine.prompts");
 
 describe("AI prompts module", function()
   it("should build a standard system prompt containing only global rules", function()

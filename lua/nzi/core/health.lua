@@ -27,7 +27,7 @@ function M.check()
   end
 
   -- Check Python & LiteLLM
-  local config = require("nzi.config");
+  local config = require("nzi.core.config");
   local python_cmd = config.options.python_cmd[1] or "python3";
   
   if vim.fn.executable(python_cmd) == 1 then

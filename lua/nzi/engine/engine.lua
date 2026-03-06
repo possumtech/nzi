@@ -1,13 +1,13 @@
-local parser = require("nzi.parser");
-local shell = require("nzi.shell");
-local context = require("nzi.context");
-local prompts = require("nzi.prompts");
-local job = require("nzi.job");
-local modal = require("nzi.modal");
-local config = require("nzi.config");
-local history = require("nzi.history");
-local protocol = require("nzi.protocol");
-local agent = require("nzi.agent");
+local parser = require("nzi.engine.parser");
+local shell = require("nzi.tools.shell");
+local context = require("nzi.context.context");
+local prompts = require("nzi.engine.prompts");
+local job = require("nzi.engine.job");
+local modal = require("nzi.ui.modal");
+local config = require("nzi.core.config");
+local history = require("nzi.context.history");
+local protocol = require("nzi.protocol.protocol");
+local agent = require("nzi.protocol.agent");
 
 local M = {};
 
@@ -42,6 +42,7 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
     end
 
     local messages, system_prompt, context_str, ctx_list = prompts.build_messages(current_prompt, type, target_file, include_lsp, selection);
+    local user_message_content = messages[#messages].content;
     
     if turn_count == 1 then
       modal.open();
@@ -51,7 +52,7 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
         for _, msg in ipairs(history_msgs) do modal.write(msg.content, msg.role, false); end
         modal.write(context_str, "context", false);
       end
-      modal.write(content, "user", false);
+      modal.write(user_message_content, "user", false);
     end
 
     modal.set_thinking(true);
@@ -88,13 +89,13 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
               end
 
               if combined_agent_response then
-                history.add(type, current_prompt, result);
+                history.add(type, user_message_content, result);
                 modal.write(combined_agent_response, "user", false);
                 current_prompt = combined_agent_response;
                 start_turn();
               else
                 -- Tools ran but no response for model (finalize)
-                history.add(type, current_prompt, result);
+                history.add(type, user_message_content, result);
                 modal.set_thinking(false);
                 modal.close_tag();
                 vim.schedule(function() M.is_busy = false; end);
@@ -106,13 +107,13 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
           agent.verify_state(function(failure_response)
             vim.schedule(function()
               if failure_response then
-                history.add(type, current_prompt, result);
+                history.add(type, user_message_content, result);
                 modal.write(failure_response, "user", false);
                 current_prompt = failure_response;
                 start_turn();
               else
                 -- Final response, all good
-                history.add(type, current_prompt, result);
+                history.add(type, user_message_content, result);
                 modal.set_thinking(false);
                 modal.close_tag();
                 vim.schedule(function() M.is_busy = false; end);
@@ -163,7 +164,7 @@ function M.execute_current_line()
   elseif type == "directive" then
     M.run_loop(formatted, "directive", false, file_name);
   elseif type == "command" then
-    require("nzi.commands").run(content);
+    require("nzi.core.commands").run(content);
   end
 end
 
@@ -193,7 +194,7 @@ function M.execute_range(start_line, end_line)
         file = file_name,
         start_line = start_line,
         start_col = 1,
-        end_line = end_line - 1,
+        end_line = end_line,
         end_col = #lines[#lines],
         mode = "V"
       };
@@ -205,7 +206,7 @@ function M.execute_range(start_line, end_line)
       elseif type == "directive" then
         M.run_loop(instruction, "directive", false, file_name, selection);
       elseif type == "command" then
-        require("nzi.commands").run(content);
+        require("nzi.core.commands").run(content);
       end
       
       found_directive = true;
@@ -258,30 +259,42 @@ function M.get_visual_selection()
   local s_start = vim.fn.getpos("'<");
   local s_end = vim.fn.getpos("'>");
   
-  -- getpos is 1-indexed, but nvim_buf_get_text is 0-indexed and end-exclusive
+  -- getpos: [bufnr, lnum, col, off] (1-indexed)
+  -- nvim_buf_get_text: (bufnr, start_line, start_col, end_line, end_col, opts) (0-indexed, end-exclusive)
   local start_line = s_start[2] - 1;
   local start_col = s_start[3] - 1;
   local end_line = s_end[2] - 1;
-  local end_col = s_end[3]; -- No -1 here because it's exclusive
+  local end_col = s_end[3];
+
+  -- Neovim internal: If end_col is very large (e.g. from visual line mode), clamp it
+  local line_count = vim.api.nvim_buf_line_count(bufnr);
+  if end_line >= line_count then end_line = line_count - 1 end
+  local last_line_content = vim.api.nvim_buf_get_lines(bufnr, end_line, end_line + 1, false)[1] or "";
+  if end_col > #last_line_content then end_col = #last_line_content end
+
+  -- Safety: Ensure start is before end if on the same line
+  if start_line == end_line and start_col > end_col then
+    start_col, end_col = end_col, start_col;
+  end
 
   -- Handle visual line mode ('V') where col is effectively infinite
   local mode = vim.fn.visualmode();
   if mode == "V" then
     start_col = 0;
-    local last_line = vim.api.nvim_buf_get_lines(bufnr, end_line, end_line + 1, false)[1] or "";
-    end_col = #last_line;
+    end_col = #last_line_content;
   end
 
-  local text = table.concat(vim.api.nvim_buf_get_text(bufnr, start_line, start_col, end_line, end_col, {}), "\n");
+  local ok, lines = pcall(vim.api.nvim_buf_get_text, bufnr, start_line, start_col, end_line, end_col, {});
+  local text = ok and table.concat(lines, "\n") or "";
   local file = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":.");
 
   return {
     text = text,
     file = file,
-    start_line = s_start[2],
-    start_col = s_start[3],
-    end_line = s_end[2],
-    end_col = s_end[3],
+    start_line = start_line + 1,
+    start_col = start_col + 1,
+    end_line = end_line + 1,
+    end_col = end_col,
     mode = mode
   };
 end

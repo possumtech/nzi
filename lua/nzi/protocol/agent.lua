@@ -1,11 +1,11 @@
-local tools = require("nzi.tools");
-local resolver = require("nzi.resolver");
-local protocol = require("nzi.protocol");
-local modal = require("nzi.modal");
-local config = require("nzi.config");
-local context = require("nzi.context");
-local editor = require("nzi.editor");
-local diff = require("nzi.diff");
+local tools = require("nzi.tools.tools");
+local resolver = require("nzi.context.resolver");
+local protocol = require("nzi.protocol.protocol");
+local modal = require("nzi.ui.modal");
+local config = require("nzi.core.config");
+local context = require("nzi.context.context");
+local editor = require("nzi.ui.editor");
+local diff = require("nzi.ui.diff");
 
 local M = {};
 
@@ -112,7 +112,7 @@ function M.dispatch_actions(actions, callback)
 
     elseif action.name == "reset" then
       modal.write("Agent requested session reset.", "system", false);
-      require("nzi.commands").run("reset");
+      require("nzi.core.commands").run("reset");
       table.insert(accumulated_responses, "<agent:status>Session history and context have been reset.</agent:status>");
       run_next();
 

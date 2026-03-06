@@ -1,7 +1,7 @@
 local assert = require("luassert");
-local engine = require("nzi.engine");
-local history = require("nzi.history");
-local config = require("nzi.config");
+local engine = require("nzi.engine.engine");
+local history = require("nzi.context.history");
+local config = require("nzi.core.config");
 
 describe("AI Engine Multi-Turn Loop", function()
   before_each(function()
@@ -10,8 +10,8 @@ describe("AI Engine Multi-Turn Loop", function()
   end);
 
   it("should handle a multi-turn grep discovery loop", function()
-    -- This test requires mocking require("nzi.job").run
-    local job = require("nzi.job");
+    -- This test requires mocking require("nzi.engine.job").run
+    local job = require("nzi.engine.job");
     local old_run = job.run;
     
     local turns = 0;
@@ -43,7 +43,7 @@ describe("AI Engine Multi-Turn Loop", function()
   end);
 
   it("should handle ralph auto-retry on test failure", function()
-    local job = require("nzi.job");
+    local job = require("nzi.engine.job");
     local old_run = job.run;
     
     config.options.auto_test = "false"; -- Always fails

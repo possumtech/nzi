@@ -1,4 +1,4 @@
-local context = require("nzi.context");
+local context = require("nzi.context.context");
 
 local M = {};
 

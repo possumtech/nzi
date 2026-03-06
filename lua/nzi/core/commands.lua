@@ -1,8 +1,8 @@
-local config = require("nzi.config");
-local modal = require("nzi.modal");
-local history = require("nzi.history");
-local buffers = require("nzi.buffers");
-local diff = require("nzi.diff");
+local config = require("nzi.core.config");
+local modal = require("nzi.ui.modal");
+local history = require("nzi.context.history");
+local buffers = require("nzi.ui.buffers");
+local diff = require("nzi.ui.diff");
 
 local M = {};
 
@@ -64,7 +64,7 @@ function M.run(cmd)
     modal.toggle();
 
   elseif subcommand == "stop" then
-    local engine = require("nzi.engine");
+    local engine = require("nzi.engine.engine");
     if engine.current_job then
       engine.current_job:kill(15);
       engine.current_job = nil;
@@ -144,8 +144,8 @@ function M.run(cmd)
       test_cmd = test_cmd .. " " .. args;
     end
     
-    local engine = require("nzi.engine");
-    local agent = require("nzi.agent");
+    local engine = require("nzi.engine.engine");
+    local agent = require("nzi.protocol.agent");
     modal.open();
     
     -- Temporarily set ralph to true for this operation
@@ -164,7 +164,7 @@ function M.run(cmd)
     modal.clear();
     diff.pending_reviews = {};
     -- We can't easily clear all context states without iterating all bufs
-    require("nzi.context").states = {};
+    require("nzi.context.context").states = {};
     vim.notify("AI: Session fully reset.", vim.log.levels.INFO);
 
   elseif subcommand == "test" then
@@ -172,7 +172,7 @@ function M.run(cmd)
     if args ~= "" then
       test_cmd = test_cmd .. " " .. args;
     end
-    require("nzi.shell").run(test_cmd);
+    require("nzi.tools.shell").run(test_cmd);
 
   elseif subcommand == "save" or subcommand == "load" then
     vim.notify("AI: " .. subcommand .. " not yet implemented.", vim.log.levels.WARN);
@@ -182,7 +182,7 @@ function M.run(cmd)
     
   else
     -- Fallback: treat as buffer context commands if not a known subcommand
-    local context = require("nzi.context");
+    local context = require("nzi.context.context");
     if subcommand == "active" or subcommand == "read" or subcommand == "ignore" or subcommand == "state" then
       local bufnr = vim.api.nvim_get_current_buf();
       if subcommand == "state" then

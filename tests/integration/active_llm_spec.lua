@@ -1,8 +1,8 @@
 local assert = require("luassert");
 local ai = require("nzi");
-local history = require("nzi.history");
-local engine = require("nzi.engine");
-local config = require("nzi.config");
+local history = require("nzi.context.history");
+local engine = require("nzi.engine.engine");
+local config = require("nzi.core.config");
 
 describe("AI active model integration", function()
   local original_yolo = config.options.yolo;

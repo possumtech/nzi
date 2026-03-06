@@ -1,5 +1,5 @@
 local assert = require("luassert");
-local modal = require("nzi.modal");
+local modal = require("nzi.ui.modal");
 
 describe("AI modal structural integrity", function()
   before_each(function()

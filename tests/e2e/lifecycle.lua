@@ -3,9 +3,9 @@ local current_dir = vim.fn.getcwd()
 vim.opt.runtimepath:append(current_dir)
 
 -- 1. Use the already initialized environment from tests/init.lua
-local engine = require("nzi.engine")
-local modal = require("nzi.modal")
-local history = require("nzi.history")
+local engine = require("nzi.engine.engine")
+local modal = require("nzi.ui.modal")
+local history = require("nzi.context.history")
 
 -- Track errors
 local last_error = nil
@@ -21,7 +21,7 @@ engine.handle_question("Say hello", false)
 -- Wait for completion or error (Fast 30s timeout)
 local success = vim.wait(30000, function()
   -- Check if history has been added
-  local h = require("nzi.history").get_all()
+  local h = require("nzi.context.history").get_all()
   return last_error ~= nil or #h > 0
 end, 500)
 
@@ -34,7 +34,7 @@ if not success and not last_error then
 end
 
 -- 3. Verify Completion
-local history = require("nzi.history")
+local history = require("nzi.context.history")
 if #history.get_all() ~= 1 then
   print("\n[E2E FAILED] Expected 1 history turn, found " .. #history.get_all())
   if last_error then

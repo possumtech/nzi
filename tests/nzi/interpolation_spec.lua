@@ -1,8 +1,8 @@
 local assert = require("luassert");
-local engine = require("nzi.engine");
-local buffers = require("nzi.buffers");
-local history = require("nzi.history");
-local job = require("nzi.job");
+local engine = require("nzi.engine.engine");
+local buffers = require("nzi.ui.buffers");
+local history = require("nzi.context.history");
+local job = require("nzi.engine.job");
 
 describe("AI Interpolation and Visual Mode", function()
   local test_buf;
@@ -73,9 +73,9 @@ describe("AI Interpolation and Visual Mode", function()
     local all = history.get_all();
     assert.True(#all > 0);
     local user_msg = history.strip_line_numbers(all[1].user);
-    assert.match("line=\"1\"", user_msg);
+    assert.match("start_line=\"1\"", user_msg);
     assert.match("end_line=\"4\"", user_msg);
-    assert.match("instruction=\"optimize this\"", user_msg);
+    assert.match("optimize this", user_msg);
     -- Content should be the code minus the :AI: line
     assert.match("function test%(%)", user_msg);
     assert.match("return 1 %+ 1", user_msg);
@@ -91,14 +91,20 @@ describe("AI Interpolation and Visual Mode", function()
       on_confirm("Explain");
     end
     
+    -- Simulate visual selection 1,1 to 2,6
+    vim.api.nvim_win_set_cursor(0, {1, 0});
+    vim.cmd("normal! v");
+    vim.api.nvim_win_set_cursor(0, {2, 5});
+    vim.cmd("normal! \27"); -- ESC to exit visual mode and set '< '> marks
+
     engine.execute_range(1, 2);
     
     vim.wait(1000, function() return #history.get_all() > 0 end);
     local all = history.get_all();
     assert.True(#all > 0);
     local user_msg = history.strip_line_numbers(all[1].user);
-    assert.match("instruction=\"Explain\"", user_msg);
-    assert.match("line=\"1\"", user_msg);
+    assert.match("Explain", user_msg);
+    assert.match("start_line=\"1\"", user_msg);
     assert.match("line 1", user_msg);
     
     vim.ui.input = old_input;

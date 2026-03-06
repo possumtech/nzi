@@ -1,5 +1,5 @@
 local assert = require("luassert");
-local modal = require("nzi.modal");
+local modal = require("nzi.ui.modal");
 
 --- Robust Validator for both Structure and Visuals
 --- @param bufnr number
