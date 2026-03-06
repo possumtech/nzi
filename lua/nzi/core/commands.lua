@@ -72,6 +72,11 @@ function M.run(cmd)
       modal.set_thinking(false);
       modal.write("\n[ABORTED BY USER]\n", "error", true);
       vim.notify("AI: Generation aborted.", vim.log.levels.WARN);
+    else
+      -- Force reset state even if no job handle exists
+      engine.is_busy = false;
+      modal.set_thinking(false);
+      vim.notify("AI: Reset idle state.", vim.log.levels.INFO);
     end
 
   elseif subcommand == "yank" then

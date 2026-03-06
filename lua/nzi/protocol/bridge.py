@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# lua/nzi/protocol/bridge.py
 import sys
 import json
 import os
 import time
 import warnings
 import logging
+import signal
 
 # Suppress all library logging and warnings
 os.environ["LITELLM_LOG"] = "ERROR"
@@ -13,8 +13,15 @@ os.environ["LITELLM_CHECK_FOR_UPDATES"] = "False"
 logging.getLogger("litellm").setLevel(logging.ERROR)
 warnings.filterwarnings("ignore")
 
+def signal_handler(sig, frame):
+    os._exit(0)
+
+signal.signal(signal.SIGTERM, signal_handler)
+signal.signal(signal.SIGINT, signal_handler)
+
 try:
     from pydantic import PydanticDeprecationWarning
+...
     warnings.filterwarnings("ignore", category=PydanticDeprecationWarning)
 except ImportError:
     pass

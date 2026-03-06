@@ -176,17 +176,27 @@ function M.build_messages(content, type, target_file, include_lsp, selection)
     if type == "ask" then mode = "ask"; end
     if type == "instruct" then mode = "edit"; end
 
-    selection_block = string.format("\n\n<agent:selection file=\"%s\" start=\"%d:%d\" end=\"%d:%d\" mode=\"%s\">\n%s\n</agent:selection>",
+    selection_block = string.format("<agent:selection file=\"%s\" start=\"%d:%d\" end=\"%d:%d\" mode=\"%s\">\n%s\n</agent:selection>",
       selection.file, selection.start_line, selection.start_col, selection.end_line, selection.end_col, mode, M.smart_filter(selection.text));
   end
 
   local turn_block = "";
   if type == "instruct" and target_file then
-    turn_block = string.format("<agent:user>\nEditing file: %s\nInstruction: %s%s\n</agent:user>",
-      M.smart_filter(target_file), M.smart_filter(content), selection_block);
+    if selection_block ~= "" then
+      turn_block = string.format("<agent:user>\n%s\nEditing file: %s\nInstruction: %s\n</agent:user>",
+        selection_block, M.smart_filter(target_file), M.smart_filter(content));
+    else
+      turn_block = string.format("<agent:user>\nEditing file: %s\nInstruction: %s\n</agent:user>",
+        M.smart_filter(target_file), M.smart_filter(content));
+    end
   else
-    turn_block = string.format("<agent:user>\n%s%s\n</agent:user>", 
-      M.smart_filter(content), selection_block);
+    if selection_block ~= "" then
+      turn_block = string.format("<agent:user>\n%s\n%s\n</agent:user>", 
+        selection_block, M.smart_filter(content));
+    else
+      turn_block = string.format("<agent:user>\n%s\n</agent:user>", 
+        M.smart_filter(content));
+    end
   end
 
   local final_user_content = string.format("%s%s\n\n%s", state_block, next_task_block, turn_block);

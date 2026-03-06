@@ -12,20 +12,42 @@ function M.find_block(bufnr, search_lines)
   
   local function normalize(line)
     if not line then return "" end
-    local res = line:gsub("^%s*", ""):gsub("%s*$", ""):gsub("%s+", " ")
+    -- Remove trailing whitespace, then replace all interior whitespace with single spaces
+    local res = line:gsub("%s*$", ""):gsub("^%s*", ""):gsub("%s+", " ")
     return res
   end
 
-  -- Stage 1: Exact Match
+  -- Stage 1: Exact Match (with trailing whitespace cleanup)
+  local clean_search = {}
+  for _, l in ipairs(search_lines) do table.insert(clean_search, l:gsub("%s*$", "")) end
+
   for i = 1, #buffer_lines - #search_lines + 1 do
     local match = true;
     for j = 1, #search_lines do
-      if buffer_lines[i + j - 1] ~= search_lines[j] then
+      if buffer_lines[i + j - 1]:gsub("%s*$", "") ~= clean_search[j] then
         match = false;
         break;
       end
     end
     if match then return i, i + #search_lines - 1, "perfect" end
+  end
+
+  -- Stage 1.5: Anchor-based Exact Match (Ignore leading/trailing blank search lines)
+  -- This handles cases where models add extra newlines around the SEARCH block
+  local first_non_blank = nil
+  local last_non_blank = nil
+  for idx, line in ipairs(search_lines) do
+    if line:match("%S") then
+      if not first_non_blank then first_non_blank = idx end
+      last_non_blank = idx
+    end
+  end
+
+  if first_non_blank and (first_non_blank > 1 or last_non_blank < #search_lines) then
+    local trimmed_search = {}
+    for k = first_non_blank, last_non_blank do table.insert(trimmed_search, search_lines[k]) end
+    local ts_start, ts_end, ts_quality = M.find_block(bufnr, trimmed_search)
+    if ts_start then return ts_start, ts_end, "trimmed_" .. ts_quality end
   end
 
   -- Stage 2: Normalized Match
