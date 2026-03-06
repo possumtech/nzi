@@ -29,7 +29,10 @@ function M.build_system_prompt(prompts, model_alias)
 
   local parts = { 
     identity,
-    "## TURN PROTOCOL",
+    "## INTERACTION MODES",
+    "* ask (AI?): READ-ONLY. You may use discovery tools (grep, read, env, definition) but MUST NOT use action tools (shell, edit, create, delete, choice). Use this for inquiry and analysis.",
+    "* instruct (AI:): ACTION-ORIENTED. You have full access to all tools to modify the codebase.",
+    "\n## TURN PROTOCOL",
     "Finalize every turn with exactly one of the following tags:",
     "* <model:summary>One sentence summary of actions, or the DIRECT ANSWER if it is concise.</model:summary>",
     "* <model:choice>Text? - [ ] Option 1 - [ ] Option 2</model:choice>",

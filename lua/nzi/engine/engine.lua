@@ -95,7 +95,7 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
 
         if #actions > 0 then
           -- 1. Discovery/Action Phase
-          agent.dispatch_actions(actions, function(combined_agent_response, signal, was_blocked)
+          agent.dispatch_actions(actions, type, function(combined_agent_response, signal, was_blocked)
             vim.schedule(function()
               if signal == "ABORTED" then
                 modal.write("User aborted turn. Agent momentum halted.", "system", false);

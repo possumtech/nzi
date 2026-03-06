@@ -43,7 +43,10 @@ local function parse_edit_blocks(content)
 end
 
 --- Dispatch a set of model actions and return the combined agent responses
-function M.dispatch_actions(actions, callback)
+--- @param actions table: The parsed model actions
+--- @param mode string: 'ask' or 'instruct'
+--- @param callback function: Called with (response, signal, was_blocked)
+function M.dispatch_actions(actions, mode, callback)
   local queue = require("nzi.core.queue");
   local current_idx = 1;
   local accumulated_responses = {};
@@ -52,12 +55,16 @@ function M.dispatch_actions(actions, callback)
   -- Clear turn-level action queue before processing
   queue.clear_actions();
 
-  -- 1. Group and consolidate edits/replacements by target file
+  -- 1. Filter and group actions
   local edits_by_file = {};
   local other_actions = {};
+  local restricted = { edit = true, replace_all = true, create = true, delete = true, shell = true, choice = true };
   
   for _, action in ipairs(actions) do
-    if action.name == "edit" or action.name == "replace_all" then
+    -- ENFORCEMENT: Block restricted actions in 'ask' mode
+    if mode == "ask" and restricted[action.name] then
+      table.insert(accumulated_responses, string.format("<agent:status>Action <%s> blocked: 'ask' mode is read-only. Use 'instruct' (AI:) for modifications.</agent:status>", action.name));
+    elseif action.name == "edit" or action.name == "replace_all" then
       queue.enqueue_action(action);
       was_blocked = true;
       local raw_file = protocol.get_attr(action.attr, "file");
