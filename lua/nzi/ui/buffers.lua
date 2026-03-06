@@ -101,13 +101,13 @@ function M.interpolate(bufnr)
         mode = "V"
       };
 
-      if type == "question" then
-        engine.run_loop(content, "question", false, nil, selection);
-      elseif type == "shell" then
+      if type == "ask" then
+        engine.run_loop(content, "ask", false, nil, selection);
+      elseif type == "run" then
         require("nzi.tools.shell").run(content);
-      elseif type == "directive" then
-        engine.run_loop(content, "directive", false, file, selection);
-      elseif type == "command" then
+      elseif type == "instruct" then
+        engine.run_loop(content, "instruct", false, file, selection);
+      elseif type == "internal" then
         require("nzi.core.commands").run(content);
       end
     end);

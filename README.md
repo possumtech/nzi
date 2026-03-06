@@ -7,14 +7,14 @@ Unlike assistants that treat your project as a static "context dump," **nzi** tr
 
 ---
 
-## Interaction Modes (The Four Horsemen)
+## Interaction Matrix
 
-| Mode | Trigger | Purpose | Outcome |
-| :--- | :--- | :--- | :--- |
-| **`AI:` Directive** | `:AI: instruction` | Code modification / tasks | Buffer edit / Diff view |
-| **`AI?` Question** | `:AI? question` | Analysis / general knowledge | Response in Modal |
-| **`AI!` Shell** | `:AI! command` | Terminal execution | Output injected in buffer |
-| **`AI/` Internal** | `:AI/ command` | State / Context management | UI update / Configuration |
+| Mode | Symbol | CLI | Key | In-Code | Outcome |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Instruct** | `:` | `:AI: ...` | `\a:` | `AI: ...` | Surgical Edit / Diff |
+| **Ask** | `?` | `:AI? ...` | `\a?` | `AI? ...` | Response in Modal |
+| **Run** | `!` | `:AI! ...` | `\a!` | `AI! ...` | Buffer Injection |
+| **Internal** | `/` | `:AI/ ...` | `\a/` | - | State/Context Control |
 
 ---
 
@@ -25,18 +25,25 @@ NZI uses a `<leader>a` prefix for quick command access.
 | Key | Action | Mode |
 | :--- | :--- | :--- |
 | **`\aa`** | **Toggle Modal** (AI Interaction window) | Normal |
-| **`\aa`** | **Execute Selection** (Send visual range to AI) | Visual |
+| **`\a:`** | **Instruct**: Prompt for code modification | Normal/Visual |
+| **`\a?`** | **Ask**: Prompt for analysis | Normal/Visual |
+| **`\a!`** | **Run**: Prompt for command execution | Normal/Visual |
+| **`\a/`** | **Internal**: Prompt for control command | Normal/Visual |
 | **`\aA`** | Mark current buffer as **Active** (Full context) | Normal |
 | **`\aR`** | Mark current buffer as **Read-only** (Context only) | Normal |
 | **`\aI`** | Mark current buffer as **Ignored** (Completely hidden) | Normal |
 | **`\aD`** | **Accept** current review (Applies edit and saves) | Normal |
 | **`\ad`** | **Reject** current review (Discards suggestion) | Normal |
-| **`\an`** / **`\ap`** | Jump to **Next** / **Previous** pending review | Normal |
-| **`\as`** / **`\al`** | **Save** / **Load** named session history | Normal |
-| **`\au`** | **Undo** last turn from conversation history | Normal |
-| **`\ax`** / **`\aX`** | **Stop** generation / Stop and **Reset** session | Normal |
-| **`\ak`** / **`\aK`** | Run project **Tests** / Run **Ralph** (Auto-retry) | Normal |
+| **`\an`** | Jump to **Next** pending review | Normal |
+| **`\ap`** | Jump to **Previous** pending review | Normal |
+| **`\as`** | **Save** named session history | Normal |
+| **`\al`** | **Load** named session history | Normal |
+| **`\au`** | **Undo** last turn from history | Normal |
 | **`\ay`** | **Yank** last response to clipboard | Normal |
+| **`\ax`** | **Stop** active generation | Normal |
+| **`\aX`** | **Stop and Reset** session | Normal |
+| **`\ak`** | Run project **Tests** | Normal |
+| **`\aK`** | Run **Ralph** (Auto-retry tests) | Normal |
 | **`\aY`** | Toggle **YOLO** mode (Autopilot) | Normal |
 
 ---
@@ -62,12 +69,21 @@ NZI provides structured environment data via `<agent:*>` tags.
 
 | Tag | Attributes | Description |
 | :--- | :--- | :--- |
-| `<agent:selection>` | `file, start, end, mode` | Character-perfect user selection |
+| `<agent:selection>` | `file, start, end, mode` | Character-perfect visual selection |
 | `<agent:user>` | - | The user's specific instruction |
 | `<agent:context>` | - | Current workspace/buffer facts |
 | `<agent:project_state>` | - | Contents of `./AGENTS.md` |
 | `<agent:next_task_suggest>` | - | First pending task from checklist |
-| `<agent:test>` | - | Output from a failing test (Ralph mode) |
+| `<agent:test>` | - | Output from a failing test or terminal |
+
+---
+
+## Precision Shell Logic (`AI!`)
+When executing a shell command with a visual selection:
+*   **No Command**: `:AI!` — Runs the selected text directly in the shell.
+*   **With Command**: `:AI! command` — Runs `command selected_text`.
+*   **Output**: Injected into the buffer below the selection.
+*   **Context**: Prompts to add output to AI conversation history (Passive).
 
 ---
 

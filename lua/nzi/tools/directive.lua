@@ -26,7 +26,7 @@ function M.run(instruction, bufnr, include_lsp)
     mode = "V"
   };
 
-  local messages, system_prompt, context_str, ctx_list = prompts.build_messages(instruction, "directive", target_file, include_lsp, selection);
+  local messages, system_prompt, context_str, ctx_list, turn_block = prompts.build_messages(instruction, "instruct", target_file, include_lsp, selection);
   local hist_str = require("nzi.context.history").format();
   
   -- Use the modal for status updates

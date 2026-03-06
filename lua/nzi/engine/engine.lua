@@ -170,13 +170,13 @@ function M.execute_current_line()
     mode = "V"
   };
 
-  if type == "question" then
-    M.run_loop(formatted, "question", false, nil, selection);
-  elseif type == "shell" then
+  if type == "ask" then
+    M.run_loop(formatted, "ask", false, nil, selection);
+  elseif type == "run" then
     shell.run(content);
-  elseif type == "directive" then
-    M.run_loop(formatted, "directive", false, file_name, selection);
-  elseif type == "command" then
+  elseif type == "instruct" then
+    M.run_loop(formatted, "instruct", false, file_name, selection);
+  elseif type == "internal" then
     require("nzi.core.commands").run(content);
   end
 end
