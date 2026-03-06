@@ -17,19 +17,19 @@ describe("4. Input Parsing & Selection", function()
     end
   end)
 
-  it("should parse single line directive and extract it", function()
+  it("should parse single line instruct and extract it", function()
     local type, content = parser.parse_line(":AI: refactor this")
-    assert.equals("directive", type)
+    assert.equals("instruct", type)
     assert.equals("refactor this", content)
   end)
 
   it("should parse Question, Directive, and Shell prefixes flawlessly", function()
     local type1, content1 = parser.parse_line(":AI? what is this?")
-    assert.equals("question", type1)
+    assert.equals("ask", type1)
     assert.equals("what is this?", content1)
 
     local type2, content2 = parser.parse_line(":AI! ls -la")
-    assert.equals("shell", type2)
+    assert.equals("run", type2)
     assert.equals("ls -la", content2)
   end)
 
@@ -62,7 +62,7 @@ describe("4. Input Parsing & Selection", function()
 
     -- verify that engine.run_loop received the correct stuff
     assert.equals("modify the loop", captured_content)
-    assert.equals("directive", captured_type)
+    assert.equals("instruct", captured_type)
     assert.truthy(captured_selection)
     assert.equals(5, captured_selection.end_line)
     

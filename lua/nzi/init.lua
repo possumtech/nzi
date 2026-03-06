@@ -113,23 +113,23 @@ function M.setup(opts)
     if args ~= "" then
       local first_char = args:sub(1,1);
       local instruction = args;
-      local type = "question";
+      local type = "ask";
       if first_char == "?" or first_char == ":" then
         instruction = args:sub(2):gsub("^%s*", "");
-        if first_char == ":" then type = "directive" end
+        if first_char == ":" then type = "instruct" end
       end
       
       if line1 ~= line2 or (opts.range > 0) then
         local selection = engine.get_visual_selection();
-        local target_file = (type == "directive") and selection.file or nil;
+        local target_file = (type == "instruct") and selection.file or nil;
         engine.run_loop(instruction, type, true, target_file, selection);
         return;
       end
 
-      if type == "directive" then
-        engine.run_loop(instruction, "directive", true, vim.fn.fnamemodify(0, ":."));
+      if type == "instruct" then
+        engine.run_loop(instruction, "instruct", true, vim.fn.fnamemodify(0, ":."));
       else
-        engine.handle_question(instruction, true);
+        engine.run_loop(instruction, "ask", true);
       end
       return;
     end
@@ -199,9 +199,9 @@ function M.setup(opts)
     end
   end
 
-  vim.keymap.set({ "n", "v" }, "<leader>a:", prompt_mode(":", "Directive"), { desc = "AI: Directive" });
-  vim.keymap.set({ "n", "v" }, "<leader>a?", prompt_mode("?", "Question"), { desc = "AI: Question" });
-  vim.keymap.set({ "n", "v" }, "<leader>a!", prompt_mode("!", "Shell"), { desc = "AI: Shell" });
+  vim.keymap.set({ "n", "v" }, "<leader>a:", prompt_mode(":", "Instruct"), { desc = "AI: Instruct" });
+  vim.keymap.set({ "n", "v" }, "<leader>a?", prompt_mode("?", "Ask"), { desc = "AI: Ask" });
+  vim.keymap.set({ "n", "v" }, "<leader>a!", prompt_mode("!", "Run"), { desc = "AI: Run" });
   vim.keymap.set({ "n", "v" }, "<leader>a/", prompt_mode("/", "Internal"), { desc = "AI: Internal" });
 
   vim.keymap.set("n", "<leader>ay", function() vim.cmd("AI/yank") end, { desc = "AI: Yank last response" });

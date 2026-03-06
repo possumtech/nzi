@@ -155,7 +155,7 @@ function M.run(cmd)
     agent.verify_state(function(failure_response)
       config.options.ralph = old_ralph; -- Restore
       if failure_response then
-        engine.handle_question(failure_response, false);
+        engine.run_loop(failure_response, "ask", false);
       end
     end, test_cmd);
 

@@ -47,7 +47,7 @@ describe("AI active model integration", function()
   end
 
   it("should handle an ai? question end-to-end", function()
-    engine.handle_question("Say exactly 'HELLO WORLD' and nothing else.", false);
+    engine.run_loop("Say exactly 'HELLO WORLD' and nothing else.", false);
     
     assert.True(poll_until_settle(120000), "Interaction timed out");
     assert.True(history_contains("HELLO WORLD"), "Model did not provide expected response in history");
@@ -62,11 +62,11 @@ describe("AI active model integration", function()
 
   it("BATTLE TEST: should maintain state across a multi-turn conversation", function()
     -- Turn 1: Establish a fact
-    engine.handle_question("My favorite color is Crimson. Remember that.", false);
+    engine.run_loop("My favorite color is Crimson. Remember that.", false);
     assert.True(poll_until_settle(40000), "Turn 1 timed out");
 
     -- Turn 2: Query the fact
-    engine.handle_question("What is my favorite color? Answer in one word.", false);
+    engine.run_loop("What is my favorite color? Answer in one word.", false);
     assert.True(poll_until_settle(40000), "Turn 2 timed out");
 
     assert.True(history_contains("CRIMSON"), "Model forgot the fact established in Turn 1");
@@ -82,7 +82,7 @@ describe("AI active model integration", function()
     vim.api.nvim_buf_set_name(b2, "info2.txt");
     vim.api.nvim_buf_set_lines(b2, 0, -1, false, { "The other code is 5678" });
 
-    engine.handle_question("What are the two secret codes in my open buffers? Respond with just the numbers.", false);
+    engine.run_loop("What are the two secret codes in my open buffers? Respond with just the numbers.", false);
     
     assert.True(poll_until_settle(120000), "Synthesis timed out");
 

@@ -14,11 +14,11 @@ local M = {};
 M.current_job = nil;
 M.is_busy = false; -- Reliable state for testing and UI
 
---- Handle an ai? question or an AI: directive in a multi-turn loop
---- @param content string: The initial question or directive text
---- @param type string: 'question' or 'directive'
+--- Handle an ai? ask or an AI: instruct in a multi-turn loop
+--- @param content string: The initial ask or instruct text
+--- @param type string: 'ask' or 'instruct'
 --- @param include_lsp boolean: Whether to include LSP symbol info
---- @param target_file string | nil: The target file for directives
+--- @param target_file string | nil: The target file for instruct
 --- @param selection table | nil: Visual selection metadata
 function M.run_loop(content, type, include_lsp, target_file, selection)
   if M.current_job then
@@ -92,7 +92,7 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
                 history.add(type, turn_block, result);
                 modal.write(combined_agent_response, "user", false);
                 current_prompt = combined_agent_response;
-                start_turn();
+                vim.schedule(function() start_turn(); end);
               else
                 -- Tools ran but no response for model (finalize)
                 history.add(type, turn_block, result);
@@ -110,7 +110,7 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
                 history.add(type, turn_block, result);
                 modal.write(failure_response, "user", false);
                 current_prompt = failure_response;
-                start_turn();
+                vim.schedule(function() start_turn(); end);
               else
                 -- Final response, all good
                 history.add(type, turn_block, result);
@@ -134,9 +134,9 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
   start_turn();
 end
 
---- Handle an ai? question
-function M.handle_question(content, include_lsp)
-  M.run_loop(content, "question", include_lsp, nil);
+--- Handle an ai? ask
+function M.handle_ask(content, include_lsp)
+  M.run_loop(content, "ask", include_lsp, nil);
 end
 
 --- Parse and execute the current line as a directive
@@ -181,7 +181,7 @@ function M.execute_current_line()
   end
 end
 
---- Execute directives in a specified line range
+--- Execute instruct in a specified line range
 function M.execute_range(start_line, end_line)
   local bufnr = vim.api.nvim_get_current_buf();
   local lines = vim.api.nvim_buf_get_lines(bufnr, start_line - 1, end_line, false);
@@ -212,13 +212,13 @@ function M.execute_range(start_line, end_line)
         mode = "V"
       };
 
-      if type == "question" then
-        M.run_loop(instruction, "question", false, nil, selection);
-      elseif type == "shell" then
+      if type == "ask" then
+        M.run_loop(instruction, "ask", false, nil, selection);
+      elseif type == "run" then
         shell.run(content);
-      elseif type == "directive" then
-        M.run_loop(instruction, "directive", false, file_name, selection);
-      elseif type == "command" then
+      elseif type == "instruct" then
+        M.run_loop(instruction, "instruct", false, file_name, selection);
+      elseif type == "internal" then
         require("nzi.core.commands").run(content);
       end
       
@@ -232,7 +232,7 @@ function M.execute_range(start_line, end_line)
     local selection = M.get_visual_selection();
     vim.ui.input({ prompt = "AI Question on selection: " }, function(input)
       if input and input ~= "" then
-        M.run_loop(input, "question", false, nil, selection);
+        M.run_loop(input, "ask", false, nil, selection);
       end
     end);
   end
@@ -255,13 +255,13 @@ function M.dispatch(args)
     shell.run(input:sub(2):gsub("^%s*", ""));
   elseif input:match("^:") or input:match("^%?") then
     local type, content = parser.parse_line("AI" .. input);
-    if type == "question" then
-      M.handle_question(content, true);
-    elseif type == "directive" then
-      M.run_loop(content, "directive", true, vim.fn.fnamemodify(0, ":."));
+    if type == "ask" then
+      M.handle_ask(content, true);
+    elseif type == "instruct" then
+      M.run_loop(content, "instruct", true, vim.fn.fnamemodify(0, ":."));
     end
   else
-    M.handle_question(input, false);
+    M.handle_ask(input, false);
   end
 end
 
@@ -321,7 +321,7 @@ function M.handle_visual()
     if input and input ~= "" then
       -- Pass the selection metadata to run_loop or a new handler
       -- We'll modify engine.run_loop to accept selection metadata
-      M.run_loop(input, "question", false, nil, selection);
+      M.run_loop(input, "ask", false, nil, selection);
     end
   end);
 end

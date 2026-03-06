@@ -126,12 +126,12 @@ function M.format_context(ctx_list, include_lsp)
 end
 
 --- Build the full array of messages for the API
---- @param content string: The new user question or directive
---- @param type string: 'question' or 'directive'
---- @param target_file string | nil: Only for directives
+--- @param content string: The new user ask or instruct
+--- @param type string: 'ask' or 'instruct'
+--- @param target_file string | nil: Only for instruct
 --- @param include_lsp boolean | nil
 --- @param selection table | nil: Visual selection metadata
---- @return table: Array of { role = string, content = string }
+--- @return table, string, string, table, string
 function M.build_messages(content, type, target_file, include_lsp, selection)
   local config = require("nzi.core.config");
   local model_alias = config.options.active_model or "deepseek";
@@ -149,7 +149,7 @@ function M.build_messages(content, type, target_file, include_lsp, selection)
   
   -- 2. CONTEXT (Project Facts/Buffers)
   -- We send this as a separate message to allow providers to cache the system+context prefix
-  local context_str = M.format_context(ctx_list, include_lsp);
+  local context_str = M.format_context(ctx_list, (type == "instruct"));
   table.insert(messages, { 
     role = role, 
     content = string.format("<agent:context>\n%s\n</agent:context>", context_str) 
@@ -159,7 +159,7 @@ function M.build_messages(content, type, target_file, include_lsp, selection)
   local history_msgs = history.get_as_messages();
   for _, m in ipairs(history_msgs) do table.insert(messages, m) end
   
-  -- 4. NEW TURN (Specific Question or Directive)
+  -- 4. NEW TURN (Specific Ask or Instruct)
   local state_block = "";
   if prompt_parts.project then
     state_block = string.format("<agent:project_state>\n%s\n</agent:project_state>", M.smart_filter(prompt_parts.project));
@@ -173,15 +173,15 @@ function M.build_messages(content, type, target_file, include_lsp, selection)
   local selection_block = "";
   if selection then
     local mode = selection.mode;
-    if type == "question" then mode = "ask"; end
-    if type == "directive" then mode = "edit"; end
+    if type == "ask" then mode = "ask"; end
+    if type == "instruct" then mode = "edit"; end
 
     selection_block = string.format("\n\n<agent:selection file=\"%s\" start=\"%d:%d\" end=\"%d:%d\" mode=\"%s\">\n%s\n</agent:selection>",
       selection.file, selection.start_line, selection.start_col, selection.end_line, selection.end_col, mode, M.smart_filter(selection.text));
   end
 
   local turn_block = "";
-  if type == "directive" and target_file then
+  if type == "instruct" and target_file then
     turn_block = string.format("<agent:user>\nEditing file: %s\nInstruction: %s%s\n</agent:user>",
       M.smart_filter(target_file), M.smart_filter(content), selection_block);
   else

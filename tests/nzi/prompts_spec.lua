@@ -43,7 +43,7 @@ describe("AI prompts module", function()
       }
     end
     
-    local result, _, _, _, turn_block = prompts.build_messages("test", "question", nil, false);
+    local result, _, _, _, turn_block = prompts.build_messages("test", "ask", nil, false);
     local last_msg = result[#result].content;
     
     assert.match("<agent:next_task_suggest>", last_msg);
@@ -59,10 +59,10 @@ describe("AI prompts module", function()
     prompts.gather = old_gather;
   end);
 
-  it("should build a code modification directive prompt", function()
+  it("should build a code modification instruct prompt", function()
     local result, _, _, ctx, turn_block = prompts.build_messages(
       "Refactor this",
-      "directive",
+      "instruct",
       "main.lua",
       false
     );
@@ -77,6 +77,6 @@ describe("AI prompts module", function()
 
     -- SYSTEMATIC XML VALIDATION
     local ok, err = xml_helper.validate_xml(last_msg)
-    assert.is_true(ok, "Directive prompt XML is invalid: " .. (err or ""))
+    assert.is_true(ok, "Instruct prompt XML is invalid: " .. (err or ""))
   end);
 end);

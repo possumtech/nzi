@@ -28,7 +28,7 @@ describe("AI Engine Multi-Turn Loop", function()
       return { kill = function() end };
     end
 
-    engine.handle_question("Where is 'Agentic'?");
+    engine.run_loop("Where is 'Agentic'?");
     
     -- Wait for the loop to finish (async)
     -- 1. User -> Grep
@@ -62,7 +62,7 @@ describe("AI Engine Multi-Turn Loop", function()
       return { kill = function() end };
     end
 
-    engine.handle_question("Fix the bug.");
+    engine.run_loop("Fix the bug.");
     
     -- Wait for two assistant turns
     vim.wait(1000, function() return #history.get_all() >= 3 end);

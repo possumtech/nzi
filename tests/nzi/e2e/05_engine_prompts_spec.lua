@@ -18,7 +18,7 @@ describe("5. Engine & Prompt Construction", function()
       }
     end
 
-    local messages, system, ctx, ctx_list = prompts.build_messages("test", "directive", "test.lua", false, nil)
+    local messages, system, ctx, ctx_list = prompts.build_messages("test", "instruct", "test.lua", false, nil)
     
     local user_msg = messages[#messages].content
     assert.match("Pending task 1", user_msg)
@@ -37,7 +37,7 @@ describe("5. Engine & Prompt Construction", function()
       text = "local x = 5"
     }
 
-    local messages = prompts.build_messages("explain this", "question", nil, false, selection)
+    local messages = prompts.build_messages("explain this", "ask", nil, false, selection)
     local user_msg = messages[#messages].content
     
     assert.match("<agent:selection file=\"test.lua\" start=\"10:5\" end=\"12:15\" mode=\"ask\">", user_msg)
@@ -81,7 +81,7 @@ describe("5. Engine & Prompt Construction", function()
       cb("yes")
     end
 
-    engine.run_loop("start", "question", false, nil)
+    engine.run_loop("start", "ask", false, nil)
     
     -- Allow the scheduled tasks to run
     vim.wait(1000, function() return not engine.is_busy end)
@@ -95,7 +95,7 @@ describe("5. Engine & Prompt Construction", function()
     tools.choice = orig_choice
   end)
 
-  it("should nest <agent:selection> inside <agent:user> for directives", function()
+  it("should nest <agent:selection> inside <agent:user> for instruct", function()
     local selection = {
       file = "LICENSE",
       start_line = 5,
@@ -106,7 +106,7 @@ describe("5. Engine & Prompt Construction", function()
       text = "free of charge"
     }
 
-    local _, _, _, _, turn_block = prompts.build_messages("charge $500", "directive", "LICENSE", false, selection)
+    local _, _, _, _, turn_block = prompts.build_messages("charge $500", "instruct", "LICENSE", false, selection)
     
     -- Verify exact nesting: Instruction should be followed by Selection, then ONE close tag
     assert.match("<agent:user>.-Instruction: charge %$500.-<agent:selection.-free of charge.-</agent:selection>.-</agent:user>", turn_block)

@@ -56,11 +56,11 @@ describe("AI behavioral commands", function()
     assert.match("BANG_SUCCESS", text, 1, true);    vim.api.nvim_buf_delete(bufnr, { force = true });
   end);
 
-  it("should handle direct command-line arguments as directives", function()
+  it("should handle direct command-line arguments as instruct", function()
     local bufnr = vim.api.nvim_create_buf(true, false);
     vim.api.nvim_set_current_buf(bufnr);
     
-    -- Directives are now treated as run_loop(..., "directive", ...)
+    -- Directives are now treated as run_loop(..., "instruct", ...)
     local engine_mod = require("nzi.engine.engine");
     local run_loop_spy = require("luassert.spy").on(engine_mod, "run_loop");
     
@@ -68,7 +68,7 @@ describe("AI behavioral commands", function()
     vim.cmd("AI :Hello World");
 
     -- run_loop(content, type, include_lsp, target_file, selection)
-    assert.spy(run_loop_spy).was_called_with("Hello World", "directive", true, vim.fn.fnamemodify(0, ":."));
+    assert.spy(run_loop_spy).was_called_with("Hello World", "instruct", true, vim.fn.fnamemodify(0, ":."));
     
     run_loop_spy:revert();
     vim.api.nvim_buf_delete(bufnr, { force = true });
