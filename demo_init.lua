@@ -47,16 +47,16 @@ require("nzi").setup({
 -- SUGGESTED WORKFLOW MAPPINGS
 -- Modal & Core
 vim.keymap.set("n", "<leader>aa", ":AI/toggle<CR>", { desc = "AI: Toggle Modal" })
-vim.keymap.set("n", "<leader>ax", ":AI/stop<CR>",   { desc = "AI: Abort Generation" })
+vim.keymap.set("n", "<leader>ax", ":AI/stop<CR>",   { desc = "AI: Stop Generation" })
 vim.keymap.set("n", "<leader>ay", ":AI/yank<CR>",   { desc = "AI: Yank Last Response" })
 vim.keymap.set("n", "<leader>ac", ":AI/clear<CR>",  { desc = "AI: Clear History" })
 vim.keymap.set("n", "<leader>au", ":AI/undo<CR>",   { desc = "AI: Undo Last Turn" })
 
 -- Interaction
 vim.keymap.set("n", "<leader>a?", ":AI? ", { desc = "AI: Ask Question" })
-vim.keymap.set("n", "<leader>a:", ":AI: ", { desc = "AI: Give Directive" })
-vim.keymap.set("n", "<leader>a!", ":AI! ", { desc = "AI: Shell Command" })
-vim.keymap.set("n", "<leader>a/", ":AI/",  { desc = "AI: Internal Command" })
+vim.keymap.set("n", "<leader>a:", ":AI: ", { desc = "AI: Instruct" })
+vim.keymap.set("n", "<leader>a!", ":AI! ", { desc = "AI: Run Shell" })
+vim.keymap.set("n", "<leader>a/", ":AI/",  { desc = "AI: Internal" })
 
 -- Context Management
 vim.keymap.set("n", "<leader>aA", ":AI/active<CR>", { desc = "AI: Set Buffer Active" })

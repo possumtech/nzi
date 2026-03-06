@@ -276,8 +276,17 @@ function M.dispatch_actions(actions, callback)
             -- HALT SIGNAL: Return nil to callback to stop the engine loop
             callback(nil, "ABORTED");
           else
-            table.insert(accumulated_responses, string.format("<agent:choice>%s</agent:choice>", choice_res));
-            run_others(idx + 1);
+            local resp = string.format("<agent:choice>%s</agent:choice>", choice_res);
+            
+            -- If this was the turn terminator, we need to manually trigger the next model turn
+            -- because the engine has already finished its 'dispatch_actions' sequence.
+            if current_idx > #actions then
+              local engine = require("nzi.engine.engine");
+              engine.run_loop(resp, "ask", false);
+            else
+              table.insert(accumulated_responses, resp);
+              run_others(idx + 1);
+            end
           end
         end);
       end);

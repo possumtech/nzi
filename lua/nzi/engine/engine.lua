@@ -117,11 +117,16 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
                 if not was_blocked then
                   vim.schedule(function() start_turn(); end);
                 else
-                  -- Hand off to user
+                  -- If it's blocked by a CHOICE, we actually want the loop to continue 
+                  -- after the user makes their selection. agent.lua handles the tool call, 
+                  -- but engine needs to know to resume.
+                  -- Fixed logic: combined_agent_response only exists AFTER all actions finish.
+                  -- If a choice was part of those actions, it already triggered its own run_next chain.
+                  
                   modal.set_thinking(false);
                   modal.close_tag();
                   M.is_busy = false;
-                  config.log("Turn sequence suspended for user review.", "ENGINE");
+                  config.log("Turn sequence suspended for user review/choice.", "ENGINE");
                 end
               else
                 -- Tools ran but no response for model (finalize)
