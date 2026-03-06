@@ -1,48 +1,42 @@
--- demo_init.lua for AI plugin
-local current_dir = vim.fn.fnamemodify(vim.fn.getcwd(), ":p");
-vim.opt.runtimepath:prepend(current_dir);
+-- demo_init.lua
+-- Minimal Neovim configuration for demonstrating/testing nzi
 
--- Load AI with environment-aware config
+-- Add current directory to runtimepath to find the nzi plugin
+local current_dir = vim.fn.fnamemodify(vim.fn.getcwd(), ":p")
+vim.opt.runtimepath:prepend(current_dir)
+
+-- Setup NZI with extensive model aliases for experimentation
 require("nzi").setup({
+  -- Default model
   active_model = os.getenv("NZI_MODEL") or "deepseek",
+
+  -- Pre-configured experimentation lab
   models = {
-    -- Primary Model (Local)
-    qwenzel = {
-      provider = "ollama",
-      model = "qwenzel:latest",
-      api_base = os.getenv("NZI_TEST_LOCAL") or "http://192.168.1.17:11434/v1",
-      api_key = "ollama",
-      role_preference = "developer",
+    -- The core 'deepseek' model is already in the plugin defaults.
+    
+    -- Local Qwen (Ollama)
+    qwenzel = { 
+      provider = "ollama", 
+      model = "qwen2.5-coder:14b", 
+      api_base = os.getenv("NZI_TEST_LOCAL") or "http://localhost:11434/v1",
+      role_preference = "developer"
     },
     
-    -- Standardized Aliases
-    deepseek = {
-      provider = "openrouter",
-      model = "deepseek/deepseek-chat",
-      api_base = "https://openrouter.ai/api/v1",
-      api_key = vim.env.OPENROUTER_API_KEY,
-      role_preference = "system",
-    },
-
-    -- Extra Demo Models
+    -- OpenRouter Convenience Aliases
     min = { provider = "openrouter", model = "minimax/minimax-01", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
-    ccp = { provider = "openrouter", model = "deepseek/deepseek-chat", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
-    ds = { provider = "openrouter", model = "deepseek/deepseek-chat", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
     r1 = { provider = "openrouter", model = "deepseek/deepseek-r1", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
     opus = { provider = "openrouter", model = "anthropic/claude-3-opus", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
-    o1 = { provider = "openrouter", model = "openai/o1-pdiff", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
-    mistral = { provider = "openrouter", model = "mistralai/mistral-large-2411", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
-    nova = { provider = "openrouter", model = "amazon/nova-pro-v1", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
-    meta = { provider = "openrouter", model = "meta-llama/llama-3.3-70b-instruct", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
-    search = { provider = "openrouter", model = "openai/gpt-4o-2024-11-20", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
+    o1 = { provider = "openrouter", model = "openai/o1-preview", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
   },
+
   modal = {
     show_context = true,
   },
   visuals = {
     enabled = true,
+    bold = true
   }
-});
+})
 
 -- SUGGESTED WORKFLOW MAPPINGS
 -- Modal & Core
@@ -77,8 +71,6 @@ vim.keymap.set("n", "<leader>a1", ":AI/model deepseek<CR>", { desc = "AI: Switch
 vim.keymap.set("n", "<leader>a2", ":AI/model qwenzel<CR>",  { desc = "AI: Switch to Ollama" })
 
 -- Statusline setup for demo
--- %{% ... %} is the magic syntax that tells Neovim to interpret 
--- the highlight tags returned by the Lua function.
 vim.opt.statusline = "%f %m %r %= %{%v:lua.require('nzi.ui.visuals').get_statusline()%} %y %p%% %l:%c"
 
 print("AI (nzi) Loaded! Use <leader>aa to toggle the AI Modal.");

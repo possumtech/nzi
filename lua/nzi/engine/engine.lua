@@ -304,11 +304,19 @@ function M.dispatch(args)
   elseif input:match("^!") then
     shell.run(input:sub(2):gsub("^%s*", ""));
   elseif input:match("^:") or input:match("^%?") then
-    local type, content = parser.parse_line("AI" .. input);
-    if type == "ask" then
-      M.handle_ask(content, true);
-    elseif type == "instruct" then
-      M.run_loop(content, "instruct", true, vim.fn.fnamemodify(0, ":."));
+    local first_char = input:sub(1,1);
+    local instruction = input:sub(2):gsub("^%s*", "");
+    
+    -- If they typed :AI :AI: something, instruction is AI: something
+    -- We want to strip the extra AI prefix if present
+    if instruction:match("^[Aa][Ii][:%?]") then
+      instruction = instruction:sub(4):gsub("^%s*", "");
+    end
+
+    if first_char == "?" then
+      M.handle_ask(instruction, true);
+    else
+      M.run_loop(instruction, "instruct", true, vim.fn.fnamemodify(0, ":."));
     end
   else
     M.handle_ask(input, false);

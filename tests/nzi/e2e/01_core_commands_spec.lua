@@ -38,8 +38,11 @@ describe("1. Initialization & Core Commands", function()
     local initial_model = config.options.active_model
     assert.equals("deepseek", initial_model)
     
-    vim.cmd("AI/model qwenzel")
-    assert.equals("qwenzel", config.options.active_model, "Model should switch to qwenzel")
+    -- Inject a temporary model for the test
+    config.options.models["mock_model"] = { provider = "ollama", model = "mock" }
+    
+    vim.cmd("AI/model mock_model")
+    assert.equals("mock_model", config.options.active_model, "Model should switch to mock_model")
     
     -- Switch back
     vim.cmd("AI/model deepseek")

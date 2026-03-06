@@ -16,7 +16,7 @@ modal.write = function(text, type, append)
 end
 
 -- 2. Execution
-engine.handle_question("Say hello", false)
+engine.handle_ask("Say hello", false)
 
 -- Wait for completion or error (Fast 30s timeout)
 local success = vim.wait(30000, function()

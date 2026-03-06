@@ -19,10 +19,10 @@ M.defaults = {
       role_preference = "system",
     },
     qwenzel = {
-      provider = "ollama",
-      model = "qwenzel",
-      api_base = "http://localhost:11434/v1",
-      api_key = "ollama",
+      provider = vim.env.NZI_LOCAL_PROVIDER or "ollama",
+      model = vim.env.NZI_LOCAL_MODEL or "qwenzel",
+      api_base = vim.env.NZI_LOCAL_BASE or "http://localhost:11434/v1",
+      api_key = vim.env.NZI_LOCAL_KEY or "ollama",
       role_preference = "developer",
     }
   },
