@@ -15,10 +15,11 @@ function M.xml_escape(text)
              :gsub("'", "&apos;")
 end
 
---- Format text with line numbers (skips if already numbered or structured)
+--- Format text with line numbers (skips if structured)
 local function add_line_numbers(text)
   if not text then return nil; end
-  if text:match("^<agent:selection") or text:match("^%d+: ") then return text; end
+  -- Skip line numbering for ANY structured XML turn
+  if text:match("^<agent:") or text:match("^<model:") or text:match("^%d+: ") then return text; end
   
   local lines = vim.split(text, "\n");
   local output = {};
@@ -33,8 +34,8 @@ end
 --- @return string
 function M.strip_line_numbers(text)
   if not text or text == "" then return ""; end
-  -- If it looks like a selection block, don't touch it
-  if text:match("^<agent:selection") then return text; end
+  -- If it's structured XML, don't touch it
+  if text:match("^<agent:") or text:match("^<model:") then return text; end
   
   local lines = vim.split(text, "\n");
   local output = {};
@@ -100,7 +101,7 @@ function M.get_as_messages()
     if user_clean ~= "" then
       table.insert(messages, { 
         role = "user", 
-        content = string.format("<agent:user>\n%s\n</agent:user>", user_clean) 
+        content = user_clean
       });
     end
     if assistant_clean ~= "" then

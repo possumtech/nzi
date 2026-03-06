@@ -73,8 +73,8 @@ describe("AI Interpolation and Visual Mode", function()
     local all = history.get_all();
     assert.True(#all > 0);
     local user_msg = history.strip_line_numbers(all[1].user);
-    assert.match("start_line=\"1\"", user_msg);
-    assert.match("end_line=\"4\"", user_msg);
+    assert.match("start=\"1:1\"", user_msg);
+    assert.match("end=\"4:3\"", user_msg);
     assert.match("optimize this", user_msg);
     -- Content should be the code minus the :AI: line
     assert.match("function test%(%)", user_msg);
@@ -104,7 +104,7 @@ describe("AI Interpolation and Visual Mode", function()
     assert.True(#all > 0);
     local user_msg = history.strip_line_numbers(all[1].user);
     assert.match("Explain", user_msg);
-    assert.match("start_line=\"1\"", user_msg);
+    assert.match("start=\"1:1\"", user_msg);
     assert.match("line 1", user_msg);
     
     vim.ui.input = old_input;

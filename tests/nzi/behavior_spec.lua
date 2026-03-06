@@ -60,16 +60,17 @@ describe("AI behavioral commands", function()
     local bufnr = vim.api.nvim_create_buf(true, false);
     vim.api.nvim_set_current_buf(bufnr);
     
-    -- Directives are now treated as handle_question
+    -- Directives are now treated as run_loop(..., "directive", ...)
     local engine_mod = require("nzi.engine.engine");
-    local question_spy = require("luassert.spy").on(engine_mod, "handle_question");
+    local run_loop_spy = require("luassert.spy").on(engine_mod, "run_loop");
     
     -- Simulate :AI :Hello World
     vim.cmd("AI :Hello World");
 
-    assert.spy(question_spy).was_called_with("Hello World", true);
+    -- run_loop(content, type, include_lsp, target_file, selection)
+    assert.spy(run_loop_spy).was_called_with("Hello World", "directive", true, vim.fn.fnamemodify(0, ":."));
     
-    question_spy:revert();
+    run_loop_spy:revert();
     vim.api.nvim_buf_delete(bufnr, { force = true });
   end);
 

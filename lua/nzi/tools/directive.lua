@@ -14,7 +14,19 @@ function M.run(instruction, bufnr, include_lsp)
   local config = require("nzi.core.config");
   local target_file = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":.");
   
-  local messages, system_prompt, context_str, ctx_list = prompts.build_messages(instruction, "directive", target_file, include_lsp);
+  -- Capture buffer context as selection
+  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false);
+  local selection = {
+    text = table.concat(lines, "\n"),
+    file = target_file,
+    start_line = 1,
+    start_col = 1,
+    end_line = #lines,
+    end_col = #(lines[#lines] or ""),
+    mode = "V"
+  };
+
+  local messages, system_prompt, context_str, ctx_list = prompts.build_messages(instruction, "directive", target_file, include_lsp, selection);
   local hist_str = require("nzi.context.history").format();
   
   -- Use the modal for status updates

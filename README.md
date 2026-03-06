@@ -84,10 +84,12 @@ Type your intention directly into your source:
 When you **save the file**, the line vanishes, and the agent executes the request. It’s "Ghost Writing" for your codebase.
 
 ### Precision Visual Context
-Select a method and ask `AI? What is this parameter for?`. The model receives a structured `<agent:selection>` tag containing:
-*   The relative file path.
-*   The exact `line` and `end_line` coordinates.
-*   The raw content of the selection.
+Select a method and ask `AI? What is this parameter for?`. The model receives a structured `<agent:selection>` tag:
+`<agent:selection file="src/main.lua" start="10:5" end="12:20" mode="ask">...</agent:selection>`
+*   **file**: The relative file path.
+*   **start/end**: Exact `line:col` coordinates.
+*   **mode**: Interaction intent (`ask` or `edit`).
+*   **content**: The raw text of your selection.
 
 ### Context Orchestration
 AI (nzi) follows a strict **"Neovim is Context"** policy.

@@ -55,6 +55,7 @@ function M.run(messages, callback, on_stdout)
     }, model_cfg.extra_headers or {}),
   };
 
+  local request_id = math.random(1000, 9999);
   local request_json = vim.json.encode(payload);
   
   -- Tracing: Log request if debug is enabled
@@ -62,7 +63,8 @@ function M.run(messages, callback, on_stdout)
     local log_path = vim.fn.getcwd() .. "/nzi_debug.log";
     local f = io.open(log_path, "a");
     if f then
-      f:write("\n--- [REQUEST] ---\n" .. request_json .. "\n");
+      f:write(string.format("\n[%s] [JOB %d] --- [LLM REQUEST START] ---\nModel: %s\nPayload:\n%s\n", 
+        os.date("%H:%M:%S"), request_id, model_name, request_json));
       f:close();
     end
   end
@@ -95,7 +97,7 @@ function M.run(messages, callback, on_stdout)
       local log_path = vim.fn.getcwd() .. "/nzi_debug.log";
       local f = io.open(log_path, "a");
       if f then
-        f:write("\n[CHUNK] " .. data .. "\n");
+        f:write(string.format("[%s] [JOB %d] [CHUNK] %s\n", os.date("%H:%M:%S"), request_id, data));
         f:close();
       end
     end

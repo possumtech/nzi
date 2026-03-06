@@ -82,20 +82,24 @@ function M.setup(opts)
     if args ~= "" then
       local first_char = args:sub(1,1);
       local instruction = args;
+      local type = "question";
       if first_char == "?" or first_char == ":" then
         instruction = args:sub(2):gsub("^%s*", "");
+        if first_char == ":" then type = "directive" end
       end
       
       if line1 ~= line2 or (opts.range > 0) then
-        local ft = vim.bo.filetype;
-        local lines = vim.api.nvim_buf_get_lines(0, line1-1, line2, false);
-        local selection = table.concat(lines, "\n");
-        local formatted = string.format("%s\n\n```%s\n%s\n```", instruction, ft, selection);
-        engine.handle_question(formatted, true);
+        local selection = engine.get_visual_selection();
+        local target_file = (type == "directive") and selection.file or nil;
+        engine.run_loop(instruction, type, true, target_file, selection);
         return;
       end
 
-      engine.handle_question(instruction, true);
+      if type == "directive" then
+        engine.run_loop(instruction, "directive", true, vim.fn.fnamemodify(0, ":."));
+      else
+        engine.handle_question(instruction, true);
+      end
       return;
     end
 

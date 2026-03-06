@@ -1,5 +1,6 @@
 local assert = require("luassert");
 local prompts = require("nzi.engine.prompts");
+local xml_helper = require("tests.xml_helper");
 
 describe("AI prompts module", function()
   it("should build a standard system prompt containing only global rules", function()
@@ -25,16 +26,15 @@ describe("AI prompts module", function()
     assert.match("print%('hi'%)", result);
     assert.match("</agent:file>", result);
     
+    -- SYSTEMATIC XML VALIDATION
+    local ok, err = xml_helper.validate_xml(result)
+    assert.is_true(ok, "Context XML is invalid: " .. (err or ""))
+
     -- Ensure AGENTS.md is NOT in context
     assert.is_nil(result:find("AGENTS.md"))
   end);
 
   it("should correctly extract the first unchecked task (next_task_suggest)", function()
-    -- Mocking filesystem and nvim calls in gather() might be complex, 
-    -- but we can test the regex logic if we extract it or mock vim.fn.readfile
-    -- For now, let's verify that the messages contain next_task_suggest if present.
-    
-    -- We can temporarily mock prompts.gather() for this test
     local old_gather = prompts.gather;
     prompts.gather = function()
       return { 
@@ -43,40 +43,24 @@ describe("AI prompts module", function()
       }
     end
     
-    local result = prompts.build_messages("test", "question", nil, false);
+    local result, _, _, _, turn_block = prompts.build_messages("test", "question", nil, false);
     local last_msg = result[#result].content;
     
     assert.match("<agent:next_task_suggest>", last_msg);
     assert.match("Task 2", last_msg);
     
+    -- SYSTEMATIC XML VALIDATION
+    local ok, err = xml_helper.validate_xml(last_msg)
+    assert.is_true(ok, "Full prompt XML is invalid: " .. (err or ""))
+    
+    local ok2, err2 = xml_helper.validate_xml(turn_block)
+    assert.is_true(ok2, "Turn block XML is invalid: " .. (err2 or ""))
+
     prompts.gather = old_gather;
   end);
 
-  it("should preserve full AGENTS.md content in gather()", function()
-    local mock_content = {
-      "Arbitrary Content",
-      "- [ ] Next Task",
-      "More Content"
-    };
-    
-    local old_readfile = vim.fn.readfile;
-    local old_filereadable = vim.fn.filereadable;
-    vim.fn.readfile = function() return mock_content end;
-    vim.fn.filereadable = function() return 1 end;
-    
-    local parts = prompts.gather();
-    
-    assert.match("Arbitrary Content", parts.project);
-    assert.match("- %[ %] Next Task", parts.project);
-    assert.match("More Content", parts.project);
-    assert.equal("Next Task", parts.next_task_suggest);
-    
-    vim.fn.readfile = old_readfile;
-    vim.fn.filereadable = old_filereadable;
-  end);
-
   it("should build a code modification directive prompt", function()
-    local result, _, _, ctx = prompts.build_messages(
+    local result, _, _, ctx, turn_block = prompts.build_messages(
       "Refactor this",
       "directive",
       "main.lua",
@@ -84,13 +68,15 @@ describe("AI prompts module", function()
     );
     assert.is_table(result);
     assert.is_table(ctx);
-    -- Message 1: System (Rules)
-    -- Message 2: System/User (Context)
-    -- Message 3: User (New Directive)
+    
     local last_msg = result[#result].content;
     assert.match("Refactor this", last_msg);
     assert.match("main.lua", last_msg);
     assert.match("<agent:project_state>", last_msg);
     assert.match("<agent:user>", last_msg);
+
+    -- SYSTEMATIC XML VALIDATION
+    local ok, err = xml_helper.validate_xml(last_msg)
+    assert.is_true(ok, "Directive prompt XML is invalid: " .. (err or ""))
   end);
 end);

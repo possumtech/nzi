@@ -41,7 +41,7 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
       return;
     end
 
-    local messages, system_prompt, context_str, ctx_list = prompts.build_messages(current_prompt, type, target_file, include_lsp, selection);
+    local messages, system_prompt, context_str, ctx_list, turn_block = prompts.build_messages(current_prompt, type, target_file, include_lsp, selection);
     local user_message_content = messages[#messages].content;
     
     if turn_count == 1 then
@@ -89,13 +89,13 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
               end
 
               if combined_agent_response then
-                history.add(type, user_message_content, result);
+                history.add(type, turn_block, result);
                 modal.write(combined_agent_response, "user", false);
                 current_prompt = combined_agent_response;
                 start_turn();
               else
                 -- Tools ran but no response for model (finalize)
-                history.add(type, user_message_content, result);
+                history.add(type, turn_block, result);
                 modal.set_thinking(false);
                 modal.close_tag();
                 vim.schedule(function() M.is_busy = false; end);
@@ -107,13 +107,13 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
           agent.verify_state(function(failure_response)
             vim.schedule(function()
               if failure_response then
-                history.add(type, user_message_content, result);
+                history.add(type, turn_block, result);
                 modal.write(failure_response, "user", false);
                 current_prompt = failure_response;
                 start_turn();
               else
                 -- Final response, all good
-                history.add(type, user_message_content, result);
+                history.add(type, turn_block, result);
                 modal.set_thinking(false);
                 modal.close_tag();
                 vim.schedule(function() M.is_busy = false; end);
@@ -157,12 +157,25 @@ function M.execute_current_line()
   local file_name = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":.");
   local formatted = content;
 
+  -- For a directive on a single line, we pass the buffer context as a selection
+  -- so the model knows where it is, but without the directive line itself.
+  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false);
+  local selection = {
+    text = table.concat(lines, "\n"),
+    file = file_name,
+    start_line = 1,
+    start_col = 1,
+    end_line = #lines,
+    end_col = #(lines[#lines] or ""),
+    mode = "V"
+  };
+
   if type == "question" then
-    M.handle_question(formatted, false);
+    M.run_loop(formatted, "question", false, nil, selection);
   elseif type == "shell" then
     shell.run(content);
   elseif type == "directive" then
-    M.run_loop(formatted, "directive", false, file_name);
+    M.run_loop(formatted, "directive", false, file_name, selection);
   elseif type == "command" then
     require("nzi.core.commands").run(content);
   end

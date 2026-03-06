@@ -12,7 +12,9 @@ function M.smart_filter(text)
   
   -- 2. Escape only our reserved namespaces (agent: and model:)
   -- This prevents file content from closing our tags or issuing fake commands
-  filtered = filtered:gsub("<(/?[am][go][de][el][nl]*:[^>]*)>", "&lt;%1&gt;");
+  -- Match both opening, closing, and self-closing tags: <agent:foo>, </agent:foo>, <agent:foo />
+  filtered = filtered:gsub("<(/?%s*agent:[^>]*)>", "&lt;%1&gt;");
+  filtered = filtered:gsub("<(/?%s*model:[^>]*)>", "&lt;%1&gt;");
   
   -- 3. Escape lone angle brackets that aren't part of a tag (e.g. "if a < b")
   -- Heuristic: if < is followed by a space or non-alphanumeric (except / or !), it's likely raw text
@@ -63,7 +65,7 @@ function M.build_system_prompt(prompts, model_alias)
     "* <agent:project_state>AGENTS.md file contents</agent:project_state>",
     "* <agent:next_task_suggest>The first pending task in the plan</agent:next_task_suggest>",
     "* <agent:user>The user's specific instruction</agent:user>",
-    "* <agent:selection file=\"path\" start_line=\"1\" start_col=\"1\" end_line=\"1\" end_col=\"5\" mode=\"v\">text</agent:selection>",
+    "* <agent:selection file=\"path\" start=\"1:1\" end=\"1:5\" mode=\"ask\">text</agent:selection>",
     "* <agent:test>Output from a failing test or lint runner</agent:test>",
     "\n## CONSTRAINTS",
     "* ALWAYS <model:read /> a file before issuing a <model:edit /> to ensure you have the latest content.",
@@ -169,22 +171,28 @@ function M.build_messages(content, type, target_file, include_lsp, selection)
 
   local selection_block = "";
   if selection then
-    selection_block = string.format("\n\n<agent:selection file=\"%s\" start_line=\"%d\" start_col=\"%d\" end_line=\"%d\" end_col=\"%d\" mode=\"%s\">\n%s\n</agent:selection>",
-      selection.file, selection.start_line, selection.start_col, selection.end_line, selection.end_col, selection.mode, M.smart_filter(selection.text));
+    local mode = selection.mode;
+    if type == "question" then mode = "ask"; end
+    if type == "directive" then mode = "edit"; end
+
+    selection_block = string.format("\n\n<agent:selection file=\"%s\" start=\"%d:%d\" end=\"%d:%d\" mode=\"%s\">\n%s\n</agent:selection>",
+      selection.file, selection.start_line, selection.start_col, selection.end_line, selection.end_col, mode, M.smart_filter(selection.text));
   end
 
-  local final_user_content = "";
+  local turn_block = "";
   if type == "directive" and target_file then
-    final_user_content = string.format("%s%s%s\n\n<agent:user>\nEditing file: %s\nInstruction: %s\n</agent:user>",
-      state_block, next_task_block, selection_block, M.smart_filter(target_file), M.smart_filter(content));
+    turn_block = string.format("<agent:user>\nEditing file: %s\nInstruction: %s%s\n</agent:user>",
+      M.smart_filter(target_file), M.smart_filter(content), selection_block);
   else
-    final_user_content = string.format("%s%s%s\n\n<agent:user>\n%s\n</agent:user>", 
-      state_block, next_task_block, selection_block, M.smart_filter(content));
+    turn_block = string.format("<agent:user>\n%s%s\n</agent:user>", 
+      M.smart_filter(content), selection_block);
   end
+
+  local final_user_content = string.format("%s%s\n\n%s", state_block, next_task_block, turn_block);
   
   table.insert(messages, { role = "user", content = final_user_content });
   
-  return messages, system_prompt, context_str, ctx_list;
+  return messages, system_prompt, context_str, ctx_list, turn_block;
 end
 
 --- Gather prompt parts from AGENTS.md

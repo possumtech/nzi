@@ -86,12 +86,27 @@ function M.interpolate(bufnr)
     -- 2. Execute via engine (using a schedule to ensure the buffer removal is processed)
     vim.schedule(function()
       local engine = require("nzi.engine.engine");
+      local name = vim.api.nvim_buf_get_name(bufnr);
+      local file = vim.fn.fnamemodify(name, ":.");
+      
+      -- For interpolation, the "selection" is the entire buffer context minus the directive
+      local lines_after = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false);
+      local selection = {
+        text = table.concat(lines_after, "\n"),
+        file = file,
+        start_line = 1,
+        start_col = 1,
+        end_line = #lines_after,
+        end_col = #lines_after[#lines_after] or 1,
+        mode = "V"
+      };
+
       if type == "question" then
-        engine.handle_question(content, false);
+        engine.run_loop(content, "question", false, nil, selection);
       elseif type == "shell" then
         require("nzi.tools.shell").run(content);
       elseif type == "directive" then
-        engine.run_loop(content, "directive", false, vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":."));
+        engine.run_loop(content, "directive", false, file, selection);
       elseif type == "command" then
         require("nzi.core.commands").run(content);
       end

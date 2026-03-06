@@ -40,7 +40,7 @@ describe("5. Engine & Prompt Construction", function()
     local messages = prompts.build_messages("explain this", "question", nil, false, selection)
     local user_msg = messages[#messages].content
     
-    assert.match("<agent:selection file=\"test.lua\" start_line=\"10\" start_col=\"5\" end_line=\"12\" end_col=\"15\" mode=\"v\">", user_msg)
+    assert.match("<agent:selection file=\"test.lua\" start=\"10:5\" end=\"12:15\" mode=\"ask\">", user_msg)
     assert.match("local x = 5", user_msg)
   end)
 
@@ -93,5 +93,26 @@ describe("5. Engine & Prompt Construction", function()
     -- restore
     job.run = orig_run
     tools.choice = orig_choice
+  end)
+
+  it("should nest <agent:selection> inside <agent:user> for directives", function()
+    local selection = {
+      file = "LICENSE",
+      start_line = 5,
+      start_col = 31,
+      end_line = 5,
+      end_col = 44,
+      mode = "edit",
+      text = "free of charge"
+    }
+
+    local _, _, _, _, turn_block = prompts.build_messages("charge $500", "directive", "LICENSE", false, selection)
+    
+    -- Verify exact nesting: Instruction should be followed by Selection, then ONE close tag
+    assert.match("<agent:user>.-Instruction: charge %$500.-<agent:selection.-free of charge.-</agent:selection>.-</agent:user>", turn_block)
+    
+    -- Verify NO redundant agent:user close tags
+    local _, count = turn_block:gsub("</agent:user>", "")
+    assert.equals(1, count)
   end)
 end)

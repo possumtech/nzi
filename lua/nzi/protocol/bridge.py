@@ -9,6 +9,7 @@ import logging
 
 # Suppress all library logging and warnings
 os.environ["LITELLM_LOG"] = "ERROR"
+os.environ["LITELLM_CHECK_FOR_UPDATES"] = "False"
 logging.getLogger("litellm").setLevel(logging.ERROR)
 warnings.filterwarnings("ignore")
 
@@ -26,7 +27,7 @@ def main():
             # Check mode: just verify dependencies
             import litellm
             print(json.dumps({"status": "ok", "version": getattr(litellm, "__version__", "unknown")}), flush=True)
-            return
+            sys.exit(0)
         request = json.loads(raw_input)
     except Exception as e:
         print(json.dumps({"error": f"Failed to parse input: {str(e)}"}), flush=True)
@@ -38,7 +39,7 @@ def main():
         from litellm import completion
     except ImportError:
         print(json.dumps({"error": "Dependency missing: LiteLLM not found. Run 'pip install litellm'."}), flush=True)
-        sys.exit(1)
+        os._exit(1)
 
     model = request.get("model")
     alias = request.get("alias", "unknown")
@@ -69,8 +70,11 @@ def main():
     if "X-Description" not in extra_headers:
         extra_headers["X-Description"] = f"Neovim-Native Agentic Interface (nzi) using alias: {alias}"
 
-    # LiteLLM configuration
+    # LiteLLM configuration - DISABLE ALL BACKGROUND THREADS
     litellm.drop_params = True 
+    litellm.success_callback = []
+    litellm.failure_callback = []
+    litellm._disable_node_logging = True
     
     max_retries = 3
     retry_delay = 1
@@ -110,7 +114,7 @@ def main():
                     continue
             
             # If we reach here, the stream finished successfully
-            return
+            sys.exit(0)
 
         except Exception as e:
             error_msg = str(e)
