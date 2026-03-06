@@ -138,9 +138,8 @@ function M.run(messages, callback, on_stdout)
     end,
     stderr = function(err, data)
       if data then 
-        if not data:match("Warning") then 
-          state.job_error = (state.job_error or "") .. data 
-        end
+        -- Accumulate all stderr (it often contains valuable traceback or LiteLLM detail)
+        state.job_error = (state.job_error or "") .. data 
       end
     end
   }, function(obj)
@@ -148,11 +147,13 @@ function M.run(messages, callback, on_stdout)
       if obj.code == 0 and not state.job_error then
         callback(true, state.full_stdout);
       else
-        local msg = state.job_error or "Bridge failed"
+        local msg = state.job_error or "Bridge failed with no error output."
+        
+        -- Special case for dependency issues (common)
         if msg:match("ModuleNotFoundError") and msg:match("litellm") then
-          local plugin_root = vim.fn.fnamemodify(script_path, ":h:h:h")
-          msg = "LiteLLM dependency missing. Run :AI/install to fix your environment."
+          msg = "LiteLLM dependency missing. Run :AI/install to fix your environment.\n\nRaw Error:\n" .. msg
         end
+        
         callback(false, msg .. " (code " .. obj.code .. ")");
       end
     end);

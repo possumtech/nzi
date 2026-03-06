@@ -2,10 +2,10 @@ local M = {};
 
 --- Default configuration options for nzi
 M.defaults = {
-  -- The currently active model alias (selected via environment)
-  active_model = vim.env.NZI_MODEL_ALIAS or "deepseek",
+  -- The currently active model alias
+  active_model = vim.env.NZI_MODEL_ALIAS or "defaultModel",
 
-  -- OpenRouter/OpenAI identification
+  -- Metadata for providers like OpenRouter
   referer = vim.env.NZI_REFERER or "https://github.com/possumtech/nzi",
   title = vim.env.NZI_TITLE or "nzi",
 
@@ -16,9 +16,8 @@ M.defaults = {
       model = vim.env.NZI_MODEL or "deepseek/deepseek-chat",
       api_base = vim.env.NZI_API_BASE or "https://openrouter.ai/api/v1",
       api_key = vim.env.NZI_API_KEY or vim.env.OPENROUTER_API_KEY,
-      role_preference = vim.env.NZI_REFERER or "system",
+      role_preference = "system",
     }
-    -- , add more!
   },
 
   -- Ecosystem settings
@@ -81,8 +80,16 @@ end
 
 --- Get the current active model configuration
 function M.get_active_model()
-  local alias = M.options.active_model or "deepseek";
-  return M.options.models[alias] or M.options.models["deepseek"];
+  local alias = M.options.active_model or "defaultModel";
+  local model = M.options.models[alias] or M.options.models["defaultModel"];
+  
+  -- Fallback: If for some reason defaultModel is missing from the table, return the first available
+  if not model then
+    local _, first = next(M.options.models)
+    return first
+  end
+  
+  return model;
 end
 
 --- Notify the user with the active model alias as a prefix

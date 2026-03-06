@@ -8,25 +8,12 @@ vim.opt.runtimepath:prepend(current_dir)
 -- Setup NZI with extensive model aliases for experimentation
 require("nzi").setup({
   -- Default model
-  active_model = os.getenv("NZI_MODEL") or "deepseek",
+  active_model = os.getenv("NZI_MODEL_ALIAS") or "defaultModel",
 
   -- Pre-configured experimentation lab
   models = {
-    -- The core 'deepseek' model is already in the plugin defaults.
-    
-    -- Local Qwen (Ollama)
-    qwenzel = { 
-      provider = "ollama", 
-      model = "qwen2.5-coder:14b", 
-      api_base = os.getenv("NZI_TEST_LOCAL") or "http://localhost:11434/v1",
-      role_preference = "developer"
-    },
-    
-    -- OpenRouter Convenience Aliases
-    min = { provider = "openrouter", model = "minimax/minimax-01", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
-    r1 = { provider = "openrouter", model = "deepseek/deepseek-r1", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
-    opus = { provider = "openrouter", model = "anthropic/claude-3-opus", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
-    o1 = { provider = "openrouter", model = "openai/o1-preview", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
+    -- The core 'defaultModel' is already in the plugin defaults.
+    -- Users can override it via env vars or define new ones here.
   },
 
   modal = {
@@ -67,8 +54,6 @@ vim.keymap.set("n", "<leader>ap", ":AI/prev<CR>",   { desc = "AI: Prev Pending D
 
 -- Model Management
 vim.keymap.set("n", "<leader>am", ":AI/model<CR>",  { desc = "AI: Model Menu" })
-vim.keymap.set("n", "<leader>a1", ":AI/model deepseek<CR>", { desc = "AI: Switch to DeepSeek" })
-vim.keymap.set("n", "<leader>a2", ":AI/model qwenzel<CR>",  { desc = "AI: Switch to Ollama" })
 
 -- Statusline setup for demo
 vim.opt.statusline = "%f %m %r %= %{%v:lua.require('nzi.ui.visuals').get_statusline()%} %y %p%% %l:%c"
