@@ -144,7 +144,9 @@ function M.run(messages, callback, on_stdout)
     end
   }, function(obj)
     vim.schedule(function()
-      if obj.code == 0 and not state.job_error then
+      local has_error = (obj.code ~= 0) or (state.job_error and state.job_error:match("Error"))
+      
+      if obj.code == 0 and not has_error then
         callback(true, state.full_stdout);
       else
         local msg = state.job_error or "Bridge failed with no error output."

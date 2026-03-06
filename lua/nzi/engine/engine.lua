@@ -175,7 +175,11 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
     end, function(chunk, chunk_type)
       vim.schedule(function()
         if chunk_type == "error" then error_displayed = true; end
-        tag_parser:feed(chunk);
+        -- ONLY feed "content" to the action parser. 
+        -- Reasoning (thought tokens) must not be parsed as model actions.
+        if chunk_type == "content" then
+          tag_parser:feed(chunk);
+        end
         modal.write(chunk, chunk_type, true);
       end);
     end);

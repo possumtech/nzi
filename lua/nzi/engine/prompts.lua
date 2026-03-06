@@ -31,7 +31,7 @@ function M.build_system_prompt(prompts, model_alias)
     identity,
     "## TURN PROTOCOL",
     "Finalize every turn with exactly one of the following tags:",
-    "* <model:summary>One sentence summary of actions taken</model:summary>",
+    "* <model:summary>One sentence summary of actions, or the DIRECT ANSWER if it is concise.</model:summary>",
     "* <model:choice>Text? - [ ] Option 1 - [ ] Option 2</model:choice>",
     "\n## MODEL ACTIONS",
     "Perform actions using these tags before the turn terminator:",
