@@ -81,6 +81,7 @@ This is the canonical source of truth for **nzi** development, technical specifi
 
 ### Verification Targets
 - [x] **Character-Perfect Visual Selection**: Exact columns and mode (v, V, ^V).
+- [x] **Structured Grep**: Using <agent:match> attributes to avoid colon ambiguity.
 - [x] **Terminating Logic**: Disabling background threads in bridge.py.
 - [x] **Passive Context**: Run output added to history without triggering turns.
 

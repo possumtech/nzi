@@ -102,6 +102,7 @@ function M.setup(opts)
       end
 
       if shell_cmd ~= "" then
+        config.log(shell_cmd, "RUN");
         require("nzi.tools.shell").run(shell_cmd, bufnr, line1, false);
       else
         vim.notify("AI!: No command provided.", vim.log.levels.WARN);

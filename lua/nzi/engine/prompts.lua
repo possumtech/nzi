@@ -45,7 +45,7 @@ function M.build_system_prompt(prompts, model_alias)
     "* <model:edit file=\"path/to/filename\">SEARCH/REPLACE Blocks</model:edit>: Modify code.",
     "\n## SEARCH/REPLACE FORMAT",
     "To modify a file, wrap SEARCH/REPLACE blocks inside a <model:edit> tag:",
-    "SEARCH blocks support Lua patterns (regex). Use them if exact content or whitespace is unknown.",
+    "* SEARCH blocks MUST contain FULL LINES as they appear in the file.",
     "Multiple blocks are allowed in one <model:edit> tag. They are applied sequentially.",
     "<model:edit file=\"path/to/filename\">",
     "<<<<<<< SEARCH",
@@ -183,15 +183,15 @@ function M.build_messages(content, type, target_file, include_lsp, selection)
   local turn_block = "";
   if type == "instruct" and target_file then
     if selection_block ~= "" then
-      turn_block = string.format("<agent:user>\n%s\nEditing file: %s\nInstruction: %s\n</agent:user>",
-        selection_block, M.smart_filter(target_file), M.smart_filter(content));
+      turn_block = string.format("<agent:user>\n%s Instruction: %s\nEditing file: %s\n</agent:user>",
+        selection_block, M.smart_filter(content), M.smart_filter(target_file));
     else
       turn_block = string.format("<agent:user>\nEditing file: %s\nInstruction: %s\n</agent:user>",
         M.smart_filter(target_file), M.smart_filter(content));
     end
   else
     if selection_block ~= "" then
-      turn_block = string.format("<agent:user>\n%s\n%s\n</agent:user>", 
+      turn_block = string.format("<agent:user>\n%s Instruction: %s\n</agent:user>", 
         selection_block, M.smart_filter(content));
     else
       turn_block = string.format("<agent:user>\n%s\n</agent:user>", 

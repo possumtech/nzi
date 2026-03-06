@@ -30,7 +30,9 @@ function M.grep(pattern)
       
       for i, line in ipairs(lines) do
         if line:find(pattern, 1, true) then
-          table.insert(results, string.format("%s:%d:%s", path, i, line));
+          -- Escape & < > in the line content for XML safety
+          local clean_line = line:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;");
+          table.insert(results, string.format("<agent:match file=\"%s\" line=\"%d\">%s</agent:match>", path, i, clean_line));
         end
       end
     end

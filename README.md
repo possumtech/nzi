@@ -74,6 +74,7 @@ NZI provides structured environment data via `<agent:*>` tags.
 | `<agent:context>` | - | Current workspace/buffer facts |
 | `<agent:project_state>` | - | Contents of `./AGENTS.md` |
 | `<agent:next_task_suggest>` | - | First pending task from checklist |
+| `<agent:grep>` | - | List of `<agent:match file="..." line="...">text</agent:match>` |
 | `<agent:test>` | - | Output from a failing test or terminal |
 
 ---

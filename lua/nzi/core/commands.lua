@@ -9,6 +9,7 @@ local M = {};
 --- Execute an internal AI/ command
 --- @param cmd string: The subcommand (e.g. "model", "clear")
 function M.run(cmd)
+  config.log(cmd, "CMD");
   if not cmd or cmd == "" then
     buffers.open_ui();
     return;

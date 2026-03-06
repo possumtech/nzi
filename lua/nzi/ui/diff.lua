@@ -91,11 +91,13 @@ end
 --- Finalize the review (Accept the current state of original buffer)
 function M.accept(bufnr)
   local actual_buf = M.find_original_buffer(bufnr);
+  local config = require("nzi.core.config");
   if not actual_buf then
     -- Check for deletions
     local name = vim.api.nvim_buf_get_name(bufnr);
     local relative_name = vim.fn.fnamemodify(name, ":.");
     if M.pending_deletions[relative_name] then
+      config.log(relative_name, "DIFF:DELETE");
       os.remove(vim.fn.getcwd() .. "/" .. relative_name);
       M.pending_deletions[relative_name] = nil;
       vim.api.nvim_buf_delete(bufnr, { force = true });
@@ -108,6 +110,8 @@ function M.accept(bufnr)
 
   -- SAVE THE BUFFER (User requested)
   local name = vim.api.nvim_buf_get_name(actual_buf);
+  local relative_name = vim.fn.fnamemodify(name, ":.");
+  config.log(relative_name, "DIFF:ACCEPT");
   if name ~= "" and vim.api.nvim_buf_is_valid(actual_buf) then
     vim.api.nvim_buf_call(actual_buf, function() 
       vim.cmd("silent! write!");
@@ -121,10 +125,12 @@ end
 --- Finalize and discard (Revert original buffer? Or just close suggestion?)
 function M.reject(bufnr)
   local actual_buf = M.find_original_buffer(bufnr);
+  local config = require("nzi.core.config");
   if not actual_buf then
     local name = vim.api.nvim_buf_get_name(bufnr);
     local relative_name = vim.fn.fnamemodify(name, ":.");
     if M.pending_deletions[relative_name] then
+      config.log(relative_name, "DIFF:REJECT_DELETE");
       M.pending_deletions[relative_name] = nil;
       vim.notify("AI: Deletion rejected: " .. relative_name, vim.log.levels.INFO);
       return;
@@ -132,6 +138,10 @@ function M.reject(bufnr)
     vim.notify("AI: No pending review for this buffer.", vim.log.levels.WARN);
     return;
   end
+
+  local name = vim.api.nvim_buf_get_name(actual_buf);
+  local relative_name = vim.fn.fnamemodify(name, ":.");
+  config.log(relative_name, "DIFF:REJECT");
 
   M.cleanup(actual_buf);
   vim.notify("AI: Suggestion discarded.", vim.log.levels.INFO);

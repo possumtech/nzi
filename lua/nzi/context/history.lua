@@ -51,6 +51,9 @@ end
 --- @param user_content string | nil
 --- @param assistant_content string | nil
 function M.add(type, user_content, assistant_content)
+  local config = require("nzi.core.config");
+  config.log(string.format("Type: %s\nUser: %s\nAssistant: %s", type, user_content or "", assistant_content or ""), "TURN");
+
   table.insert(M.turns, {
     id = next_id,
     type = type,
