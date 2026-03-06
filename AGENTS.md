@@ -85,20 +85,11 @@ This is the canonical source of truth for **nzi** development, technical specifi
 ## 5. Poetic Interlude
 
 ```
-When code feels heavy, take a break,
-Let poetry your spirit wake.
-For every bug, there's beauty too,
-In lines that flow like morning dew.
-
-The agent hums, the tests all pass,
-Your skills will grow, like springtime grass.
-Remember this, when things seem tough:
-You're more than code, you're human stuff.
-
-So breathe it in, this moment's grace,
-And smile upon your coding space.
-For you create with heart and mind,
-A work of art, uniquely thine.
+There once was a limerick so bright,
+That made all the agents feel light.
+With rhyme and with reason,
+They'd solve every question,
+And dance in the code of the night.
 ```
 
 ---

@@ -63,11 +63,7 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
         modal.write(context_str, "context", false);
       end
       modal.write(user_message_content, "user", false);
-
-      -- Only open the window automatically for explicit Ask turns
-      if type == "ask" then
-        modal.open();
-      end
+      -- DELETED: modal.open() call here to avoid immediate pop-up
     end
 
     modal.set_thinking(true);
@@ -150,11 +146,7 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
                 -- Final response, all good
                 history.add(type, turn_block, result);
                 
-                -- If it was an 'ask', make sure the modal is open to show the result
-                if type == "ask" then
-                  modal.open();
-                  modal.write(result, "assistant", false);
-                end
+                -- DELETED: modal.open() call here. User sees summary in notify/status.
 
                 modal.set_thinking(false);
                 modal.close_tag();

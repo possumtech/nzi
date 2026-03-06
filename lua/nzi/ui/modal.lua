@@ -79,7 +79,7 @@ function M.open()
 
   local title = get_title();
 
-  M.winid = vim.api.nvim_open_win(bufnr, false, {
+  M.winid = vim.api.nvim_open_win(bufnr, true, { -- ENTER = true for cursor focus
     relative = "editor",
     width = math.floor(vim.o.columns * 0.8),
     height = math.floor(vim.o.lines * 0.8),
@@ -154,9 +154,9 @@ end
 --- Lexicon Mapping
 local function get_tag_name(type)
   local map = {
-    reasoning_content = "agent:reasoning_content",
+    reasoning_content = "agent:reasoning",
     content = "agent:content",
-    assistant = "agent:assistant",
+    assistant = "agent:summary", -- Maps 'assistant' (from agent.lua) to 'agent:summary'
     system = "agent:system",
     user = "agent:user",
     context = "agent:context",
@@ -191,7 +191,7 @@ local function get_telemetry_line(type)
   if type == "user" or type == "ask" or type == "instruct" then
     return string.format("[ USER | model: %s | temp: %.1f | top_p: %.1f ]", model_alias, opts.temperature or 0, opts.top_p or 0);
   elseif type == "reasoning_content" then
-    return "[ ASSISTANT | reasoning_content | stream: active ]";
+    return "[ ASSISTANT | reasoning | stream: active ]";
   elseif type == "content" then
     return "[ ASSISTANT | content | stream: active ]";
   elseif type == "shell" or type == "shell_output" then
@@ -206,11 +206,36 @@ end
 --- Internal helper to close the currently open section
 local function _close_current_tag(bufnr)
   if not M.current_open_tag then return end
-  local tag = get_tag_name(M.current_open_tag);
+  local type = M.current_open_tag;
+  local tag = get_tag_name(type);
   local lc = vim.api.nvim_buf_line_count(bufnr);
   local tag_line = "</" .. tag .. ">";
   vim.api.nvim_buf_set_lines(bufnr, lc, lc, false, { tag_line });
   highlight_lines(bufnr, lc, lc, "NziTelemetry");
+  
+  -- AUTO-FOLD Reasoning when finished
+  if type == "reasoning_content" then
+    if M.winid and vim.api.nvim_win_is_valid(M.winid) then
+      -- Find the opening tag for this reasoning block
+      local start_line = -1;
+      local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false);
+      for i = #lines, 1, -1 do
+        if lines[i]:match("^<agent:reasoning>") then
+          start_line = i;
+          break;
+        end
+      end
+      
+      if start_line ~= -1 then
+        -- Neovim folds are slightly tricky; we set the fold level in the foldexpr
+        -- But for reasoning specifically, we can force a fold here.
+        vim.api.nvim_win_call(M.winid, function()
+          vim.cmd(tostring(start_line) .. "foldclose");
+        end);
+      end
+    end
+  end
+
   M.current_open_tag = nil;
 end
 
@@ -244,6 +269,13 @@ function M.write(text, type, append)
     highlight_lines(bufnr, start_idx, start_idx + #header - 1, "NziTelemetry");
     M.current_open_tag = type;
     append = false; -- First write in a section is never an "append" to existing text
+
+    -- Ensure reasoning is EXPANDED when starting
+    if type == "reasoning_content" and M.winid and vim.api.nvim_win_is_valid(M.winid) then
+      vim.api.nvim_win_call(M.winid, function()
+        pcall(vim.cmd, "normal! zR"); -- Expand all just in case
+      end);
+    end
   end
 
   -- 2. Content Injection
