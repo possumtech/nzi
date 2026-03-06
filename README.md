@@ -69,7 +69,7 @@ NZI provides structured environment data via `<agent:*>` tags.
 
 | Tag | Attributes | Description |
 | :--- | :--- | :--- |
-| `<agent:selection>` | `file, start, end, mode` | Character-perfect visual selection |
+| `<agent:selection>` | `file, start, end` | Character-perfect visual selection |
 | `<agent:user>` | - | The user's specific instruction |
 | `<agent:context>` | - | Current workspace/buffer facts |
 | `<agent:project_state>` | - | Contents of `./AGENTS.md` |

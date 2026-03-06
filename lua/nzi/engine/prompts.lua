@@ -57,7 +57,6 @@ function M.build_system_prompt(prompts, model_alias)
     "\n## AGENT TAGS (Input Only)",
     "* <agent:shell>shell output</agent:shell>",
     "* <agent:env>shell output</agent:env>",
-    "* <agent:grep>filename:line:text</agent:grep>",
     "* <agent:choice>selected option</agent:choice>",
     "* <agent:tool name=\"toolName\">tool output</agent:tool>",
     "* <agent:context>current project structure and files</agent:context>",
@@ -65,7 +64,8 @@ function M.build_system_prompt(prompts, model_alias)
     "* <agent:project_state>AGENTS.md file contents</agent:project_state>",
     "* <agent:next_task_suggest>The first pending task in the plan</agent:next_task_suggest>",
     "* <agent:user>The user's specific instruction</agent:user>",
-    "* <agent:selection file=\"path\" start=\"1:1\" end=\"1:5\" mode=\"ask\">text</agent:selection>",
+    "* <agent:selection file=\"path\" start=\"1:1\" end=\"1:5\">text</agent:selection>",
+    "* <agent:grep><agent:match file=\"path\" line=\"10\">text</agent:match></agent:grep>",
     "* <agent:test>Output from a failing test or terminal execution</agent:test>",
     "\n## CONSTRAINTS",
     "* Interaction Modes: Instruct (:), Ask (?), Run (!), Internal (/)",
@@ -172,12 +172,8 @@ function M.build_messages(content, type, target_file, include_lsp, selection)
 
   local selection_block = "";
   if selection then
-    local mode = selection.mode;
-    if type == "ask" then mode = "ask"; end
-    if type == "instruct" then mode = "edit"; end
-
-    selection_block = string.format("<agent:selection file=\"%s\" start=\"%d:%d\" end=\"%d:%d\" mode=\"%s\">\n%s\n</agent:selection>",
-      selection.file, selection.start_line, selection.start_col, selection.end_line, selection.end_col, mode, M.smart_filter(selection.text));
+    selection_block = string.format("<agent:selection file=\"%s\" start=\"%d:%d\" end=\"%d:%d\">\n%s\n</agent:selection>",
+      selection.file, selection.start_line, selection.start_col, selection.end_line, selection.end_col, M.smart_filter(selection.text));
   end
 
   local turn_block = "";

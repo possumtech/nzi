@@ -40,7 +40,7 @@ describe("5. Engine & Prompt Construction", function()
     local messages = prompts.build_messages("explain this", "ask", nil, false, selection)
     local user_msg = messages[#messages].content
     
-    assert.match("<agent:selection file=\"test.lua\" start=\"10:5\" end=\"12:15\" mode=\"ask\">", user_msg)
+    assert.match("<agent:selection file=\"test.lua\" start=\"10:5\" end=\"12:15\">", user_msg)
     assert.match("local x = 5", user_msg)
   end)
 
