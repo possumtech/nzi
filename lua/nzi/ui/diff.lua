@@ -1,6 +1,6 @@
 local M = {};
 
--- Map of original buffer IDs to their hidden "suggestion" buffer IDs
+-- Map of original buffer IDs to metadata (sugg_buf, tab_id)
 M.pending_reviews = {};
 -- Map of file paths to be deleted
 M.pending_deletions = {};
@@ -13,7 +13,7 @@ function M.apply_immediately(bufnr, new_lines)
   -- If it's a real file, save it
   local name = vim.api.nvim_buf_get_name(bufnr);
   if name ~= "" and vim.fn.filereadable(name) == 1 then
-    vim.api.nvim_buf_call(bufnr, function() vim.cmd("silent! write") end);
+    vim.api.nvim_buf_call(bufnr, function() vim.cmd("silent! write!") end);
   end
 end
 
@@ -43,10 +43,9 @@ function M.propose_edit(bufnr, new_lines)
   vim.api.nvim_set_option_value("filetype", ft, { buf = suggestion_buf });
   vim.api.nvim_buf_set_lines(suggestion_buf, 0, -1, false, new_lines);
   
-  M.pending_reviews[bufnr] = suggestion_buf;
-  
   -- Use native Neovim tabs/windows for the diff
   vim.cmd("tab split");
+  local tab_id = vim.api.nvim_get_current_tabpage();
   local win_orig = vim.api.nvim_get_current_win();
   vim.api.nvim_win_set_buf(win_orig, bufnr);
   
@@ -61,6 +60,11 @@ function M.propose_edit(bufnr, new_lines)
   -- Focus the original buffer so user can use 'do' (diff obtain) to pull from suggestion
   vim.api.nvim_set_current_win(win_orig);
   
+  M.pending_reviews[bufnr] = { 
+    suggestion_buf = suggestion_buf,
+    tab_id = tab_id
+  };
+
   vim.notify("AI: Diff mode active. Use 'do'/'dp' to merge. Close tab when finished.", vim.log.levels.INFO);
 end
 
@@ -71,53 +75,94 @@ function M.propose_deletion(file_path)
   vim.notify("AI: Marked for deletion: " .. file_path .. ". Use AI/accept to confirm.", vim.log.levels.WARN);
 end
 
+--- Find the original buffer ID if given a suggestion buffer ID
+--- @param bufnr number
+--- @return number|nil
+function M.find_original_buffer(bufnr)
+  if M.pending_reviews[bufnr] then return bufnr end
+  for orig_buf, review in pairs(M.pending_reviews) do
+    if review.suggestion_buf == bufnr then
+      return orig_buf;
+    end
+  end
+  return nil;
+end
+
 --- Finalize the review (Accept the current state of original buffer)
 function M.accept(bufnr)
-  local name = vim.api.nvim_buf_get_name(bufnr);
-  local relative_name = vim.fn.fnamemodify(name, ":.");
-  
-  if M.pending_deletions[relative_name] then
-    os.remove(vim.fn.getcwd() .. "/" .. relative_name);
-    M.pending_deletions[relative_name] = nil;
-    vim.api.nvim_buf_delete(bufnr, { force = true });
-    vim.notify("AI: File deleted: " .. relative_name, vim.log.levels.INFO);
+  local actual_buf = M.find_original_buffer(bufnr);
+  if not actual_buf then
+    -- Check for deletions
+    local name = vim.api.nvim_buf_get_name(bufnr);
+    local relative_name = vim.fn.fnamemodify(name, ":.");
+    if M.pending_deletions[relative_name] then
+      os.remove(vim.fn.getcwd() .. "/" .. relative_name);
+      M.pending_deletions[relative_name] = nil;
+      vim.api.nvim_buf_delete(bufnr, { force = true });
+      vim.notify("AI: File deleted: " .. relative_name, vim.log.levels.INFO);
+      return;
+    end
+    vim.notify("AI: No pending review for this buffer.", vim.log.levels.WARN);
     return;
   end
 
-  M.cleanup(bufnr);
-  vim.notify("AI: Edit review finalized.", vim.log.levels.INFO);
+  -- SAVE THE BUFFER (User requested)
+  local name = vim.api.nvim_buf_get_name(actual_buf);
+  if name ~= "" and vim.api.nvim_buf_is_valid(actual_buf) then
+    vim.api.nvim_buf_call(actual_buf, function() 
+      vim.cmd("silent! write!");
+    end);
+  end
+
+  M.cleanup(actual_buf);
+  vim.notify("AI: Edit review finalized and saved.", vim.log.levels.INFO);
 end
 
 --- Finalize and discard (Revert original buffer? Or just close suggestion?)
---- Logic: We assume the user has been editing 'bufnr' directly.
---- 'reject' just clears the suggestion.
 function M.reject(bufnr)
-  local name = vim.api.nvim_buf_get_name(bufnr);
-  local relative_name = vim.fn.fnamemodify(name, ":.");
-  
-  if M.pending_deletions[relative_name] then
-    M.pending_deletions[relative_name] = nil;
-    vim.notify("AI: Deletion rejected: " .. relative_name, vim.log.levels.INFO);
+  local actual_buf = M.find_original_buffer(bufnr);
+  if not actual_buf then
+    local name = vim.api.nvim_buf_get_name(bufnr);
+    local relative_name = vim.fn.fnamemodify(name, ":.");
+    if M.pending_deletions[relative_name] then
+      M.pending_deletions[relative_name] = nil;
+      vim.notify("AI: Deletion rejected: " .. relative_name, vim.log.levels.INFO);
+      return;
+    end
+    vim.notify("AI: No pending review for this buffer.", vim.log.levels.WARN);
     return;
   end
 
-  M.cleanup(bufnr);
+  M.cleanup(actual_buf);
   vim.notify("AI: Suggestion discarded.", vim.log.levels.INFO);
 end
 
 --- Cleanup diff state and close suggest buffer
 function M.cleanup(bufnr)
-  local sugg_buf = M.pending_reviews[bufnr];
+  local review = M.pending_reviews[bufnr];
+  if not review then return end
+
+  local sugg_buf = review.suggestion_buf;
+  local tab_id = review.tab_id;
+  
+  M.pending_reviews[bufnr] = nil;
+
   if sugg_buf and vim.api.nvim_buf_is_valid(sugg_buf) then
     vim.api.nvim_buf_delete(sugg_buf, { force = true });
   end
-  M.pending_reviews[bufnr] = nil;
   
-  -- Turn off diff mode in all windows showing this buffer
-  local wins = vim.fn.win_findbuf(bufnr);
-  for _, win in ipairs(wins) do
-    if vim.api.nvim_win_is_valid(win) then
-      vim.api.nvim_win_call(win, function() vim.cmd("diffoff") end);
+  if tab_id and vim.api.nvim_tabpage_is_valid(tab_id) then
+    vim.api.nvim_set_current_tabpage(tab_id);
+    vim.cmd("tabclose");
+  end
+
+  -- Turn off diff mode in all windows showing this buffer if any are left
+  if vim.api.nvim_buf_is_valid(bufnr) then
+    local wins = vim.fn.win_findbuf(bufnr);
+    for _, win in ipairs(wins) do
+      if vim.api.nvim_win_is_valid(win) then
+        vim.api.nvim_win_call(win, function() vim.cmd("diffoff") end);
+      end
     end
   end
 end
