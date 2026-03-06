@@ -151,7 +151,22 @@ function M.setup(opts)
   end, { desc = "AI: Run Ralph-style tests" });
 
   vim.keymap.set("n", "<leader>ay", function() vim.cmd("AI/yank") end, { desc = "AI: Yank last response" });
-  vim.keymap.set("v", "<leader>aa", function() engine.handle_visual() end, { desc = "AI: Execute selection" });
+  vim.keymap.set("n", "<leader>as", function() 
+    vim.ui.input({ prompt = "Session Name: ", default = "default" }, function(input)
+      if input then vim.cmd("AI/save " .. input) end
+    end)
+  end, { desc = "AI: Save Session" });
+  vim.keymap.set("n", "<leader>al", function() 
+    vim.ui.input({ prompt = "Session Name: ", default = "default" }, function(input)
+      if input then vim.cmd("AI/load " .. input) end
+    end)
+  end, { desc = "AI: Load Session" });
+  vim.keymap.set("n", "<leader>aa", function() vim.cmd("AI/toggle") end, { desc = "AI: Toggle Modal" });
+
+  -- Context State Keymaps
+  vim.keymap.set("n", "<leader>aA", function() vim.cmd("AI/active") end, { desc = "AI: Mark buffer as Active" });
+  vim.keymap.set("n", "<leader>aR", function() vim.cmd("AI/read") end, { desc = "AI: Mark buffer as Read-only Context" });
+  vim.keymap.set("n", "<leader>aI", function() vim.cmd("AI/ignore") end, { desc = "AI: Mark buffer as Ignored" });
   
   vim.keymap.set("n", "<leader>aY", function() 
     config.options.yolo = not config.options.yolo;

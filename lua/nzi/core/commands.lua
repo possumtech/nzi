@@ -175,7 +175,47 @@ function M.run(cmd)
     require("nzi.tools.shell").run(test_cmd);
 
   elseif subcommand == "save" or subcommand == "load" then
-    vim.notify("AI: " .. subcommand .. " not yet implemented.", vim.log.levels.WARN);
+    local session_name = args ~= "" and args or "default";
+    local data_dir = vim.fn.stdpath("data") .. "/nzi/sessions";
+    vim.fn.mkdir(data_dir, "p");
+    local file_path = data_dir .. "/" .. session_name .. ".json";
+
+    if subcommand == "save" then
+      local data = {
+        history = history.get_all(),
+        model = config.options.active_model
+      };
+      local f = io.open(file_path, "w");
+      if f then
+        f:write(vim.json.encode(data));
+        f:close();
+        vim.notify("AI: Session saved to '" .. session_name .. "'", vim.log.levels.INFO);
+      else
+        vim.notify("AI: Failed to save session.", vim.log.levels.ERROR);
+      end
+    else
+      -- load
+      local f = io.open(file_path, "r");
+      if f then
+        local content = f:read("*a");
+        f:close();
+        local ok, data = pcall(vim.json.decode, content);
+        if ok and data then
+          history.clear();
+          for _, turn in ipairs(data.history or {}) do
+            history.add(turn.type, history.strip_line_numbers(turn.user), history.strip_line_numbers(turn.assistant));
+          end
+          if data.model and config.options.models[data.model] then
+            config.options.active_model = data.model;
+          end
+          vim.notify("AI: Session '" .. session_name .. "' loaded (" .. #history.get_all() .. " turns)", vim.log.levels.INFO);
+        else
+          vim.notify("AI: Failed to parse session file.", vim.log.levels.ERROR);
+        end
+      else
+        vim.notify("AI: Session '" .. session_name .. "' not found.", vim.log.levels.WARN);
+      end
+    end
 
   elseif subcommand == "config" then
     print(vim.inspect(config.options));

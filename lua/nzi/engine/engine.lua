@@ -228,7 +228,7 @@ function M.execute_range(start_line, end_line)
   end
 
   if not found_directive then
-    -- Handle raw visual selection with no AI: prefix
+    -- Handle active selection with no AI: prefix
     local selection = M.get_visual_selection();
     vim.ui.input({ prompt = "AI Question on selection: " }, function(input)
       if input and input ~= "" then
@@ -312,7 +312,7 @@ function M.get_visual_selection()
   };
 end
 
---- Handle visual selection
+--- Handle Execute selection (Visual mode shortcut)
 function M.handle_visual()
   local selection = M.get_visual_selection();
   local ft = vim.bo.filetype;
