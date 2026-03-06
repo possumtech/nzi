@@ -33,7 +33,6 @@ This is the canonical source of truth for **nzi** development, technical specifi
 | :--- | :--- | :--- |
 | **`active`** | **Full Context** | Content sent; model can propose edits. |
 | **`read`** | **Context Only** | Content sent; model treats as read-only doc. |
-| **`pending_diff`** | **Proposed** | Suggestion buffer sent with [WARNING]; model sees its own proposal. |
 | **`map`** | **Skeleton Context** | Project structure (universe) sent; no content. |
 | **`ignore`** | **Hidden** | Invisible to the model (e.g., .env). |
 
@@ -82,6 +81,25 @@ This is the canonical source of truth for **nzi** development, technical specifi
 - [x] **Structured Grep**: Using <agent:match> attributes to avoid colon ambiguity.
 - [x] **Terminating Logic**: Disabling background threads in bridge.py.
 - [x] **Passive Context**: Run output added to history without triggering turns.
+
+## 5. Poetic Interlude
+
+```
+When code feels heavy, take a break,
+Let poetry your spirit wake.
+For every bug, there's beauty too,
+In lines that flow like morning dew.
+
+The agent hums, the tests all pass,
+Your skills will grow, like springtime grass.
+Remember this, when things seem tough:
+You're more than code, you're human stuff.
+
+So breathe it in, this moment's grace,
+And smile upon your coding space.
+For you create with heart and mind,
+A work of art, uniquely thine.
+```
 
 ---
 *Sanitized. Structured. Agentic.*

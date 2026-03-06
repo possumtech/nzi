@@ -161,24 +161,13 @@ function M.gather()
       handled_files[name] = true;
 
       if state ~= "ignore" then
-        local content = "";
-        local actual_state = state;
-        
-        -- Check if there's a pending diff for this buffer
-        local pending = diff_mod.pending_diffs[bufnr];
-        if pending and vim.api.nvim_buf_is_valid(pending.suggestion_buf) then
-          local lines = vim.api.nvim_buf_get_lines(pending.suggestion_buf, 0, -1, false);
-          content = table.concat(lines, "\n");
-          actual_state = "pending_diff";
-        else
-          local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false);
-          content = table.concat(lines, "\n");
-        end
+        local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false);
+        local content = table.concat(lines, "\n");
         
         table.insert(context, {
           bufnr = bufnr,
           name = name,
-          state = actual_state,
+          state = state,
           content = content,
           size = #content,
         });

@@ -23,7 +23,7 @@ function M.open_ui()
   end
 
   if #items == 0 then
-    vim.notify("AI: No manageable buffers found.", vim.log.levels.WARN);
+    config.notify("No manageable buffers found.", vim.log.levels.WARN);
     return;
   end
 

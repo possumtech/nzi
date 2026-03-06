@@ -44,15 +44,22 @@ end
 
 --- Dispatch a set of model actions and return the combined agent responses
 function M.dispatch_actions(actions, callback)
+  local queue = require("nzi.core.queue");
   local current_idx = 1;
   local accumulated_responses = {};
+  local was_blocked = false;
   
+  -- Clear turn-level action queue before processing
+  queue.clear_actions();
+
   -- 1. Group and consolidate edits/replacements by target file
   local edits_by_file = {};
   local other_actions = {};
   
   for _, action in ipairs(actions) do
     if action.name == "edit" or action.name == "replace_all" then
+      queue.enqueue_action(action);
+      was_blocked = true;
       local raw_file = protocol.get_attr(action.attr, "file");
       if raw_file then
         local file, err = resolver.resolve(raw_file);
@@ -64,6 +71,7 @@ function M.dispatch_actions(actions, callback)
         end
       end
     else
+      queue.enqueue_action(action);
       table.insert(other_actions, action);
     end
   end
@@ -79,10 +87,11 @@ function M.dispatch_actions(actions, callback)
       local function run_edits(f_idx)
         if f_idx > #file_list then
           -- FINISHED ALL ACTIONS
+          queue.clear_actions();
           if #accumulated_responses > 0 then
-            callback(table.concat(accumulated_responses, "\n\n"));
+            callback(table.concat(accumulated_responses, "\n\n"), nil, was_blocked);
           else
-            callback(nil);
+            callback(nil, nil, was_blocked);
           end
           return;
         end
@@ -206,6 +215,7 @@ function M.dispatch_actions(actions, callback)
       run_others(idx + 1);
 
     elseif action.name == "create" then
+      was_blocked = true;
       local raw_file = protocol.get_attr(action.attr, "file");
       if raw_file then
         local file_path = vim.fn.getcwd() .. "/" .. raw_file;
@@ -233,6 +243,7 @@ function M.dispatch_actions(actions, callback)
       run_others(idx + 1);
 
     elseif action.name == "delete" then
+      was_blocked = true;
       local raw_file = protocol.get_attr(action.attr, "file");
       if raw_file then
         local file, err = resolver.resolve(raw_file);
@@ -252,10 +263,11 @@ function M.dispatch_actions(actions, callback)
 
     elseif action.name == "summary" then
       modal.write(action.content, "assistant", false);
-      vim.notify("AI: " .. action.content, vim.log.levels.INFO);
+      config.notify(action.content, vim.log.levels.INFO);
       run_others(idx + 1);
 
     elseif action.name == "choice" then
+      was_blocked = true;
       modal.open();
       modal.write("User Choice Prompt: " .. action.content, "system", false);
       tools.choice(action.content, function(choice_res)

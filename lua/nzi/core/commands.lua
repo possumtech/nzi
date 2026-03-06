@@ -31,35 +31,35 @@ function M.run(cmd)
       }, function(choice)
         if choice then
           config.options.active_model = choice;
-          vim.notify("AI: Active model set to " .. choice, vim.log.levels.INFO);
+          config.notify("Active model set to " .. choice, vim.log.levels.INFO);
         end
       end);
     else
       if config.options.models[args] then
         config.options.active_model = args;
-        vim.notify("AI: Active model set to " .. args, vim.log.levels.INFO);
+        config.notify("Active model set to " .. args, vim.log.levels.INFO);
       else
-        vim.notify("AI: Unknown model alias: " .. args, vim.log.levels.ERROR);
+        config.notify("Unknown model alias: " .. args, vim.log.levels.ERROR);
       end
     end
 
   elseif subcommand == "clear" then
     history.clear();
     modal.clear();
-    vim.notify("AI: History and modal cleared.", vim.log.levels.INFO);
+    config.notify("History and modal cleared.", vim.log.levels.INFO);
 
   elseif subcommand == "undo" then
     if history.pop() then
-      vim.notify("AI: Last turn removed from history.", vim.log.levels.INFO);
+      config.notify("Last turn removed from history.", vim.log.levels.INFO);
     else
-      vim.notify("AI: History is empty.", vim.log.levels.WARN);
+      config.notify("History is empty.", vim.log.levels.WARN);
     end
 
   elseif subcommand == "status" then
     local model = config.options.active_model;
     local turns = #history.get_all();
     local diffs = diff.get_count();
-    vim.notify(string.format("AI: Model: %s | Turns: %d | Pending Diffs: %d", model, turns, diffs), vim.log.levels.INFO);
+    config.notify(string.format("Model: %s | Turns: %d | Pending Diffs: %d", model, turns, diffs), vim.log.levels.INFO);
 
   elseif subcommand == "toggle" then
     modal.toggle();
@@ -72,12 +72,12 @@ function M.run(cmd)
       engine.is_busy = false;
       modal.set_thinking(false);
       modal.write("\n[ABORTED BY USER]\n", "error", true);
-      vim.notify("AI: Generation aborted.", vim.log.levels.WARN);
+      config.notify("Generation aborted.", vim.log.levels.WARN);
     else
       -- Force reset state even if no job handle exists
       engine.is_busy = false;
       modal.set_thinking(false);
-      vim.notify("AI: Reset idle state.", vim.log.levels.INFO);
+      config.notify("Reset idle state.", vim.log.levels.INFO);
     end
 
   elseif subcommand == "yank" then
@@ -87,9 +87,9 @@ function M.run(cmd)
       local text = history.strip_line_numbers(last.assistant or "");
       vim.fn.setreg('+', text);
       vim.fn.setreg('"', text);
-      vim.notify("AI: Last response yanked to clipboard.", vim.log.levels.INFO);
+      config.notify("Last response yanked to clipboard.", vim.log.levels.INFO);
     else
-      vim.notify("AI: Nothing to yank.", vim.log.levels.WARN);
+      config.notify("Nothing to yank.", vim.log.levels.WARN);
     end
 
   elseif subcommand == "next" then
@@ -110,7 +110,7 @@ function M.run(cmd)
         break;
       end
     end
-    if not found then vim.notify("AI: No pending diffs found.", vim.log.levels.WARN) end
+    if not found then config.notify("No pending diffs found.", vim.log.levels.WARN) end
 
   elseif subcommand == "prev" then
     -- Navigate to previous pending diff
@@ -130,7 +130,7 @@ function M.run(cmd)
         break;
       end
     end
-    if not found then vim.notify("AI: No pending diffs found.", vim.log.levels.WARN) end
+    if not found then config.notify("No pending diffs found.", vim.log.levels.WARN) end
 
   elseif subcommand == "accept" then
     diff.accept(vim.api.nvim_get_current_buf());
@@ -141,7 +141,7 @@ function M.run(cmd)
   elseif subcommand == "yolo" then
     config.options.yolo = not config.options.yolo;
     local mode = config.options.yolo and "ON (Autopilot)" or "OFF (Safe Mode)";
-    vim.notify("AI: YOLO Mode is " .. mode, vim.log.levels.INFO);
+    config.notify("YOLO Mode is " .. mode, vim.log.levels.INFO);
 
   elseif subcommand == "ralph" then
     -- AI/ralph runs the test with ralph active for this run
@@ -171,7 +171,7 @@ function M.run(cmd)
     diff.pending_diffs = {};
     -- We can't easily clear all context states without iterating all bufs
     require("nzi.context.context").states = {};
-    vim.notify("AI: Session fully reset.", vim.log.levels.INFO);
+    config.notify("Session fully reset.", vim.log.levels.INFO);
 
   elseif subcommand == "test" then
     local test_cmd = config.options.test_command or "./run_tests.sh";
@@ -195,9 +195,9 @@ function M.run(cmd)
       if f then
         f:write(vim.json.encode(data));
         f:close();
-        vim.notify("AI: Session saved to '" .. session_name .. "'", vim.log.levels.INFO);
+        config.notify("Session saved to '" .. session_name .. "'", vim.log.levels.INFO);
       else
-        vim.notify("AI: Failed to save session.", vim.log.levels.ERROR);
+        config.notify("Failed to save session.", vim.log.levels.ERROR);
       end
     else
       -- load
@@ -214,12 +214,12 @@ function M.run(cmd)
           if data.model and config.options.models[data.model] then
             config.options.active_model = data.model;
           end
-          vim.notify("AI: Session '" .. session_name .. "' loaded (" .. #history.get_all() .. " turns)", vim.log.levels.INFO);
+          config.notify("Session '" .. session_name .. "' loaded (" .. #history.get_all() .. " turns)", vim.log.levels.INFO);
         else
-          vim.notify("AI: Failed to parse session file.", vim.log.levels.ERROR);
+          config.notify("Failed to parse session file.", vim.log.levels.ERROR);
         end
       else
-        vim.notify("AI: Session '" .. session_name .. "' not found.", vim.log.levels.WARN);
+        config.notify("Session '" .. session_name .. "' not found.", vim.log.levels.WARN);
       end
     end
 
@@ -232,13 +232,13 @@ function M.run(cmd)
     if subcommand == "active" or subcommand == "read" or subcommand == "ignore" or subcommand == "state" then
       local bufnr = vim.api.nvim_get_current_buf();
       if subcommand == "state" then
-        vim.notify("AI: Buffer State: " .. context.get_state(bufnr), vim.log.levels.INFO);
+        config.notify("Buffer State: " .. context.get_state(bufnr), vim.log.levels.INFO);
       else
         context.set_state(bufnr, subcommand);
-        vim.notify("AI: Buffer set to " .. subcommand, vim.log.levels.INFO);
+        config.notify("Buffer set to " .. subcommand, vim.log.levels.INFO);
       end
     else
-      vim.notify("AI: Unknown internal command: " .. subcommand, vim.log.levels.WARN);
+      config.notify("Unknown internal command: " .. subcommand, vim.log.levels.WARN);
     end
   end
 end

@@ -1,3 +1,4 @@
+local config = require("nzi.core.config");
 local M = {};
 
 -- Map of original buffer IDs to metadata (sugg_buf, tab_id)
@@ -42,7 +43,7 @@ function M.propose_edit(bufnr, new_lines)
     -- Reuse existing suggestion buffer
     if vim.api.nvim_buf_is_valid(existing.suggestion_buf) then
       vim.api.nvim_buf_set_lines(existing.suggestion_buf, 0, -1, false, new_lines);
-      vim.notify("AI: Updated existing diff for " .. vim.fn.fnamemodify(name, ":."), vim.log.levels.INFO);
+      config.notify("Updated existing diff for " .. vim.fn.fnamemodify(name, ":."), vim.log.levels.INFO);
       return;
     else
       -- Stale metadata, clean it up
@@ -86,14 +87,14 @@ function M.propose_edit(bufnr, new_lines)
     tab_id = tab_id
   };
 
-  vim.notify("AI: Diff mode active. Use 'do'/'dp' to merge. Close tab when finished.", vim.log.levels.INFO);
+  config.notify("Diff mode active. Use 'do'/'dp' to merge. Close tab when finished.", vim.log.levels.INFO);
 end
 
 --- Propose a file deletion for diff
 --- @param file_path string: The file to delete
 function M.propose_deletion(file_path)
   M.pending_deletions[file_path] = true;
-  vim.notify("AI: Marked for deletion: " .. file_path .. ". Use AI/accept to confirm.", vim.log.levels.WARN);
+  config.notify("Marked for deletion: " .. file_path .. ". Use AI/accept to confirm.", vim.log.levels.WARN);
 end
 
 --- Find the original buffer ID if given a suggestion buffer ID
@@ -122,10 +123,10 @@ function M.accept(bufnr)
       os.remove(vim.fn.getcwd() .. "/" .. relative_name);
       M.pending_deletions[relative_name] = nil;
       vim.api.nvim_buf_delete(bufnr, { force = true });
-      vim.notify("AI: File deleted: " .. relative_name, vim.log.levels.INFO);
+      config.notify("File deleted: " .. relative_name, vim.log.levels.INFO);
       return;
     end
-    vim.notify("AI: No pending diff for this buffer.", vim.log.levels.WARN);
+    config.notify("No pending diff for this buffer.", vim.log.levels.WARN);
     return;
   end
 
@@ -140,7 +141,26 @@ function M.accept(bufnr)
   end
 
   M.cleanup(actual_buf);
-  vim.notify("AI: Edit diff finalized and saved.", vim.log.levels.INFO);
+  config.notify("Edit diff finalized and saved.", vim.log.levels.INFO);
+
+  -- NOTIFY MODEL OF CHANGE (OpenAI Best Practice)
+  local history = require("nzi.context.history");
+  history.add("internal", 
+    string.format("<agent:status>User accepted and saved changes to '%s'.</agent:status>", relative_name),
+    "<model:summary>Acknowledged. I will use the updated file content for future turns.</model:summary>"
+  );
+
+  -- AUTO-DRAIN QUEUE: If turns were blocked by this diff, try to resume
+  vim.schedule(function()
+    local queue = require("nzi.core.queue");
+    local engine = require("nzi.engine.engine");
+    if not queue.is_blocked() and not engine.is_busy then
+      local next_work = queue.pop_instruction();
+      if next_work then
+        engine.run_loop(next_work.instruction, next_work.type, false, next_work.target_file, next_work.selection);
+      end
+    end
+  end);
 end
 
 --- Finalize and discard (Revert original buffer? Or just close suggestion?)
@@ -153,10 +173,10 @@ function M.reject(bufnr)
     if M.pending_deletions[relative_name] then
       config.log(relative_name, "DIFF:REJECT_DELETE");
       M.pending_deletions[relative_name] = nil;
-      vim.notify("AI: Deletion rejected: " .. relative_name, vim.log.levels.INFO);
+      config.notify("Deletion rejected: " .. relative_name, vim.log.levels.INFO);
       return;
     end
-    vim.notify("AI: No pending diff for this buffer.", vim.log.levels.WARN);
+    config.notify("No pending diff for this buffer.", vim.log.levels.WARN);
     return;
   end
 
@@ -165,7 +185,19 @@ function M.reject(bufnr)
   config.log(relative_name, "DIFF:REJECT");
 
   M.cleanup(actual_buf);
-  vim.notify("AI: Suggestion discarded.", vim.log.levels.INFO);
+  config.notify("Suggestion discarded.", vim.log.levels.INFO);
+
+  -- AUTO-DRAIN QUEUE
+  vim.schedule(function()
+    local queue = require("nzi.core.queue");
+    local engine = require("nzi.engine.engine");
+    if not queue.is_blocked() and not engine.is_busy then
+      local next_work = queue.pop_instruction();
+      if next_work then
+        engine.run_loop(next_work.instruction, next_work.type, false, next_work.target_file, next_work.selection);
+      end
+    end
+  end);
 end
 
 --- Cleanup diff state and close suggest buffer

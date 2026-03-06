@@ -226,7 +226,7 @@ function M.setup(opts)
   vim.keymap.set("n", "<leader>aY", function() 
     config.options.yolo = not config.options.yolo;
     local mode = config.options.yolo and "ACTIVE" or "OFF";
-    vim.notify("AI: YOLO Mode is now " .. mode, vim.log.levels.WARN);
+    config.notify("YOLO Mode is now " .. mode, vim.log.levels.WARN);
   end, { desc = "AI: Toggle YOLO mode" });
 
 end

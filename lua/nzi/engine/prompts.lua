@@ -90,13 +90,10 @@ function M.format_context(ctx_list, include_lsp)
     if short_name ~= "AGENTS.md" then
       local size_str = string.format("%d bytes", item.size or 0)
       
-      -- ONLY send content for active, read, or pending_diff states. 
-      if (item.state == "active" or item.state == "read" or item.state == "pending_diff") and item.content and item.content ~= "" then
-        local header = string.format("<agent:file name=\"%s\" state=\"%s\" size=\"%s\">", short_name, item.state, size_str);
-        if item.state == "pending_diff" then
-          header = header .. "\n[WARNING: This file contains PROPOSED CHANGES that the user has not yet accepted. Work from this version.]";
-        end
-        table.insert(parts, string.format("%s\n%s\n</agent:file>", header, M.smart_filter(item.content)));
+      -- ONLY send content for active or read states. 
+      if (item.state == "active" or item.state == "read") and item.content and item.content ~= "" then
+        table.insert(parts, string.format("<agent:file name=\"%s\" state=\"%s\" size=\"%s\">\n%s\n</agent:file>", 
+          short_name, item.state, size_str, M.smart_filter(item.content)));
       else
         -- Collapsed (mapped file or ignored)
         table.insert(parts, string.format("<agent:file name=\"%s\" state=\"%s\" size=\"%s\" />", 

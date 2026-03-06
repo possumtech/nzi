@@ -21,9 +21,13 @@ M.is_busy = false; -- Reliable state for testing and UI
 --- @param target_file string | nil: The target file for instruct
 --- @param selection table | nil: Visual selection metadata
 function M.run_loop(content, type, include_lsp, target_file, selection)
-  local diff = require("nzi.ui.diff");
-  if diff.get_count() > 0 then
-    vim.notify("AI: Blocked. You have outstanding diffs. Use \\aD to accept or \\ad to reject.", vim.log.levels.WARN);
+  local queue = require("nzi.core.queue");
+  
+  -- If we are busy or blocked by actions, enqueue this as a pending instruction
+  if M.is_busy or queue.is_blocked() then
+    queue.enqueue_instruction(content, type, target_file, selection);
+    local reason = M.is_busy and "Model is busy" or "Pending diffs require resolution"
+    config.notify("Instruction enqueued (" .. reason .. ")", vim.log.levels.INFO);
     return;
   end
 
@@ -95,7 +99,7 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
 
         if #actions > 0 then
           -- 1. Discovery/Action Phase
-          agent.dispatch_actions(actions, function(combined_agent_response, signal)
+          agent.dispatch_actions(actions, function(combined_agent_response, signal, was_blocked)
             vim.schedule(function()
               if signal == "ABORTED" then
                 modal.write("User aborted turn. Agent momentum halted.", "system", false);
@@ -109,7 +113,16 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
                 history.add(type, turn_block, result);
                 modal.write(combined_agent_response, "user", false);
                 current_prompt = combined_agent_response;
-                vim.schedule(function() start_turn(); end);
+                
+                if not was_blocked then
+                  vim.schedule(function() start_turn(); end);
+                else
+                  -- Hand off to user
+                  modal.set_thinking(false);
+                  modal.close_tag();
+                  M.is_busy = false;
+                  config.log("Turn sequence suspended for user review.", "ENGINE");
+                end
               else
                 -- Tools ran but no response for model (finalize)
                 history.add(type, turn_block, result);
@@ -140,7 +153,15 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
 
                 modal.set_thinking(false);
                 modal.close_tag();
-                vim.schedule(function() M.is_busy = false; end);
+                
+                vim.schedule(function() 
+                  M.is_busy = false; 
+                  -- AUTO-DRAIN: Check if there's more work in the queue
+                  local next_work = queue.pop_instruction();
+                  if next_work and not queue.is_blocked() then
+                    M.run_loop(next_work.instruction, next_work.type, false, next_work.target_file, next_work.selection);
+                  end
+                end);
               end
             end);
           end);

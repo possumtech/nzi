@@ -91,16 +91,25 @@ function M.get_active_model()
   return M.options.models[alias] or M.options.models["deepseek"];
 end
 
+--- Notify the user with the active model alias as a prefix
+--- @param msg string
+--- @param level number | nil (default INFO)
+function M.notify(msg, level)
+  local alias = M.options.active_model or "AI";
+  vim.notify(alias .. ": " .. msg, level or vim.log.levels.INFO);
+end
+
 --- Log a message to nzi_debug.log if debug mode is active
 --- @param msg string: The message to log
 --- @param category string | nil: Optional category (e.g. "USER", "UI", "CMD")
 function M.log(msg, category)
+  local alias = M.options.active_model or "AI";
   if os.getenv("NZI_DEBUG") == "1" then
     local log_path = vim.fn.getcwd() .. "/nzi_debug.log";
     local f = io.open(log_path, "a");
     if f then
       local tag = category and string.format("[%s] ", category) or "";
-      f:write(string.format("[%s] %s%s\n", os.date("%H:%M:%S"), tag, msg));
+      f:write(string.format("[%s] [%s] %s%s\n", os.date("%H:%M:%S"), alias, tag, msg));
       f:close();
     end
   end
