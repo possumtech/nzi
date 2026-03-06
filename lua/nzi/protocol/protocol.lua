@@ -114,6 +114,12 @@ function M.create_parser()
       local acts = self.actions
       self.actions = {}
       return acts
+    end,
+
+    get_remaining = function(self)
+      local rem = self.buffer
+      self.buffer = ""
+      return rem
     end
   }
 end

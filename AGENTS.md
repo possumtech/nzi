@@ -13,10 +13,7 @@ This is the canonical source of truth for **nzi** development, technical specifi
 - [x] Systematic XML validation.
 
 ### Pending Focus
-- [ ] Web Search tool implementation.
-- [ ] Plugin/Skill architecture (<agent:skill>).
-- [ ] MCP (Model Context Protocol) support.
-- [ ] Context size limit management.
+- [ ] Revisit and reflect on sysprompts and processes for edits
 
 ---
 
@@ -34,10 +31,11 @@ This is the canonical source of truth for **nzi** development, technical specifi
 ### Context Visibility Hierarchy
 | State | Documentation Term | Logic |
 | :--- | :--- | :--- |
-| **`Active`** | **Full Context** | Content sent; model can propose edits. |
-| **`Read`** | **Context Only** | Content sent; model treats as read-only doc. |
-| **`Map`** | **Skeleton Context** | Project structure (universe) sent; no content. |
-| **`Ignore`** | **Hidden** | Invisible to the model (e.g., .env). |
+| **`active`** | **Full Context** | Content sent; model can propose edits. |
+| **`read`** | **Context Only** | Content sent; model treats as read-only doc. |
+| **`pending_diff`** | **Proposed** | Suggestion buffer sent with [WARNING]; model sees its own proposal. |
+| **`map`** | **Skeleton Context** | Project structure (universe) sent; no content. |
+| **`ignore`** | **Hidden** | Invisible to the model (e.g., .env). |
 
 ---
 

@@ -10,7 +10,7 @@ describe("AI prompts module", function()
     };
     local result = prompts.build_system_prompt(parts, "test-alias");
     assert.match("Global Directive", result);
-    assert.match("## SCHEMA", result);
+    assert.match("## TURN PROTOCOL", result);
     -- Project State should NOT be in system prompt rules
     assert.is_nil(result:find("Project State"))
   end);

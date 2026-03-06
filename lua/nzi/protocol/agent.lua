@@ -46,31 +46,120 @@ end
 function M.dispatch_actions(actions, callback)
   local current_idx = 1;
   local accumulated_responses = {};
-
-  local function run_next()
-    if current_idx > #actions then
-      if #accumulated_responses > 0 then
-        callback(table.concat(accumulated_responses, "\n\n"));
-      else
-        callback(nil);
+  
+  -- 1. Group and consolidate edits/replacements by target file
+  local edits_by_file = {};
+  local other_actions = {};
+  
+  for _, action in ipairs(actions) do
+    if action.name == "edit" or action.name == "replace_all" then
+      local raw_file = protocol.get_attr(action.attr, "file");
+      if raw_file then
+        local file, err = resolver.resolve(raw_file);
+        if file then
+          edits_by_file[file] = edits_by_file[file] or {};
+          table.insert(edits_by_file[file], action);
+        else
+          table.insert(accumulated_responses, string.format("<agent:status>Error: %s</agent:status>", err));
+        end
       end
+    else
+      table.insert(other_actions, action);
+    end
+  end
+
+  -- 2. Process non-edit actions first (recursive chain)
+  local function run_others(idx)
+    if idx > #other_actions then
+      -- 3. After others, process consolidated edits
+      local file_list = {};
+      for f, _ in pairs(edits_by_file) do table.insert(file_list, f) end
+      table.sort(file_list);
+      
+      local function run_edits(f_idx)
+        if f_idx > #file_list then
+          -- FINISHED ALL ACTIONS
+          if #accumulated_responses > 0 then
+            callback(table.concat(accumulated_responses, "\n\n"));
+          else
+            callback(nil);
+          end
+          return;
+        end
+
+        local file = file_list[f_idx];
+        local file_actions = edits_by_file[file];
+        local bufnr = vim.fn.bufadd(file);
+        vim.fn.bufload(bufnr);
+        
+        modal.write("Consolidating " .. #file_actions .. " edits for: " .. file, "system", false);
+        
+        -- Start with the current base state
+        local current_lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false);
+        local was_modified = false;
+
+        -- Apply all edits for this file sequentially to the same buffer copy
+        for _, action in ipairs(file_actions) do
+          if action.name == "edit" then
+            local blocks = parse_edit_blocks(action.content or "");
+            local temp_buf = vim.api.nvim_create_buf(false, true);
+            vim.api.nvim_buf_set_lines(temp_buf, 0, -1, false, current_lines);
+            
+            local local_modified = false;
+            for _, block in ipairs(blocks) do
+              local s, e, q = editor.find_block(temp_buf, block.search);
+              if s then
+                editor.apply(temp_buf, s, e, block.replace);
+                local_modified = true;
+                was_modified = true;
+              end
+            end
+            
+            if local_modified then
+              current_lines = vim.api.nvim_buf_get_lines(temp_buf, 0, -1, false);
+            else
+              table.insert(accumulated_responses, string.format("<agent:status>Warning: Some blocks in %s did not match.</agent:status>", file));
+            end
+            vim.api.nvim_buf_delete(temp_buf, { force = true });
+
+          elseif action.name == "replace_all" then
+            current_lines = vim.split(action.content or "", "\n");
+            was_modified = true;
+          end
+        end
+
+        if was_modified then
+          if config.options.yolo then
+            diff.apply_immediately(bufnr, current_lines);
+            table.insert(accumulated_responses, string.format("<agent:status>Consolidated edits applied to %s (YOLO).</agent:status>", file));
+          else
+            diff.propose_edit(bufnr, current_lines);
+            table.insert(accumulated_responses, string.format("<agent:status>Proposed consolidated edits for %s. Awaiting diff.</agent:status>", file));
+          end
+        else
+          table.insert(accumulated_responses, string.format("<agent:status>Error: No edits could be applied to %s.</agent:status>", file));
+        end
+        
+        run_edits(f_idx + 1);
+      end
+
+      run_edits(1);
       return;
     end
 
-    local action = actions[current_idx];
-    current_idx = current_idx + 1;
-
+    local action = other_actions[idx];
+    
     if action.name == "grep" then
       modal.write("Searching universe: " .. action.content, "system", false);
       local grep_res = tools.grep(action.content);
       table.insert(accumulated_responses, string.format("<agent:grep>\n%s\n</agent:grep>", grep_res));
-      run_next();
+      run_others(idx + 1);
 
     elseif action.name == "definition" then
       modal.write("LSP Lookup: " .. action.content, "system", false);
       local def_res = tools.definition(action.content);
       table.insert(accumulated_responses, string.format("<agent:status>%s</agent:status>", def_res));
-      run_next();
+      run_others(idx + 1);
 
     elseif action.name == "env" or action.name == "shell" then
       modal.write("Executing " .. action.name .. ": " .. action.content, "system", false);
@@ -82,7 +171,7 @@ function M.dispatch_actions(actions, callback)
         resp = string.format("<agent:%s>Command executed. No output returned to context.</agent:%s>", action.name, action.name);
       end
       table.insert(accumulated_responses, resp);
-      run_next();
+      run_others(idx + 1);
 
     elseif action.name == "read" then
       local raw_file = protocol.get_attr(action.attr, "file");
@@ -96,7 +185,7 @@ function M.dispatch_actions(actions, callback)
           table.insert(accumulated_responses, string.format("<agent:status>Error: %s</agent:status>", err));
         end
       end
-      run_next();
+      run_others(idx + 1);
 
     elseif action.name == "drop" then
       local raw_file = protocol.get_attr(action.attr, "file");
@@ -108,35 +197,40 @@ function M.dispatch_actions(actions, callback)
           table.insert(accumulated_responses, "<agent:status>File dropped to project map.</agent:status>");
         end
       end
-      run_next();
+      run_others(idx + 1);
 
     elseif action.name == "reset" then
       modal.write("Agent requested session reset.", "system", false);
       require("nzi.core.commands").run("reset");
       table.insert(accumulated_responses, "<agent:status>Session history and context have been reset.</agent:status>");
-      run_next();
+      run_others(idx + 1);
 
     elseif action.name == "create" then
       local raw_file = protocol.get_attr(action.attr, "file");
       if raw_file then
-        modal.write("Creating file: " .. raw_file, "system", false);
-        local confirmed = config.options.yolo or vim.fn.confirm("AI requests to CREATE file: " .. raw_file, "&Yes\n&No", 1) == 1;
-        if confirmed then
-          local bufnr = vim.fn.bufadd(raw_file);
-          vim.fn.bufload(bufnr);
-          local lines = vim.split(action.content or "", "\n");
-          if config.options.yolo then
-            diff.apply_immediately(bufnr, lines);
-            table.insert(accumulated_responses, "<agent:status>File created and content applied (YOLO).</agent:status>");
-          else
-            diff.propose_edit(bufnr, lines);
-            table.insert(accumulated_responses, "<agent:status>Proposed new file content. Awaiting diff.</agent:status>");
-          end
+        local file_path = vim.fn.getcwd() .. "/" .. raw_file;
+        if vim.fn.filereadable(file_path) == 1 then
+          table.insert(accumulated_responses, string.format("<agent:status>Error: File '%s' already exists. Use <model:edit> or <model:replace_all> to modify existing files.</agent:status>", raw_file));
         else
-          table.insert(accumulated_responses, "<agent:status>File creation denied by user.</agent:status>");
+          modal.write("Creating file: " .. raw_file, "system", false);
+          local confirmed = config.options.yolo or vim.fn.confirm("AI requests to CREATE file: " .. raw_file, "&Yes\n&No", 1) == 1;
+          if confirmed then
+            local bufnr = vim.fn.bufadd(raw_file);
+            vim.fn.bufload(bufnr);
+            local lines = vim.split(action.content or "", "\n");
+            if config.options.yolo then
+              diff.apply_immediately(bufnr, lines);
+              table.insert(accumulated_responses, "<agent:status>File created and content applied (YOLO).</agent:status>");
+            else
+              diff.propose_edit(bufnr, lines);
+              table.insert(accumulated_responses, "<agent:status>Proposed new file content. Awaiting diff.</agent:status>");
+            end
+          else
+            table.insert(accumulated_responses, "<agent:status>File creation denied by user.</agent:status>");
+          end
         end
       end
-      run_next();
+      run_others(idx + 1);
 
     elseif action.name == "delete" then
       local raw_file = protocol.get_attr(action.attr, "file");
@@ -154,83 +248,12 @@ function M.dispatch_actions(actions, callback)
           end
         end
       end
-      run_next();
-
-    elseif action.name == "edit" then
-      local raw_file = protocol.get_attr(action.attr, "file");
-      if raw_file then
-        local file, err = resolver.resolve(raw_file);
-        if file then
-          modal.write("Analyzing edits for: " .. file, "system", false);
-          local bufnr = vim.fn.bufadd(file);
-          vim.fn.bufload(bufnr);
-          
-          local blocks = parse_edit_blocks(action.content or "");
-          
-          -- We apply edits to a TEMP COPY of the lines
-          local current_lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false);
-          
-          -- Helper to apply surgical blocks to a table of lines (Lua indices)
-          local function apply_blocks_to_lines(lines, edit_blocks)
-            local modified = false;
-            for _, block in ipairs(edit_blocks) do
-              -- We need a way to run find_block on raw lines...
-              -- I'll refactor editor.lua to handle this or just apply to a temp buffer.
-              -- Decision: Create a hidden temp buffer for the merge.
-              local temp_buf = vim.api.nvim_create_buf(false, true);
-              vim.api.nvim_buf_set_lines(temp_buf, 0, -1, false, lines);
-              
-              local s, e, q = editor.find_block(temp_buf, block.search);
-              if s then
-                editor.apply(temp_buf, s, e, block.replace);
-                lines = vim.api.nvim_buf_get_lines(temp_buf, 0, -1, false);
-                modified = true;
-              end
-              vim.api.nvim_buf_delete(temp_buf, { force = true });
-            end
-            return lines, modified;
-          end
-
-          local final_lines, was_modified = apply_blocks_to_lines(current_lines, blocks);
-
-          if was_modified then
-            if config.options.yolo then
-              diff.apply_immediately(bufnr, final_lines);
-              table.insert(accumulated_responses, string.format("<agent:status>Surgical edits applied to %s (YOLO).</agent:status>", file));
-            else
-              diff.propose_edit(bufnr, final_lines);
-              table.insert(accumulated_responses, string.format("<agent:status>Proposed edits for %s. Awaiting diff.</agent:status>", file));
-            end
-          else
-            table.insert(accumulated_responses, string.format("<agent:status>Error: No blocks matched in %s. Edit aborted.</agent:status>", file));
-          end
-        end
-      end
-      run_next();
-
-    elseif action.name == "replace_all" then
-      local raw_file = protocol.get_attr(action.attr, "file");
-      if raw_file then
-        local file, err = resolver.resolve(raw_file);
-        if file then
-          local bufnr = vim.fn.bufadd(file);
-          vim.fn.bufload(bufnr);
-          local lines = vim.split(action.content or "", "\n");
-          if config.options.yolo then
-            diff.apply_immediately(bufnr, lines);
-            table.insert(accumulated_responses, string.format("<agent:status>Full replacement applied to %s (YOLO).</agent:status>", file));
-          else
-            diff.propose_edit(bufnr, lines);
-            table.insert(accumulated_responses, string.format("<agent:status>Proposed full replacement for %s.</agent:status>", file));
-          end
-        end
-      end
-      run_next();
+      run_others(idx + 1);
 
     elseif action.name == "summary" then
       modal.write(action.content, "assistant", false);
       vim.notify("AI: " .. action.content, vim.log.levels.INFO);
-      run_next();
+      run_others(idx + 1);
 
     elseif action.name == "choice" then
       modal.open();
@@ -242,16 +265,16 @@ function M.dispatch_actions(actions, callback)
             callback(nil, "ABORTED");
           else
             table.insert(accumulated_responses, string.format("<agent:choice>%s</agent:choice>", choice_res));
-            run_next();
+            run_others(idx + 1);
           end
         end);
       end);
     else
-      run_next();
+      run_others(idx + 1);
     end
   end
 
-  run_next();
+  run_others(1);
 end
 
 --- Run automated tests and return failure output

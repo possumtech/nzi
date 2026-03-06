@@ -31,6 +31,8 @@ end
 --- @return table: { text = string, hl = string }
 function M.get_status_data()
   local context = require("nzi.context.context");
+  local config = require("nzi.core.config");
+  local alias = config.options.active_model or "AI";
   local bufnr = vim.api.nvim_get_current_buf();
   
   if not context.is_real_buffer(bufnr) then 
@@ -41,19 +43,19 @@ function M.get_status_data()
   
   -- 1. Check if CURRENT buffer has a pending diff
   if diff.has_pending_diff(bufnr) then
-    return { text = "[AI:DIFF]", hl = "NziStatusDiff" };
+    return { text = string.format("[%s:DIFF]", alias), hl = "NziStatusDiff" };
   end
 
   -- 2. Check if ANY OTHER buffers have pending diffs (Global indicator)
   local total_diffs = diff.get_count();
   if total_diffs > 0 then
-    return { text = string.format("[AI:DIFS: %d]", total_diffs), hl = "NziStatusDiff" };
+    return { text = string.format("[%s:DIFS: %d]", alias, total_diffs), hl = "NziStatusDiff" };
   end
 
   local state = context.get_state(bufnr);
-  if state == "active" then return { text = "[AI:A]", hl = "NziStatusActive" }; end
-  if state == "read"   then return { text = "[AI:R]", hl = "NziStatusRead" }; end
-  if state == "ignore" then return { text = "[AI:I]", hl = "NziStatusIgnore" }; end
+  if state == "active" then return { text = string.format("[%s:A]", alias), hl = "NziStatusActive" }; end
+  if state == "read"   then return { text = string.format("[%s:R]", alias), hl = "NziStatusRead" }; end
+  if state == "ignore" then return { text = string.format("[%s:I]", alias), hl = "NziStatusIgnore" }; end
   
   return { text = "", hl = "" };
 end

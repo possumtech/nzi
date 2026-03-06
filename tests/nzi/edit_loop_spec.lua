@@ -67,7 +67,7 @@ local val = 42
       return { kill = function() end };
     end
 
-    engine.run_loop("Update val to 42");
+    engine.run_loop("Update val to 42", "ask", false);
     
     assert.True(poll_until_settle(5000), "Edit loop timed out");
     
@@ -106,9 +106,9 @@ local val = 100
       return { kill = function() end };
     end
 
-    engine.run_loop("Replace the whole file");
-    
-    assert.True(poll_until_settle(5000), "Replacement loop timed out");
+    engine.run_loop("Replace the whole file", "ask", false);
+
+    assert.True(poll_until_settle(5000), "Edit loop timed out");
     
     local lines = vim.fn.readfile(full_path);
     local found = false;

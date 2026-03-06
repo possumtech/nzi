@@ -150,6 +150,7 @@ function M.gather()
   local handled_files = {};
 
   -- 1. Process Open Buffers
+  local diff_mod = require("nzi.ui.diff");
   for _, bufnr in ipairs(buffers) do
     if M.is_real_buffer(bufnr) then
       local full_path = vim.api.nvim_buf_get_name(bufnr);
@@ -160,13 +161,24 @@ function M.gather()
       handled_files[name] = true;
 
       if state ~= "ignore" then
-        local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false);
-        local content = table.concat(lines, "\n");
+        local content = "";
+        local actual_state = state;
+        
+        -- Check if there's a pending diff for this buffer
+        local pending = diff_mod.pending_diffs[bufnr];
+        if pending and vim.api.nvim_buf_is_valid(pending.suggestion_buf) then
+          local lines = vim.api.nvim_buf_get_lines(pending.suggestion_buf, 0, -1, false);
+          content = table.concat(lines, "\n");
+          actual_state = "pending_diff";
+        else
+          local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false);
+          content = table.concat(lines, "\n");
+        end
         
         table.insert(context, {
           bufnr = bufnr,
           name = name,
-          state = state,
+          state = actual_state,
           content = content,
           size = #content,
         });

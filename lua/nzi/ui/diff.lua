@@ -36,10 +36,31 @@ end
 function M.propose_edit(bufnr, new_lines)
   local name = vim.api.nvim_buf_get_name(bufnr);
   local ft = vim.api.nvim_get_option_value("filetype", { buf = bufnr });
+  local existing = M.pending_diffs[bufnr];
   
+  if existing then
+    -- Reuse existing suggestion buffer
+    if vim.api.nvim_buf_is_valid(existing.suggestion_buf) then
+      vim.api.nvim_buf_set_lines(existing.suggestion_buf, 0, -1, false, new_lines);
+      vim.notify("AI: Updated existing diff for " .. vim.fn.fnamemodify(name, ":."), vim.log.levels.INFO);
+      return;
+    else
+      -- Stale metadata, clean it up
+      M.pending_diffs[bufnr] = nil;
+    end
+  end
+
   -- Create a scratch buffer for the suggestion
   local suggestion_buf = vim.api.nvim_create_buf(false, true);
-  vim.api.nvim_buf_set_name(suggestion_buf, name .. " (AI Suggestion)");
+  local sugg_name = name .. " (AI Suggestion)";
+  
+  -- If buffer name already exists (rare collision), try to find/delete it or use a unique name
+  local old_sugg = vim.fn.bufnr(sugg_name);
+  if old_sugg ~= -1 then
+    vim.api.nvim_buf_delete(old_sugg, { force = true });
+  end
+
+  vim.api.nvim_buf_set_name(suggestion_buf, sugg_name);
   vim.api.nvim_set_option_value("filetype", ft, { buf = suggestion_buf });
   vim.api.nvim_buf_set_lines(suggestion_buf, 0, -1, false, new_lines);
   

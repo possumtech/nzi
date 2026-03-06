@@ -89,6 +89,20 @@ local function find_block_internal(buffer_lines, search_lines)
     end
   end
 
+  -- Stage 3.5: Continuous Substring Match
+  -- This handles cases where the model provides a snippet that is a substring of the actual lines
+  for i = 1, #buffer_lines - #search_lines + 1 do
+    local match = true;
+    for j = 1, #search_lines do
+      -- Check if the search line exists anywhere within the buffer line
+      if not buffer_lines[i + j - 1]:find(search_lines[j], 1, true) then
+        match = false;
+        break;
+      end
+    end
+    if match then return i, i + #search_lines - 1, "substring" end
+  end
+
   -- Stage 4: Sliding Window "Best Fit" (Highest % of normalized matches)
   local best_start = nil
   local best_score = 0

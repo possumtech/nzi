@@ -32,7 +32,7 @@ function M.build_system_prompt(prompts, model_alias)
     "## TURN PROTOCOL",
     "Finalize every turn with exactly one of the following tags:",
     "* <model:summary>One sentence summary of actions taken</model:summary>",
-    "* <model:choice>Question requiring user decision</model:choice>",
+    "* <model:choice>Text? - [ ] Option 1 - [ ] Option 2</model:choice>",
     "\n## MODEL ACTIONS",
     "Perform actions using these tags before the turn terminator:",
     "* <model:shell>Run destructive shell command</model:shell>",
@@ -43,6 +43,15 @@ function M.build_system_prompt(prompts, model_alias)
     "* <model:create file=\"path\">Full file content</model:create>",
     "* <model:edit file=\"path\">SEARCH/REPLACE blocks (MUST match full lines)</model:edit>",
     "* <model:reset />: Clear history",
+    "\n## SEARCH/REPLACE FORMAT",
+    "Modify files by wrapping SEARCH/REPLACE blocks inside <model:edit>.",
+    "The tag MUST contain ONLY these blocks. Blocks MUST match the buffer exactly, including indentation:",
+    "<<<<<<< SEARCH",
+    "[exact lines from file]",
+    "=======",
+    "[new lines]",
+    ">>>>>>> REPLACE",
+    "\n* Multiple blocks are allowed in one <model:edit> tag.",
     "\n## AGENT METADATA (Input Only)",
     "* <agent:shell>shell output</agent:shell>",
     "* <agent:env>shell output</agent:env>",
@@ -81,11 +90,13 @@ function M.format_context(ctx_list, include_lsp)
     if short_name ~= "AGENTS.md" then
       local size_str = string.format("%d bytes", item.size or 0)
       
-      -- ONLY send content for active or read states. 
-      -- 'map' state should be a collapsed tag (skeleton logic removed from context transmission)
-      if (item.state == "active" or item.state == "read") and item.content and item.content ~= "" then
-        table.insert(parts, string.format("<agent:file name=\"%s\" state=\"%s\" size=\"%s\">\n%s\n</agent:file>", 
-          short_name, item.state, size_str, M.smart_filter(item.content)));
+      -- ONLY send content for active, read, or pending_diff states. 
+      if (item.state == "active" or item.state == "read" or item.state == "pending_diff") and item.content and item.content ~= "" then
+        local header = string.format("<agent:file name=\"%s\" state=\"%s\" size=\"%s\">", short_name, item.state, size_str);
+        if item.state == "pending_diff" then
+          header = header .. "\n[WARNING: This file contains PROPOSED CHANGES that the user has not yet accepted. Work from this version.]";
+        end
+        table.insert(parts, string.format("%s\n%s\n</agent:file>", header, M.smart_filter(item.content)));
       else
         -- Collapsed (mapped file or ignored)
         table.insert(parts, string.format("<agent:file name=\"%s\" state=\"%s\" size=\"%s\" />", 

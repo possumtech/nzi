@@ -21,6 +21,12 @@ M.is_busy = false; -- Reliable state for testing and UI
 --- @param target_file string | nil: The target file for instruct
 --- @param selection table | nil: Visual selection metadata
 function M.run_loop(content, type, include_lsp, target_file, selection)
+  local diff = require("nzi.ui.diff");
+  if diff.get_count() > 0 then
+    vim.notify("AI: Blocked. You have outstanding diffs. Use \\aD to accept or \\ad to reject.", vim.log.levels.WARN);
+    return;
+  end
+
   if M.current_job then
     M.current_job:kill(15);
     M.current_job = nil;
@@ -44,8 +50,8 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
     local messages, system_prompt, context_str, ctx_list, turn_block = prompts.build_messages(current_prompt, type, target_file, include_lsp, selection);
     local user_message_content = messages[#messages].content;
     
-    if turn_count == 1 and type == "ask" then
-      modal.open();
+    if turn_count == 1 then
+      -- Always write preamble to the buffer so it's there if modal opens later
       if config.options.modal.show_context then
         modal.write(system_prompt, "system", false);
         local history_msgs = history.get_as_messages();
@@ -53,6 +59,11 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
         modal.write(context_str, "context", false);
       end
       modal.write(user_message_content, "user", false);
+
+      -- Only open the window automatically for explicit Ask turns
+      if type == "ask" then
+        modal.open();
+      end
     end
 
     modal.set_thinking(true);
@@ -75,7 +86,13 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
 
         tag_parser:feed(""); -- Finalize parser
         local actions = tag_parser:get_actions();
+        local remaining = tag_parser:get_remaining();
         
+        -- Fallback: If model sent naked text with no tags, treat it as a summary/ask
+        if #actions == 0 and remaining:match("%S") then
+          table.insert(actions, { name = "summary", content = remaining:gsub("^%s*", ""):gsub("%s*$", "") });
+        end
+
         if #actions > 0 then
           -- 1. Discovery/Action Phase
           agent.dispatch_actions(actions, function(combined_agent_response, signal)
