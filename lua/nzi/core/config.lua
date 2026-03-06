@@ -3,28 +3,22 @@ local M = {};
 --- Default configuration options for nzi
 M.defaults = {
   -- The currently active model alias (selected via environment)
-  active_model = vim.env.NZI_MODEL or "deepseek",
+  active_model = vim.env.NZI_MODEL_ALIAS or "deepseek",
 
   -- OpenRouter/OpenAI identification
   referer = vim.env.NZI_REFERER or "https://github.com/possumtech/nzi",
-  title = "nzi",
+  title = vim.env.NZI_TITLE or "nzi",
 
   -- Pre-configured models with aliases
   models = {
-    deepseek = {
-      provider = "openrouter",
-      model = "deepseek/deepseek-chat",
-      api_base = "https://openrouter.ai/api/v1",
-      api_key = vim.env.OPENROUTER_API_KEY,
-      role_preference = "system",
-    },
-    qwenzel = {
-      provider = vim.env.NZI_LOCAL_PROVIDER or "ollama",
-      model = vim.env.NZI_LOCAL_MODEL or "qwenzel",
-      api_base = vim.env.NZI_LOCAL_BASE or "http://localhost:11434/v1",
-      api_key = vim.env.NZI_LOCAL_KEY or "ollama",
-      role_preference = "developer",
+    defaultModel = {
+      provider = vim.env.NZI_PROVIDER or "openrouter",
+      model = vim.env.NZI_MODEL or "deepseek/deepseek-chat",
+      api_base = vim.env.NZI_API_BASE or "https://openrouter.ai/api/v1",
+      api_key = vim.env.NZI_API_KEY or vim.env.OPENROUTER_API_KEY,
+      role_preference = vim.env.NZI_REFERER or "system",
     }
+    -- , add more!
   },
 
   -- Ecosystem settings
