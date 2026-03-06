@@ -10,8 +10,8 @@ describe("AI behavioral commands", function()
     local bufnr = vim.api.nvim_create_buf(true, false);
     vim.api.nvim_set_current_buf(bufnr);
     
-    -- Inject a shell directive in buffer
-    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "ai! echo 'SUCCESS'" });
+    -- Inject a shell directive in buffer (at BOL)
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { ":ai! echo 'SUCCESS'" });
     vim.api.nvim_win_set_cursor(0, {1, 0});
 
     -- Call the actual user command

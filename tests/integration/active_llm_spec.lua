@@ -49,14 +49,14 @@ describe("AI active model integration", function()
   it("should handle an ai? question end-to-end", function()
     engine.handle_question("Say exactly 'HELLO WORLD' and nothing else.", false);
     
-    assert.True(poll_until_settle(40000), "Interaction timed out");
+    assert.True(poll_until_settle(120000), "Interaction timed out");
     assert.True(history_contains("HELLO WORLD"), "Model did not provide expected response in history");
   end);
 
   it("should handle command-line directive end-to-end", function()
-    engine.dispatch({ args = ":Say only 'DIRECTIVE'", line1 = 1, line2 = 1, range = 0 });
+    engine.dispatch({ args = ":AI: Say only 'DIRECTIVE'", line1 = 1, line2 = 1, range = 0 });
     
-    assert.True(poll_until_settle(40000), "Interaction timed out");
+    assert.True(poll_until_settle(120000), "Interaction timed out");
     assert.True(history_contains("DIRECTIVE"));
   end);
 
@@ -84,7 +84,7 @@ describe("AI active model integration", function()
 
     engine.handle_question("What are the two secret codes in my open buffers? Respond with just the numbers.", false);
     
-    assert.True(poll_until_settle(60000), "Synthesis timed out");
+    assert.True(poll_until_settle(120000), "Synthesis timed out");
 
     assert.True(history_contains("1234"), "Missing first code");
     assert.True(history_contains("5678"), "Missing second code");

@@ -14,7 +14,7 @@ local function complete_ai_command(arg_lead, cmd_line)
   local subcommands = { 
     "model", "clear", "status", "buffers", "toggle", "undo", "config",
     "active", "read", "ignore", "state", "stop", "yank", "Tree", "tree",
-    "next", "prev", "yolo", "ralph", "accept", "reject"
+    "next", "prev", "yolo", "ralph", "accept", "reject", "reset"
   };
   
   -- If we're at the very start of the command arguments
@@ -81,17 +81,21 @@ function M.setup(opts)
     -- 3. Handle direct command-line prompts (AI? or AI:)
     if args ~= "" then
       local first_char = args:sub(1,1);
+      local instruction = args;
       if first_char == "?" or first_char == ":" then
-        engine.handle_question(args:sub(2):gsub("^%s*", ""), true);
-        return;
+        instruction = args:sub(2):gsub("^%s*", "");
       end
       
       if line1 ~= line2 or (opts.range > 0) then
-        engine.handle_question(args .. "\n\n### FOCUS RANGE\n" .. table.concat(vim.api.nvim_buf_get_lines(0, line1-1, line2, false), "\n"), true);
+        local ft = vim.bo.filetype;
+        local lines = vim.api.nvim_buf_get_lines(0, line1-1, line2, false);
+        local selection = table.concat(lines, "\n");
+        local formatted = string.format("%s\n\n```%s\n%s\n```", instruction, ft, selection);
+        engine.handle_question(formatted, true);
         return;
       end
 
-      engine.handle_question(args, true);
+      engine.handle_question(instruction, true);
       return;
     end
 
@@ -119,12 +123,37 @@ function M.setup(opts)
   vim.keymap.set("n", "<leader>au", function() vim.cmd("AI/undo") end, { desc = "AI: Undo last turn" });
   vim.keymap.set("n", "<leader>an", function() vim.cmd("AI/next") end, { desc = "AI: Next pending review" });
   vim.keymap.set("n", "<leader>ap", function() vim.cmd("AI/prev") end, { desc = "AI: Prev pending review" });
-  
+  vim.keymap.set("n", "<leader>aD", function() vim.cmd("AI/accept") end, { desc = "AI: Accept current review" });
+  vim.keymap.set("n", "<leader>ad", function() vim.cmd("AI/reject") end, { desc = "AI: Reject current review" });
+
+  vim.keymap.set("n", "<leader>ax", function() vim.cmd("AI/stop") end, { desc = "AI: Abort generation" });
+  vim.keymap.set("n", "<leader>aX", function() 
+    vim.cmd("AI/stop");
+    vim.cmd("AI/reset");
+  end, { desc = "AI: Abort and Reset session" });
+
+  vim.keymap.set("n", "<leader>ak", function() 
+    local current_file = vim.fn.expand("%:.")
+    vim.ui.input({ prompt = "Test args: ", default = current_file }, function(input)
+      vim.cmd("AI/test " .. (input or ""))
+    end)
+  end, { desc = "AI: Run project tests" });
+
+  vim.keymap.set("n", "<leader>aK", function() 
+    local current_file = vim.fn.expand("%:.")
+    vim.ui.input({ prompt = "Ralph args: ", default = current_file }, function(input)
+      vim.cmd("AI/ralph " .. (input or ""))
+    end)
+  end, { desc = "AI: Run Ralph-style tests" });
+
   vim.keymap.set("n", "<leader>ay", function() vim.cmd("AI/yank") end, { desc = "AI: Yank last response" });
+  vim.keymap.set("v", "<leader>aa", function() engine.handle_visual() end, { desc = "AI: Execute selection" });
+  
   vim.keymap.set("n", "<leader>aY", function() 
-    config.options.yolo = true;
-    vim.notify("AI: YOLO Mode PERMANENTLY ACTIVE for this session.", vim.log.levels.WARN);
-  end, { desc = "AI: Activate YOLO mode for session" });
+    config.options.yolo = not config.options.yolo;
+    local mode = config.options.yolo and "ACTIVE" or "OFF";
+    vim.notify("AI: YOLO Mode is now " .. mode, vim.log.levels.WARN);
+  end, { desc = "AI: Toggle YOLO mode" });
 
 end
 

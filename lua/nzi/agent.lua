@@ -110,17 +110,31 @@ function M.dispatch_actions(actions, callback)
       end
       run_next();
 
+    elseif action.name == "reset" then
+      modal.write("Agent requested session reset.", "system", false);
+      require("nzi.commands").run("reset");
+      table.insert(accumulated_responses, "<agent:status>Session history and context have been reset.</agent:status>");
+      run_next();
+
     elseif action.name == "create" then
       local raw_file = protocol.get_attr(action.attr, "file");
       if raw_file then
         modal.write("Creating file: " .. raw_file, "system", false);
-        -- For 'create', we actually create the file but treat it as a reviewable new buffer?
-        -- Actually, creation IS a mutation. We should probably stage it.
-        local bufnr = vim.fn.bufadd(raw_file);
-        vim.fn.bufload(bufnr);
-        -- Set to active and propose replacement of empty file
-        diff.propose_edit(bufnr, vim.split(action.content or "", "\n"));
-        table.insert(accumulated_responses, "<agent:status>Proposed new file content. Awaiting review.</agent:status>");
+        local confirmed = config.options.yolo or vim.fn.confirm("AI requests to CREATE file: " .. raw_file, "&Yes\n&No", 1) == 1;
+        if confirmed then
+          local bufnr = vim.fn.bufadd(raw_file);
+          vim.fn.bufload(bufnr);
+          local lines = vim.split(action.content or "", "\n");
+          if config.options.yolo then
+            diff.apply_immediately(bufnr, lines);
+            table.insert(accumulated_responses, "<agent:status>File created and content applied (YOLO).</agent:status>");
+          else
+            diff.propose_edit(bufnr, lines);
+            table.insert(accumulated_responses, "<agent:status>Proposed new file content. Awaiting review.</agent:status>");
+          end
+        else
+          table.insert(accumulated_responses, "<agent:status>File creation denied by user.</agent:status>");
+        end
       end
       run_next();
 
@@ -130,13 +144,13 @@ function M.dispatch_actions(actions, callback)
         local file, err = resolver.resolve(raw_file);
         if file then
           modal.write("Requesting delete: " .. file, "system", false);
-          local confirmed = vim.fn.confirm("AI requests to DELETE file: " .. file, "&Yes\n&No", 2) == 1;
-          if confirmed then
+          if config.options.yolo then
             os.remove(vim.fn.getcwd() .. "/" .. file);
             context.set_state(file, "map");
-            table.insert(accumulated_responses, "<agent:status>File deleted.</agent:status>");
+            table.insert(accumulated_responses, "<agent:status>File deleted (YOLO).</agent:status>");
           else
-            table.insert(accumulated_responses, "<agent:status>Delete request denied by user.</agent:status>");
+            diff.propose_deletion(file);
+            table.insert(accumulated_responses, string.format("<agent:status>Proposed deletion of %s. Awaiting review.</agent:status>", file));
           end
         end
       end
@@ -180,8 +194,13 @@ function M.dispatch_actions(actions, callback)
           local final_lines, was_modified = apply_blocks_to_lines(current_lines, blocks);
 
           if was_modified then
-            diff.propose_edit(bufnr, final_lines);
-            table.insert(accumulated_responses, string.format("<agent:status>Proposed edits for %s. Awaiting review.</agent:status>", file));
+            if config.options.yolo then
+              diff.apply_immediately(bufnr, final_lines);
+              table.insert(accumulated_responses, string.format("<agent:status>Surgical edits applied to %s (YOLO).</agent:status>", file));
+            else
+              diff.propose_edit(bufnr, final_lines);
+              table.insert(accumulated_responses, string.format("<agent:status>Proposed edits for %s. Awaiting review.</agent:status>", file));
+            end
           else
             table.insert(accumulated_responses, string.format("<agent:status>Error: No blocks matched in %s. Edit aborted.</agent:status>", file));
           end
@@ -196,8 +215,14 @@ function M.dispatch_actions(actions, callback)
         if file then
           local bufnr = vim.fn.bufadd(file);
           vim.fn.bufload(bufnr);
-          diff.propose_edit(bufnr, vim.split(action.content or "", "\n"));
-          table.insert(accumulated_responses, string.format("<agent:status>Proposed full replacement for %s.</agent:status>", file));
+          local lines = vim.split(action.content or "", "\n");
+          if config.options.yolo then
+            diff.apply_immediately(bufnr, lines);
+            table.insert(accumulated_responses, string.format("<agent:status>Full replacement applied to %s (YOLO).</agent:status>", file));
+          else
+            diff.propose_edit(bufnr, lines);
+            table.insert(accumulated_responses, string.format("<agent:status>Proposed full replacement for %s.</agent:status>", file));
+          end
         end
       end
       run_next();
@@ -224,11 +249,13 @@ function M.dispatch_actions(actions, callback)
 end
 
 --- Run automated tests and return failure output
-function M.verify_state(callback)
-  if not config.options.auto_test then callback(nil); return end
-  modal.write("Running auto-test: " .. config.options.auto_test, "system", false);
-  local test_output = vim.fn.systemlist(config.options.auto_test);
-  if vim.v.shell_error ~= 0 then
+function M.verify_state(callback, custom_cmd)
+  local test_cmd = custom_cmd or config.options.auto_test;
+  if not test_cmd then callback(nil); return end
+  modal.write("Running test: " .. test_cmd, "system", false);
+  local test_output = vim.fn.systemlist(test_cmd);
+  local exit_code = vim.v.shell_error;
+  if exit_code ~= 0 then
     local failure_text = table.concat(test_output, "\n");
     modal.write("Test failure detected.", "error", false);
     local should_retry = config.options.ralph;

@@ -80,15 +80,15 @@ end
 --- @param callback function: Called with the final user answer string
 function M.choice(content, callback)
   -- 1. Extract the question and the options from the markdown checkboxes
-  local question = content:match("^(.-)%- %[ %]") or "Please choose an option:";
+  local parts = vim.split(content, "- [ ]", { plain = true });
+  local question = parts[1]:gsub("^%s*", ""):gsub("%s*$", "");
+  if question == "" then question = "Please choose an option:"; end
+
   local options = {};
-  for option in content:gmatch("%- %[ %]%s*(.-)\r?\n") do
-    table.insert(options, option);
-  end
-  -- Handle final option without newline
-  if #options == 0 then
-    for option in content:gmatch("%- %[ %]%s*(.-)$") do
-      table.insert(options, option);
+  for i = 2, #parts do
+    local opt = parts[i]:gsub("^%s*", ""):gsub("%s*$", "");
+    if opt ~= "" then
+      table.insert(options, opt);
     end
   end
   

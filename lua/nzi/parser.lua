@@ -6,16 +6,18 @@ local M = {};
 --- @return string | nil: The instruction content
 function M.parse_line(line)
   local patterns = {
-    directive = "[Aa][Ii]:",
-    question = "[Aa][Ii]%?",
-    shell = "[Aa][Ii]!",
-    command = "[Aa][Ii]/"
+    directive = ":[Aa][Ii]:",
+    question = ":[Aa][Ii]%?",
+    shell = ":[Aa][Ii]!",
+    command = ":[Aa][Ii]/"
   };
 
   for type, prefix in pairs(patterns) do
-    local match = line:match("^.*" .. prefix .. "%s*(.*)$");
+    -- Strictly anchor to start of line, no whitespace or comments allowed
+    local match = line:match("^" .. prefix .. "%s*(.*)$");
     if match then
       -- Clean up any trailing comment tags (e.g., -->, */, #])
+      -- (Though if we are strictly at BOL, these shouldn't exist unless the user put them there)
       local content = match:gsub("%s*[-]*>$", ""):gsub("%s*%*/$", ""):gsub("%s*#]$", "");
       return type, content;
     end

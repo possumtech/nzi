@@ -20,6 +20,32 @@ local function setup_highlights()
   vim.api.nvim_set_hl(0, "NziThinking", { fg = "#fe8019", ctermfg = 214, bold = true });
 end
 
+--- Folding expression for nzi modal
+--- Folds everything except user and content tags
+_G.nzi_modal_foldexpr = function(lnum)
+  local line = vim.api.nvim_buf_get_lines(0, lnum - 1, lnum, false)[1] or ""
+  
+  if line:match("^<agent:[%w_]+>") then
+    -- Expand user and content tags
+    if line:match("^<agent:user>") or line:match("^<agent:content>") then
+      return "0"
+    end
+    -- Fold other tags
+    return ">1"
+  end
+
+  if line:match("^</agent:[%w_]+>") then
+    -- Closing tags match their opening level
+    if line:match("^</agent:user>") or line:match("^</agent:content>") then
+      return "0"
+    end
+    return "<1"
+  end
+
+  -- Keep current level
+  return "="
+end
+
 local function get_or_create_buffer()
   if not M.bufnr or not vim.api.nvim_buf_is_valid(M.bufnr) then
     M.bufnr = vim.api.nvim_create_buf(false, true);
@@ -27,6 +53,7 @@ local function get_or_create_buffer()
     vim.api.nvim_set_option_value("buftype", "nofile", { buf = M.bufnr });
     vim.api.nvim_set_option_value("bufhidden", "hide", { buf = M.bufnr });
     vim.api.nvim_set_option_value("modifiable", false, { buf = M.bufnr });
+    
     setup_highlights();
   end
   return M.bufnr;
@@ -34,12 +61,16 @@ end
 
 local function get_title()
   local config = require("nzi.config");
+  local diff = require("nzi.diff");
   local model_alias = (config.options.active_model or "AI"):upper();
   local branch = vim.fn.system("git branch --show-current 2>/dev/null"):gsub("\n", "");
+  local diff_count = diff.get_count();
+  local diff_str = diff_count > 0 and string.format(" [ DIFF: %d ] ", diff_count) or "";
+
   if branch ~= "" then
-    return string.format(" %s :: %s ", model_alias, branch);
+    return string.format(" %s :: %s%s", model_alias, branch, diff_str);
   end
-  return string.format(" %s ", model_alias);
+  return string.format(" %s%s", model_alias, diff_str);
 end
 
 function M.open()
@@ -57,6 +88,11 @@ function M.open()
     style = "minimal", border = "rounded",
     title = title, title_pos = "center",
   });
+
+  -- Folding setup (Window-local)
+  vim.wo[M.winid].foldmethod = "expr";
+  vim.wo[M.winid].foldexpr = "v:lua.nzi_modal_foldexpr(v:lnum)";
+  vim.wo[M.winid].foldlevel = 0;
 
   local opts = { buffer = bufnr, silent = true };
   vim.keymap.set("n", "q", M.close, opts);

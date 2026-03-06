@@ -138,9 +138,44 @@ function M.run(cmd)
     vim.notify("AI: YOLO Mode is " .. mode, vim.log.levels.INFO);
 
   elseif subcommand == "ralph" then
-    config.options.ralph = not config.options.ralph;
-    local mode = config.options.ralph and "ON (Auto-retry failures)" or "OFF";
-    vim.notify("AI: RALPH Mode is " .. mode, vim.log.levels.INFO);
+    -- AI/ralph runs the test with ralph active for this run
+    local test_cmd = config.options.test_command or "./run_tests.sh";
+    if args ~= "" then
+      test_cmd = test_cmd .. " " .. args;
+    end
+    
+    local engine = require("nzi.engine");
+    local agent = require("nzi.agent");
+    modal.open();
+    
+    -- Temporarily set ralph to true for this operation
+    local old_ralph = config.options.ralph;
+    config.options.ralph = true;
+    
+    agent.verify_state(function(failure_response)
+      config.options.ralph = old_ralph; -- Restore
+      if failure_response then
+        engine.handle_question(failure_response, false);
+      end
+    end, test_cmd);
+
+  elseif subcommand == "reset" then
+    history.clear();
+    modal.clear();
+    diff.pending_reviews = {};
+    -- We can't easily clear all context states without iterating all bufs
+    require("nzi.context").states = {};
+    vim.notify("AI: Session fully reset.", vim.log.levels.INFO);
+
+  elseif subcommand == "test" then
+    local test_cmd = config.options.test_command or "./run_tests.sh";
+    if args ~= "" then
+      test_cmd = test_cmd .. " " .. args;
+    end
+    require("nzi.shell").run(test_cmd);
+
+  elseif subcommand == "save" or subcommand == "load" then
+    vim.notify("AI: " .. subcommand .. " not yet implemented.", vim.log.levels.WARN);
 
   elseif subcommand == "config" then
     print(vim.inspect(config.options));

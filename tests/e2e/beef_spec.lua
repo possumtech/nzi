@@ -29,7 +29,7 @@ vim.api.nvim_buf_set_name(bufnr2, vim.fn.getcwd() .. "/vault_a.txt")
 vim.api.nvim_set_option_value("buflisted", true, { buf = bufnr2 })
 
 -- EXECUTE THE ACTUAL COMMAND
-vim.cmd("AI ? Where's the beef")
+vim.cmd(":AI ? Where's the beef")
 
 -- Wait for completion or error
 local success = vim.wait(30000, function()

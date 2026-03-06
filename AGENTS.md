@@ -4,19 +4,22 @@ This is the living document for AI (nzi) development. We use this to track tasks
 
 ## Project Checklist
 
-- [ ] Visual select not working
-- [ ] LSP Integration / Repo Map Review
-- [ ] SysPrompt Audit
-- [ ] Interface Improvements (abort/cancel)
-- [ ] :AI-reset \aX, :AI-save name \as, :AI-load name \al
-- [ ] :AI-test \ak, :AI-ralph \aK
-- [ ] AI interpolation must be at beginning of line.
-- [ ] SEARCH/REPLACE + NeoVim Diff ergonomics
-- [ ] Unknown internal command /config
-- [ ] Unknown internal command /accept
-- [ ] Unknown internal command /active
-- [ ] Unknown internal command /tree
-- [ ] Unknown internal command /Tree
+- [x] Visual select not working
+- [x] Interface Improvements (abort/cancel)
+- [x] :AI-reset \aX, :AI-save name \as (WIP), :AI-load name \al (WIP)
+- [x] :AI-test \ak, :AI-ralph \aK (with file)
+- [x] AI interpolation must be at beginning of line.
+
+- [x] Unknown internal command /config
+- [x] Unknown internal command /accept
+- [x] Unknown internal command /active
+- [x] Unknown internal command /tree
+- [x] Unknown internal command /Tree
+
+- [x] forced approval of new files
+- [x] SEARCH/REPLACE + NeoVim Diff ergonomics
+- [x] LSP Integration / Repo Map Review
+- [x] SysPrompt Audit
 
 - [ ] Web Search?
 - [ ] <agent:tool>

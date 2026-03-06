@@ -25,7 +25,7 @@ describe("AI engine dispatcher", function()
   it("should find and execute shell directive in range", function()
     local bufnr = vim.api.nvim_create_buf(true, false);
     vim.api.nvim_set_current_buf(bufnr);
-    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "ai! echo 'hello'", "line 2" });
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { ":ai! echo 'hello'", "line 2" });
     
     -- Mock the shell run DIRECTLY on the module that engine.lua required
     local original_run = shell.run;

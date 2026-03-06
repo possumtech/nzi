@@ -19,7 +19,8 @@ M.is_busy = false; -- Reliable state for testing and UI
 --- @param type string: 'question' or 'directive'
 --- @param include_lsp boolean: Whether to include LSP symbol info
 --- @param target_file string | nil: The target file for directives
-function M.run_loop(content, type, include_lsp, target_file)
+--- @param selection table | nil: Visual selection metadata
+function M.run_loop(content, type, include_lsp, target_file, selection)
   if M.current_job then
     M.current_job:kill(15);
     M.current_job = nil;
@@ -40,7 +41,7 @@ function M.run_loop(content, type, include_lsp, target_file)
       return;
     end
 
-    local messages, system_prompt, context_str, ctx_list = prompts.build_messages(current_prompt, type, target_file, include_lsp);
+    local messages, system_prompt, context_str, ctx_list = prompts.build_messages(current_prompt, type, target_file, include_lsp, selection);
     
     if turn_count == 1 then
       modal.open();
@@ -153,15 +154,14 @@ function M.execute_current_line()
   vim.api.nvim_buf_set_lines(0, row - 1, row, false, {});
 
   local file_name = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":.");
-  local selection_tag = string.format("<agent:selection file=\"%s\" line=\"%d\" end_line=\"%d\" instruction=\"%s\">\n</agent:selection>",
-    file_name, row, row, content);
+  local formatted = content;
 
   if type == "question" then
-    M.handle_question(selection_tag, false);
+    M.handle_question(formatted, false);
   elseif type == "shell" then
     shell.run(content);
   elseif type == "directive" then
-    M.run_loop(selection_tag, "directive", false, file_name);
+    M.run_loop(formatted, "directive", false, file_name);
   elseif type == "command" then
     require("nzi.commands").run(content);
   end
@@ -172,6 +172,7 @@ function M.execute_range(start_line, end_line)
   local bufnr = vim.api.nvim_get_current_buf();
   local lines = vim.api.nvim_buf_get_lines(bufnr, start_line - 1, end_line, false);
   local file_name = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":.");
+  local ft = vim.bo[bufnr].filetype;
   local found_directive = false;
   
   -- Scan for the FIRST directive in the range (visual mode idiomatic)
@@ -182,20 +183,27 @@ function M.execute_range(start_line, end_line)
       local actual_row = start_line + i - 1;
       vim.api.nvim_buf_set_lines(bufnr, actual_row - 1, actual_row, false, {});
       
-      -- Content remaining in selection (minus the directive)
-      local context_lines = vim.api.nvim_buf_get_lines(bufnr, start_line - 1, end_line - 1, false);
-      local selection_text = table.concat(context_lines, "\n");
+      -- Capture the remaining text in the selection as character-perfect metadata
+      -- Since this is line-based, we'll treat it as a 'V' mode selection minus the directive line
+      local selection_text = table.concat(vim.api.nvim_buf_get_lines(bufnr, start_line - 1, end_line - 1, false), "\n");
       local instruction = (content == "" and "Analyze this" or content);
       
-      local selection_tag = string.format("<agent:selection file=\"%s\" line=\"%d\" end_line=\"%d\" instruction=\"%s\">\n%s\n</agent:selection>",
-        file_name, start_line, end_line, instruction, selection_text);
+      local selection = {
+        text = selection_text,
+        file = file_name,
+        start_line = start_line,
+        start_col = 1,
+        end_line = end_line - 1,
+        end_col = #lines[#lines],
+        mode = "V"
+      };
 
       if type == "question" then
-        M.handle_question(selection_tag, false);
+        M.run_loop(instruction, "question", false, nil, selection);
       elseif type == "shell" then
         shell.run(content);
       elseif type == "directive" then
-        M.run_loop(selection_tag, "directive", false, file_name);
+        M.run_loop(instruction, "directive", false, file_name, selection);
       elseif type == "command" then
         require("nzi.commands").run(content);
       end
@@ -207,12 +215,10 @@ function M.execute_range(start_line, end_line)
 
   if not found_directive then
     -- Handle raw visual selection with no AI: prefix
-    local selection_text = table.concat(lines, "\n");
+    local selection = M.get_visual_selection();
     vim.ui.input({ prompt = "AI Question on selection: " }, function(input)
       if input and input ~= "" then
-        local selection_tag = string.format("<agent:selection file=\"%s\" line=\"%d\" end_line=\"%d\" instruction=\"%s\">\n%s\n</agent:selection>",
-          file_name, start_line, end_line, input, selection_text);
-        M.handle_question(selection_tag, false);
+        M.run_loop(input, "question", false, nil, selection);
       end
     end);
   end
@@ -245,11 +251,53 @@ function M.dispatch(args)
   end
 end
 
---- Handle visual selection
-function M.handle_visual()
+--- Capture character-perfect visual selection
+--- @return table: { text = string, file = string, s_line = number, s_col = number, e_line = number, e_col = number }
+function M.get_visual_selection()
+  local bufnr = vim.api.nvim_get_current_buf();
   local s_start = vim.fn.getpos("'<");
   local s_end = vim.fn.getpos("'>");
-  M.execute_range(s_start[2], s_end[2]);
+  
+  -- getpos is 1-indexed, but nvim_buf_get_text is 0-indexed and end-exclusive
+  local start_line = s_start[2] - 1;
+  local start_col = s_start[3] - 1;
+  local end_line = s_end[2] - 1;
+  local end_col = s_end[3]; -- No -1 here because it's exclusive
+
+  -- Handle visual line mode ('V') where col is effectively infinite
+  local mode = vim.fn.visualmode();
+  if mode == "V" then
+    start_col = 0;
+    local last_line = vim.api.nvim_buf_get_lines(bufnr, end_line, end_line + 1, false)[1] or "";
+    end_col = #last_line;
+  end
+
+  local text = table.concat(vim.api.nvim_buf_get_text(bufnr, start_line, start_col, end_line, end_col, {}), "\n");
+  local file = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":.");
+
+  return {
+    text = text,
+    file = file,
+    start_line = s_start[2],
+    start_col = s_start[3],
+    end_line = s_end[2],
+    end_col = s_end[3],
+    mode = mode
+  };
+end
+
+--- Handle visual selection
+function M.handle_visual()
+  local selection = M.get_visual_selection();
+  local ft = vim.bo.filetype;
+
+  vim.ui.input({ prompt = "AI Question on selection: " }, function(input)
+    if input and input ~= "" then
+      -- Pass the selection metadata to run_loop or a new handler
+      -- We'll modify engine.run_loop to accept selection metadata
+      M.run_loop(input, "question", false, nil, selection);
+    end
+  end);
 end
 
 return M;

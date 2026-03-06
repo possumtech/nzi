@@ -38,14 +38,16 @@ function M.build_system_prompt(prompts, model_alias)
     "* <model:read file=\"path/to/filename\" />: Pull a file into active context and open it as a buffer.",
     "* <model:drop file=\"path/to/filename\" />: Remove a file from active context.",
     "* <model:delete file=\"path/to/filename\" />: Delete a file from the project.",
+    "* <model:reset />: Reset session history and context.",
     "* <model:create file=\"path/to/filename\">[full file content]</model:create>: Create a new file.",
     "* <model:edit file=\"path/to/filename\">SEARCH/REPLACE Blocks</model:edit>: Modify code.",
     "\n## SEARCH/REPLACE FORMAT",
     "To modify a file, wrap SEARCH/REPLACE blocks inside a <model:edit> tag:",
     "SEARCH blocks support Lua patterns (regex). Use them if exact content or whitespace is unknown.",
+    "Multiple blocks are allowed in one <model:edit> tag. They are applied sequentially.",
     "<model:edit file=\"path/to/filename\">",
     "<<<<<<< SEARCH",
-    "[exact lines from file]",
+    "[lines from file]",
     "=======",
     "[new lines]",
     ">>>>>>> REPLACE",
@@ -58,14 +60,14 @@ function M.build_system_prompt(prompts, model_alias)
     "* <agent:tool name=\"toolName\">tool output</agent:tool>",
     "* <agent:context>current project structure and files</agent:context>",
     "* <agent:file name=\"path/to/filename\">content of a specific file</agent:file>",
-    "* <agent:selection file=\"path/to/filename\" line=\"10\" end_line=\"20\" instruction=\"...\">Selected code block content</agent:selection>",
     "* <agent:project_state>AGENTS.md file contents</agent:project_state>",
     "* <agent:next_task_suggest>The first pending task in the plan</agent:next_task_suggest>",
     "* <agent:user>The user's specific instruction</agent:user>",
+    "* <agent:selection file=\"path\" start_line=\"1\" start_col=\"1\" end_line=\"1\" end_col=\"5\" mode=\"v\">text</agent:selection>",
     "* <agent:test>Output from a failing test or lint runner</agent:test>",
     "\n## CONSTRAINTS",
     "* ALWAYS <model:read /> a file before issuing a <model:edit /> to ensure you have the latest content.",
-    "* Use the smallest possible edits.",
+    "* Use the smallest possible edits. Sequential blocks are preferred over one giant block.",
     "* To provide an example of a tag without triggering an action, wrap it in markdown backticks (e.g. ` <model:read /> `).",
     "* Discovery: Use <model:env> (ls -R, git status, etc.), <model:grep />, and <model:read /> to gather facts before acting.",
     "* NEVER output <agent:*> tags.",
@@ -125,8 +127,9 @@ end
 --- @param type string: 'question' or 'directive'
 --- @param target_file string | nil: Only for directives
 --- @param include_lsp boolean | nil
+--- @param selection table | nil: Visual selection metadata
 --- @return table: Array of { role = string, content = string }
-function M.build_messages(content, type, target_file, include_lsp)
+function M.build_messages(content, type, target_file, include_lsp, selection)
   local config = require("nzi.config");
   local model_alias = config.options.active_model or "deepseek";
   local model_cfg = config.get_active_model();
@@ -164,13 +167,19 @@ function M.build_messages(content, type, target_file, include_lsp)
     next_task_block = string.format("\n\n<agent:next_task_suggest>\n%s\n</agent:next_task_suggest>", M.smart_filter(prompt_parts.next_task_suggest));
   end
 
+  local selection_block = "";
+  if selection then
+    selection_block = string.format("\n\n<agent:selection file=\"%s\" start_line=\"%d\" start_col=\"%d\" end_line=\"%d\" end_col=\"%d\" mode=\"%s\">\n%s\n</agent:selection>",
+      selection.file, selection.start_line, selection.start_col, selection.end_line, selection.end_col, selection.mode, M.smart_filter(selection.text));
+  end
+
   local final_user_content = "";
   if type == "directive" and target_file then
-    final_user_content = string.format("%s%s\n\n<agent:user>\nEditing file: %s\nInstruction: %s\n</agent:user>",
-      state_block, next_task_block, M.smart_filter(target_file), M.smart_filter(content));
+    final_user_content = string.format("%s%s%s\n\n<agent:user>\nEditing file: %s\nInstruction: %s\n</agent:user>",
+      state_block, next_task_block, selection_block, M.smart_filter(target_file), M.smart_filter(content));
   else
-    final_user_content = string.format("%s%s\n\n<agent:user>\n%s\n</agent:user>", 
-      state_block, next_task_block, M.smart_filter(content));
+    final_user_content = string.format("%s%s%s\n\n<agent:user>\n%s\n</agent:user>", 
+      state_block, next_task_block, selection_block, M.smart_filter(content));
   end
   
   table.insert(messages, { role = "user", content = final_user_content });

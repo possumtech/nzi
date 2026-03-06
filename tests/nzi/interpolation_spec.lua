@@ -31,7 +31,7 @@ describe("AI Interpolation and Visual Mode", function()
   it("should handle Interpolation on Save (BufWritePre)", function()
     local lines = {
       "local x = 1",
-      "AI? How does this work?",
+      ":AI? How does this work?",
       "local y = 2"
     };
     vim.api.nvim_buf_set_lines(test_buf, 0, -1, false, lines);
@@ -55,7 +55,7 @@ describe("AI Interpolation and Visual Mode", function()
   it("should handle visual range execution with a directive", function()
     local lines = {
       "function test()",
-      "  AI: optimize this",
+      ":AI: optimize this",
       "  return 1 + 1",
       "end"
     };
@@ -76,7 +76,7 @@ describe("AI Interpolation and Visual Mode", function()
     assert.match("line=\"1\"", user_msg);
     assert.match("end_line=\"4\"", user_msg);
     assert.match("instruction=\"optimize this\"", user_msg);
-    -- Content should be the code minus the AI: line
+    -- Content should be the code minus the :AI: line
     assert.match("function test%(%)", user_msg);
     assert.match("return 1 %+ 1", user_msg);
   end);
