@@ -44,7 +44,7 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
     local messages, system_prompt, context_str, ctx_list, turn_block = prompts.build_messages(current_prompt, type, target_file, include_lsp, selection);
     local user_message_content = messages[#messages].content;
     
-    if turn_count == 1 then
+    if turn_count == 1 and type == "ask" then
       modal.open();
       if config.options.modal.show_context then
         modal.write(system_prompt, "system", false);
@@ -114,6 +114,13 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
               else
                 -- Final response, all good
                 history.add(type, turn_block, result);
+                
+                -- If it was an 'ask', make sure the modal is open to show the result
+                if type == "ask" then
+                  modal.open();
+                  modal.write(result, "assistant", false);
+                end
+
                 modal.set_thinking(false);
                 modal.close_tag();
                 vim.schedule(function() M.is_busy = false; end);

@@ -55,6 +55,8 @@ The model communicates intentions using `<model:*>` tags.
 
 | Tag | Attributes | Purpose |
 | :--- | :--- | :--- |
+| `<model:summary>` | - | **Turn Terminator**: A one-sentence summary of actions |
+| `<model:choice>` | - | **Turn Terminator**: A question requiring user input |
 | `<model:edit>` | `file="path"` | Surgical SEARCH/REPLACE code modification |
 | `<model:create>` | `file="path"` | Create a new file with full content |
 | `<model:read>` | `file="path"` | Pull a file into active buffer context |

@@ -227,7 +227,13 @@ function M.dispatch_actions(actions, callback)
       end
       run_next();
 
+    elseif action.name == "summary" then
+      modal.write(action.content, "assistant", false);
+      vim.notify("AI: " .. action.content, vim.log.levels.INFO);
+      run_next();
+
     elseif action.name == "choice" then
+      modal.open();
       modal.write("User Choice Prompt: " .. action.content, "system", false);
       tools.choice(action.content, function(choice_res)
         vim.schedule(function()
