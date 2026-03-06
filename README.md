@@ -32,10 +32,10 @@ NZI uses a `<leader>a` prefix for quick command access.
 | **`\aA`** | Mark current buffer as **Active** (Full context) | Normal |
 | **`\aR`** | Mark current buffer as **Read-only** (Context only) | Normal |
 | **`\aI`** | Mark current buffer as **Ignored** (Completely hidden) | Normal |
-| **`\aD`** | **Accept** current review (Applies edit and saves) | Normal |
-| **`\ad`** | **Reject** current review (Discards suggestion) | Normal |
-| **`\an`** | Jump to **Next** pending review | Normal |
-| **`\ap`** | Jump to **Previous** pending review | Normal |
+| **`\aD`** | **Accept** current diff (Applies edit and saves) | Normal |
+| **`\ad`** | **Reject** current diff (Discards suggestion) | Normal |
+| **`\an`** | Jump to **Next** pending diff | Normal |
+| **`\ap`** | Jump to **Previous** pending diff | Normal |
 | **`\as`** | **Save** named session history | Normal |
 | **`\al`** | **Load** named session history | Normal |
 | **`\au`** | **Undo** last turn from history | Normal |

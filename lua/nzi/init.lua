@@ -157,10 +157,10 @@ function M.setup(opts)
 
   -- Leader Keymaps
   vim.keymap.set("n", "<leader>au", function() vim.cmd("AI/undo") end, { desc = "AI: Undo last turn" });
-  vim.keymap.set("n", "<leader>an", function() vim.cmd("AI/next") end, { desc = "AI: Next pending review" });
-  vim.keymap.set("n", "<leader>ap", function() vim.cmd("AI/prev") end, { desc = "AI: Prev pending review" });
-  vim.keymap.set("n", "<leader>aD", function() vim.cmd("AI/accept") end, { desc = "AI: Accept current review" });
-  vim.keymap.set("n", "<leader>ad", function() vim.cmd("AI/reject") end, { desc = "AI: Reject current review" });
+  vim.keymap.set("n", "<leader>an", function() vim.cmd("AI/next") end, { desc = "AI: Next pending diff" });
+  vim.keymap.set("n", "<leader>ap", function() vim.cmd("AI/prev") end, { desc = "AI: Prev pending diff" });
+  vim.keymap.set("n", "<leader>aD", function() vim.cmd("AI/accept") end, { desc = "AI: Accept current diff" });
+  vim.keymap.set("n", "<leader>ad", function() vim.cmd("AI/reject") end, { desc = "AI: Reject current diff" });
 
   vim.keymap.set("n", "<leader>ax", function() vim.cmd("AI/stop") end, { desc = "AI: Abort generation" });
   vim.keymap.set("n", "<leader>aX", function() 

@@ -30,7 +30,7 @@ require("nzi").setup({
     ds = { provider = "openrouter", model = "deepseek/deepseek-chat", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
     r1 = { provider = "openrouter", model = "deepseek/deepseek-r1", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
     opus = { provider = "openrouter", model = "anthropic/claude-3-opus", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
-    o1 = { provider = "openrouter", model = "openai/o1-preview", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
+    o1 = { provider = "openrouter", model = "openai/o1-pdiff", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
     mistral = { provider = "openrouter", model = "mistralai/mistral-large-2411", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
     nova = { provider = "openrouter", model = "amazon/nova-pro-v1", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
     meta = { provider = "openrouter", model = "meta-llama/llama-3.3-70b-instruct", api_base = "https://openrouter.ai/api/v1", api_key = vim.env.OPENROUTER_API_KEY },
@@ -67,7 +67,7 @@ vim.keymap.set("n", "<leader>at", ":AI/tree<CR>",   { desc = "AI: Context Tree (
 vim.keymap.set("n", "<leader>aT", ":AI/Tree<CR>",   { desc = "AI: Universe Tree (All Mapped)" })
 vim.keymap.set("n", "<leader>ab", ":AI/buffers<CR>",{ desc = "AI: Buffer Context Manager" })
 
--- Navigation (Review Queue)
+-- Navigation (Diff Queue)
 vim.keymap.set("n", "<leader>an", ":AI/next<CR>",   { desc = "AI: Next Pending Diff" })
 vim.keymap.set("n", "<leader>ap", ":AI/prev<CR>",   { desc = "AI: Prev Pending Diff" })
 
@@ -83,4 +83,4 @@ vim.opt.statusline = "%f %m %r %= %{%v:lua.require('nzi.ui.visuals').get_statusl
 
 print("AI (nzi) Loaded! Use <leader>aa to toggle the AI Modal.");
 print("Visual Context: Backgrounds reflect AI state (Green=Active, Orange=Read, Red=Ignore, Blue=Diff).");
-print("Review Queue: Use <leader>an and <leader>ap to navigate pending changes.");
+print("Diff Queue: Use <leader>an and <leader>ap to navigate pending changes.");

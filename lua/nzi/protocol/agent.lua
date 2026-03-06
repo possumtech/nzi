@@ -130,7 +130,7 @@ function M.dispatch_actions(actions, callback)
             table.insert(accumulated_responses, "<agent:status>File created and content applied (YOLO).</agent:status>");
           else
             diff.propose_edit(bufnr, lines);
-            table.insert(accumulated_responses, "<agent:status>Proposed new file content. Awaiting review.</agent:status>");
+            table.insert(accumulated_responses, "<agent:status>Proposed new file content. Awaiting diff.</agent:status>");
           end
         else
           table.insert(accumulated_responses, "<agent:status>File creation denied by user.</agent:status>");
@@ -150,7 +150,7 @@ function M.dispatch_actions(actions, callback)
             table.insert(accumulated_responses, "<agent:status>File deleted (YOLO).</agent:status>");
           else
             diff.propose_deletion(file);
-            table.insert(accumulated_responses, string.format("<agent:status>Proposed deletion of %s. Awaiting review.</agent:status>", file));
+            table.insert(accumulated_responses, string.format("<agent:status>Proposed deletion of %s. Awaiting diff.</agent:status>", file));
           end
         end
       end
@@ -199,7 +199,7 @@ function M.dispatch_actions(actions, callback)
               table.insert(accumulated_responses, string.format("<agent:status>Surgical edits applied to %s (YOLO).</agent:status>", file));
             else
               diff.propose_edit(bufnr, final_lines);
-              table.insert(accumulated_responses, string.format("<agent:status>Proposed edits for %s. Awaiting review.</agent:status>", file));
+              table.insert(accumulated_responses, string.format("<agent:status>Proposed edits for %s. Awaiting diff.</agent:status>", file));
             end
           else
             table.insert(accumulated_responses, string.format("<agent:status>Error: No blocks matched in %s. Edit aborted.</agent:status>", file));

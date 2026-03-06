@@ -57,7 +57,7 @@ This is the canonical source of truth for **nzi** development, technical specifi
 - [x] `/toggle`: Modal UI control.
 - [x] `/stop`: Process termination.
 - [x] `/yank`: Clipboard integration.
-- [x] `/next` / `/prev`: Review queue navigation.
+- [x] `/next` / `/prev`: Diff queue navigation.
 - [x] `/accept` / `/reject`: Diff resolution.
 - [x] `/save` / `/load`: Session persistence.
 - [x] `/active` / `/read` / `/ignore`: Context overrides.

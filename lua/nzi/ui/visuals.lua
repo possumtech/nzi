@@ -38,8 +38,16 @@ function M.get_status_data()
   end
   
   local diff = require("nzi.ui.diff");
+  
+  -- 1. Check if CURRENT buffer has a pending diff
   if diff.has_pending_diff(bufnr) then
     return { text = "[AI:DIFF]", hl = "NziStatusDiff" };
+  end
+
+  -- 2. Check if ANY OTHER buffers have pending diffs (Global indicator)
+  local total_diffs = diff.get_count();
+  if total_diffs > 0 then
+    return { text = string.format("[AI:DIFS: %d]", total_diffs), hl = "NziStatusDiff" };
   end
 
   local state = context.get_state(bufnr);

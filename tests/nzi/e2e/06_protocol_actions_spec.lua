@@ -5,7 +5,7 @@ local context = require("nzi.context.context")
 
 describe("6. Protocol & Actions", function()
   before_each(function()
-    diff.pending_reviews = {}
+    diff.pending_diffs = {}
     diff.pending_deletions = {}
     context.states = {}
   end)

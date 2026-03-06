@@ -58,8 +58,8 @@ function M.run(cmd)
   elseif subcommand == "status" then
     local model = config.options.active_model;
     local turns = #history.get_all();
-    local reviews = diff.get_count();
-    vim.notify(string.format("AI: Model: %s | Turns: %d | Pending Reviews: %d", model, turns, reviews), vim.log.levels.INFO);
+    local diffs = diff.get_count();
+    vim.notify(string.format("AI: Model: %s | Turns: %d | Pending Diffs: %d", model, turns, diffs), vim.log.levels.INFO);
 
   elseif subcommand == "toggle" then
     modal.toggle();
@@ -93,7 +93,7 @@ function M.run(cmd)
     end
 
   elseif subcommand == "next" then
-    -- Navigate to next pending review
+    -- Navigate to next pending diff
     local bufs = vim.api.nvim_list_bufs();
     local current = vim.api.nvim_get_current_buf();
     local found = false;
@@ -101,7 +101,7 @@ function M.run(cmd)
       if b == current then
         for j = 1, #bufs do
           local next_b = bufs[(i + j - 1) % #bufs + 1];
-          if diff.pending_reviews[next_b] then
+          if diff.pending_diffs[next_b] then
             vim.api.nvim_set_current_buf(next_b);
             found = true;
             break;
@@ -110,10 +110,10 @@ function M.run(cmd)
         break;
       end
     end
-    if not found then vim.notify("AI: No pending reviews found.", vim.log.levels.WARN) end
+    if not found then vim.notify("AI: No pending diffs found.", vim.log.levels.WARN) end
 
   elseif subcommand == "prev" then
-    -- Navigate to previous pending review
+    -- Navigate to previous pending diff
     local bufs = vim.api.nvim_list_bufs();
     local current = vim.api.nvim_get_current_buf();
     local found = false;
@@ -121,7 +121,7 @@ function M.run(cmd)
       if b == current then
         for j = 1, #bufs do
           local prev_b = bufs[(i - j - 1) % #bufs + 1];
-          if diff.pending_reviews[prev_b] then
+          if diff.pending_diffs[prev_b] then
             vim.api.nvim_set_current_buf(prev_b);
             found = true;
             break;
@@ -130,7 +130,7 @@ function M.run(cmd)
         break;
       end
     end
-    if not found then vim.notify("AI: No pending reviews found.", vim.log.levels.WARN) end
+    if not found then vim.notify("AI: No pending diffs found.", vim.log.levels.WARN) end
 
   elseif subcommand == "accept" then
     diff.accept(vim.api.nvim_get_current_buf());
@@ -168,7 +168,7 @@ function M.run(cmd)
   elseif subcommand == "reset" then
     history.clear();
     modal.clear();
-    diff.pending_reviews = {};
+    diff.pending_diffs = {};
     -- We can't easily clear all context states without iterating all bufs
     require("nzi.context.context").states = {};
     vim.notify("AI: Session fully reset.", vim.log.levels.INFO);
