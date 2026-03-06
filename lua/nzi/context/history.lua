@@ -47,7 +47,7 @@ function M.strip_line_numbers(text)
 end
 
 --- Add a completed or partial turn to history
---- @param type string: 'question', 'directive', etc.
+--- @param type string: 'ask', 'instruct', etc.
 --- @param user_content string | nil
 --- @param assistant_content string | nil
 function M.add(type, user_content, assistant_content)

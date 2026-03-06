@@ -52,7 +52,7 @@ describe("AI Interpolation and Visual Mode", function()
     assert.match("How does this work?", user_msg);
   end);
 
-  it("should handle visual range execution with a directive", function()
+  it("should handle visual range execution with a instruct", function()
     local lines = {
       "function test()",
       ":AI: optimize this",
@@ -81,7 +81,7 @@ describe("AI Interpolation and Visual Mode", function()
     assert.match("return 1 %+ 1", user_msg);
   end);
 
-  it("should handle raw visual selection with no directive (fallback to input)", function()
+  it("should handle raw visual selection with no instruct (fallback to input)", function()
     local lines = { "line 1", "line 2" };
     vim.api.nvim_buf_set_lines(test_buf, 0, -1, false, lines);
     

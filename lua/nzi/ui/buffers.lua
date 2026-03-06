@@ -69,7 +69,7 @@ function M.open_ui()
   end);
 end
 
---- Scan a buffer for AI directives and process them (Interpolation)
+--- Scan a buffer for AI instructs and process them (Interpolation)
 --- @param bufnr number
 function M.interpolate(bufnr)
   if not vim.api.nvim_buf_is_valid(bufnr) then return end
@@ -89,7 +89,7 @@ function M.interpolate(bufnr)
       local name = vim.api.nvim_buf_get_name(bufnr);
       local file = vim.fn.fnamemodify(name, ":.");
       
-      -- For interpolation, the "selection" is the entire buffer context minus the directive
+      -- For interpolation, the "selection" is the entire buffer context minus the instruct
       local lines_after = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false);
       local selection = {
         text = table.concat(lines_after, "\n"),

@@ -23,7 +23,7 @@ describe("4. Input Parsing & Selection", function()
     assert.equals("refactor this", content)
   end)
 
-  it("should parse Question, Directive, and Shell prefixes flawlessly", function()
+  it("should parse Ask, Instruct, and Shell prefixes flawlessly", function()
     local type1, content1 = parser.parse_line(":AI? what is this?")
     assert.equals("ask", type1)
     assert.equals("what is this?", content1)
@@ -33,7 +33,7 @@ describe("4. Input Parsing & Selection", function()
     assert.equals("ls -la", content2)
   end)
 
-  it("should correctly identify range bounds and extract inline directives", function()
+  it("should correctly identify range bounds and extract inline instructs", function()
     local lines = {
       "function foo()",
       ":AI: modify the loop",
@@ -54,7 +54,7 @@ describe("4. Input Parsing & Selection", function()
 
     engine.execute_range(1, 5)
 
-    -- verify that the directive line was deleted from buffer
+    -- verify that the instruct line was deleted from buffer
     local new_lines = vim.api.nvim_buf_get_lines(test_buf, 0, -1, false)
     assert.equals(4, #new_lines)
     assert.equals("function foo()", new_lines[1])

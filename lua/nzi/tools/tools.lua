@@ -75,14 +75,14 @@ function M.shell(command, is_yolo)
   return nil; -- Command ran, but result stays local
 end
 
---- Present a multiple-choice question to the user using vim.ui.select
---- @param content string: The question and checkbox list from the model
+--- Present a multiple-choice ask to the user using vim.ui.select
+--- @param content string: The ask and checkbox list from the model
 --- @param callback function: Called with the final user answer string
 function M.choice(content, callback)
-  -- 1. Extract the question and the options from the markdown checkboxes
+  -- 1. Extract the ask and the options from the markdown checkboxes
   local parts = vim.split(content, "- [ ]", { plain = true });
-  local question = parts[1]:gsub("^%s*", ""):gsub("%s*$", "");
-  if question == "" then question = "Please choose an option:"; end
+  local ask = parts[1]:gsub("^%s*", ""):gsub("%s*$", "");
+  if ask == "" then ask = "Please choose an option:"; end
 
   local options = {};
   for i = 2, #parts do
@@ -97,7 +97,7 @@ function M.choice(content, callback)
   
   -- 3. Show the UI
   vim.ui.select(options, {
-    prompt = question:gsub("^%s*", ""),
+    prompt = ask:gsub("^%s*", ""),
   }, function(choice, index)
     if not choice then
       callback("User cancelled selection.");

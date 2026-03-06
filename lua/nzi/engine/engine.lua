@@ -139,26 +139,26 @@ function M.handle_ask(content, include_lsp)
   M.run_loop(content, "ask", include_lsp, nil);
 end
 
---- Parse and execute the current line as a directive
+--- Parse and execute the current line as a instruct
 function M.execute_current_line()
   local line = vim.api.nvim_get_current_line();
   local bufnr = vim.api.nvim_get_current_buf();
   local type, content = parser.parse_line(line);
   
   if not type then
-    print("No AI directive found on current line.");
+    print("No AI instruct found on current line.");
     return;
   end
   
-  -- Remove the directive line from buffer before execution
+  -- Remove the instruct line from buffer before execution
   local row = vim.api.nvim_win_get_cursor(0)[1];
   vim.api.nvim_buf_set_lines(0, row - 1, row, false, {});
 
   local file_name = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":.");
   local formatted = content;
 
-  -- For a directive on a single line, we pass the buffer context as a selection
-  -- so the model knows where it is, but without the directive line itself.
+  -- For a instruct on a single line, we pass the buffer context as a selection
+  -- so the model knows where it is, but without the instruct line itself.
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false);
   local selection = {
     text = table.concat(lines, "\n"),
@@ -187,18 +187,18 @@ function M.execute_range(start_line, end_line)
   local lines = vim.api.nvim_buf_get_lines(bufnr, start_line - 1, end_line, false);
   local file_name = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":.");
   local ft = vim.bo[bufnr].filetype;
-  local found_directive = false;
+  local found_instruct = false;
   
-  -- Scan for the FIRST directive in the range (visual mode idiomatic)
+  -- Scan for the FIRST instruct in the range (visual mode idiomatic)
   for i, line in ipairs(lines) do
     local type, content = parser.parse_line(line);
     if type then
-      -- Remove only the directive line itself
+      -- Remove only the instruct line itself
       local actual_row = start_line + i - 1;
       vim.api.nvim_buf_set_lines(bufnr, actual_row - 1, actual_row, false, {});
       
       -- Capture the remaining text in the selection as character-perfect metadata
-      -- Since this is line-based, we'll treat it as a 'V' mode selection minus the directive line
+      -- Since this is line-based, we'll treat it as a 'V' mode selection minus the instruct line
       local selection_text = table.concat(vim.api.nvim_buf_get_lines(bufnr, start_line - 1, end_line - 1, false), "\n");
       local instruction = (content == "" and "Analyze this" or content);
       
@@ -222,15 +222,15 @@ function M.execute_range(start_line, end_line)
         require("nzi.core.commands").run(content);
       end
       
-      found_directive = true;
+      found_instruct = true;
       break; 
     end
   end
 
-  if not found_directive then
+  if not found_instruct then
     -- Handle active selection with no AI: prefix
     local selection = M.get_visual_selection();
-    vim.ui.input({ prompt = "AI Question on selection: " }, function(input)
+    vim.ui.input({ prompt = "AI Ask on selection: " }, function(input)
       if input and input ~= "" then
         M.run_loop(input, "ask", false, nil, selection);
       end
@@ -317,7 +317,7 @@ function M.handle_visual()
   local selection = M.get_visual_selection();
   local ft = vim.bo.filetype;
 
-  vim.ui.input({ prompt = "AI Question on selection: " }, function(input)
+  vim.ui.input({ prompt = "AI Ask on selection: " }, function(input)
     if input and input ~= "" then
       -- Pass the selection metadata to run_loop or a new handler
       -- We'll modify engine.run_loop to accept selection metadata

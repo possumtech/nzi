@@ -21,7 +21,6 @@ signal.signal(signal.SIGINT, signal_handler)
 
 try:
     from pydantic import PydanticDeprecationWarning
-...
     warnings.filterwarnings("ignore", category=PydanticDeprecationWarning)
 except ImportError:
     pass

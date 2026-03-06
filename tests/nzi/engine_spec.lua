@@ -3,8 +3,8 @@ local engine = require("nzi.engine.engine");
 local shell = require("nzi.tools.shell");
 
 describe("AI engine dispatcher", function()
-  it("should warn if no directive is found on current line", function()
-    -- Create a clean buffer with no directives
+  it("should warn if no instruct is found on current line", function()
+    -- Create a clean buffer with no instructs
     local bufnr = vim.api.nvim_create_buf(true, false);
     vim.api.nvim_set_current_buf(bufnr);
     vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "local x = 1" });
@@ -17,12 +17,12 @@ describe("AI engine dispatcher", function()
     engine.execute_current_line();
     
     _G.print = original_print;
-    assert.are.equal("No AI directive found on current line.", printed_msg);
+    assert.are.equal("No AI instruct found on current line.", printed_msg);
     
     vim.api.nvim_buf_delete(bufnr, { force = true });
   end);
 
-  it("should find and execute shell directive in range", function()
+  it("should find and execute shell instruct in range", function()
     local bufnr = vim.api.nvim_create_buf(true, false);
     vim.api.nvim_set_current_buf(bufnr);
     vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { ":ai! echo 'hello'", "line 2" });

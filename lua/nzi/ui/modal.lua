@@ -188,7 +188,7 @@ local function get_telemetry_line(type)
   local config = require("nzi.core.config");
   local model_alias = config.options.active_model or "unknown";
   local opts = config.options.model_options or {};
-  if type == "user" or type == "question" or type == "directive" then
+  if type == "user" or type == "ask" or type == "instruct" then
     return string.format("[ USER | model: %s | temp: %.1f | top_p: %.1f ]", model_alias, opts.temperature or 0, opts.top_p or 0);
   elseif type == "reasoning_content" then
     return "[ ASSISTANT | reasoning_content | stream: active ]";

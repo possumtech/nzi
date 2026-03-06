@@ -1,8 +1,8 @@
 local M = {};
 
---- Parse a single line for AI directives
+--- Parse a single line for AI instructs
 --- @param line string: The raw line text
---- @return string | nil: The type of directive (shell, question, directive, command)
+--- @return string | nil: The type of instruct (shell, ask, instruct, command)
 --- @return string | nil: The instruction content
 function M.parse_line(line)
   local patterns = {
@@ -26,10 +26,10 @@ function M.parse_line(line)
   return nil, nil;
 end
 
---- Find the first AI directive in a range of lines
+--- Find the first AI instruct in a range of lines
 --- @param lines table: Array of strings
 --- @return number | nil: The index of the line (1-based)
---- @return string | nil: The type of directive
+--- @return string | nil: The type of instruct
 --- @return string | nil: The instruction content
 function M.find_in_lines(lines)
   for i, line in ipairs(lines) do

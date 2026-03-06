@@ -51,7 +51,7 @@ describe("AI parser", function()
   end);
 
   it("should NOT parse :AI: in the middle of a line (e.g. after code)", function()
-    local type, content = parser.parse_line("local x = 1 -- :AI: this is a comment, not a directive");
+    local type, content = parser.parse_line("local x = 1 -- :AI: this is a comment, not a instruct");
     assert.is_nil(type, "Should not parse :AI: if preceded by code");
   end);
 end);

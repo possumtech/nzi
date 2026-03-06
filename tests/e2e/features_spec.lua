@@ -53,13 +53,13 @@ describe("AI New Features E2E", function()
     end
 
     -- 1. Test Abort
-    engine.handle_question("Long running task");
+    engine.handle_ask("Long running task");
     vim.cmd("AI/stop"); -- Equivalent to <leader>ax
     assert.is_true(killed, "Job was not killed by AI/stop");
     assert.is_false(engine.is_busy, "Engine still busy after stop");
 
     -- 2. Test Reset
-    history.add("question", "test user", "test assistant");
+    history.add("ask", "test user", "test assistant");
     assert.are.equal(1, #history.get_all());
     
     -- Simulate <leader>aX (calls stop then reset)
@@ -92,7 +92,7 @@ describe("AI New Features E2E", function()
     config.options.test_command = "sh -c";
     vim.cmd("AI/ralph 'echo FAKE_FAILURE; exit 1'");
 
-    -- Wait for the async chain (verify_state -> handle_question -> job.run)
+    -- Wait for the async chain (verify_state -> handle_ask -> job.run)
     local success = vim.wait(2000, function() return turns > 0 end);
     assert.is_true(success, "Ralph mode did not trigger a follow-up turn on failure");
     assert.are.equal(1, turns);

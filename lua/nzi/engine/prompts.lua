@@ -35,7 +35,7 @@ function M.build_system_prompt(prompts, model_alias)
     "* <model:env>run_read_only_shell_command</model:env>",
     "* <model:grep>findThisText</model:grep>: Search the project for a pattern.",
     "* <model:definition>symbolName</model:definition>: Find the LSP definition of a symbol.",
-    "* <model:choice>Question text here? - [ ] Option 1 - [ ] Option 2</model:choice>: Present a multiple-choice question.",
+    "* <model:choice>Ask text here? - [ ] Option 1 - [ ] Option 2</model:choice>: Present a multiple-choice question.",
     "* <model:tool name=\"toolName\">Message to tool</model:tool>: Invoke specialized plugin tools.",
     "* <model:read file=\"path/to/filename\" />: Pull a file into active context and open it as a buffer.",
     "* <model:drop file=\"path/to/filename\" />: Remove a file from active context.",

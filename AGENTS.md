@@ -29,7 +29,7 @@ This is the canonical source of truth for **nzi** development, technical specifi
 | **Protocol** | `lua/nzi/protocol/` | Tag parsing and LLM bridge (bridge.py). |
 | **UI** | `lua/nzi/ui/` | Modal, Diff, and Visual management. |
 | **Context** | `lua/nzi/context/` | Buffer states, history, and path resolution. |
-| **Tools** | `lua/nzi/tools/` | Shell, LSP, and Directive execution. |
+| **Tools** | `lua/nzi/tools/` | Shell, LSP, and Instruct execution. |
 
 ### Context Visibility Hierarchy
 | State | Documentation Term | Logic |

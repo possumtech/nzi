@@ -108,8 +108,8 @@ describe("5. Engine & Prompt Construction", function()
 
     local _, _, _, _, turn_block = prompts.build_messages("charge $500", "instruct", "LICENSE", false, selection)
     
-    -- Verify exact nesting: Instruction should be followed by Selection, then ONE close tag
-    assert.match("<agent:user>.-Instruction: charge %$500.-<agent:selection.-free of charge.-</agent:selection>.-</agent:user>", turn_block)
+    -- Verify exact nesting: Selection should come FIRST, followed by Instruction
+    assert.match("<agent:user>.-<agent:selection.-free of charge.-</agent:selection>.-Instruction: charge %$500.-</agent:user>", turn_block)
     
     -- Verify NO redundant agent:user close tags
     local _, count = turn_block:gsub("</agent:user>", "")

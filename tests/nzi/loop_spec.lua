@@ -69,7 +69,7 @@ describe("AI Engine Multi-Turn Loop", function()
     
     local all_history = history.get_all();
     -- History should have:
-    -- 1. directive/question turn (initial)
+    -- 1. instruct/ask turn (initial)
     -- 2. assistant turn (buggy)
     -- 3. user turn (test failure)
     -- 4. assistant turn (fixed)

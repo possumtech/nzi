@@ -46,18 +46,18 @@ describe("AI active model integration", function()
     return false;
   end
 
-  it("should handle an ai? question end-to-end", function()
+  it("should handle an ai? ask end-to-end", function()
     engine.run_loop("Say exactly 'HELLO WORLD' and nothing else.", false);
     
     assert.True(poll_until_settle(120000), "Interaction timed out");
     assert.True(history_contains("HELLO WORLD"), "Model did not provide expected response in history");
   end);
 
-  it("should handle command-line directive end-to-end", function()
-    engine.dispatch({ args = ":AI: Say only 'DIRECTIVE'", line1 = 1, line2 = 1, range = 0 });
+  it("should handle command-line instruct end-to-end", function()
+    engine.dispatch({ args = ":AI: Say only 'INSTRUCT'", line1 = 1, line2 = 1, range = 0 });
     
     assert.True(poll_until_settle(120000), "Interaction timed out");
-    assert.True(history_contains("DIRECTIVE"));
+    assert.True(history_contains("INSTRUCT"));
   end);
 
   it("BATTLE TEST: should maintain state across a multi-turn conversation", function()

@@ -8,7 +8,7 @@ describe("AI modal structural integrity", function()
 
   it("should maintain valid sections across multiple transitions", function()
     modal.write("System Message", "system", false);
-    modal.write("User Question", "user", false);
+    modal.write("User Ask", "user", false);
     modal.write("Assistant Answer", "assistant", false);
     
     local bufnr = modal.bufnr;
@@ -16,7 +16,7 @@ describe("AI modal structural integrity", function()
     local text = table.concat(lines, "\n");
     
     assert.match("System Message", text);
-    assert.match("User Question", text);
+    assert.match("User Ask", text);
     assert.match("Assistant Answer", text);
   end);
 

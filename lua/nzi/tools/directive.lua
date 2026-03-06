@@ -6,7 +6,7 @@ local modal = require("nzi.ui.modal");
 
 local M = {};
 
---- Execute an nzi: directive to modify code
+--- Execute an nzi: instruct to modify code
 --- @param instruction string: The code modification instruction
 --- @param bufnr number: The buffer to apply the diff against
 --- @param include_lsp boolean | nil
@@ -51,7 +51,7 @@ function M.run(instruction, bufnr, include_lsp)
   modal.write(summary, "system", false);
   for _, w in ipairs(warnings) do modal.write(w, "error", false) end
 
-  modal.write(instruction .. " (File: " .. target_file .. ")", "directive", config.options.modal.show_context);
+  modal.write(instruction .. " (File: " .. target_file .. ")", "instruct", config.options.modal.show_context);
   
   modal.set_thinking(true);
   job.run(messages, function(success, result)
@@ -59,7 +59,7 @@ function M.run(instruction, bufnr, include_lsp)
       modal.set_thinking(false);
       if success and result then
         -- Add to structured history for the next turn
-        require("nzi.context.history").add("directive", instruction, result);
+        require("nzi.context.history").add("instruct", instruction, result);
         
         modal.write("Code change received. Opening diff view...\n", "system", false);
         modal.write(result .. "\n", "response", false);
