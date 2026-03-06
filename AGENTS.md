@@ -13,7 +13,7 @@ This is the canonical source of truth for **nzi** development, technical specifi
 - [x] Systematic XML validation.
 
 ### Pending Focus
-- [ ] Revisit and reflect on sysprompts and processes for edits
+- [ ] Revisit and reflect on sysprompts and processes for edits/sync/queues
 
 ---
 

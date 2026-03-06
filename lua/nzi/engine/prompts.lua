@@ -76,11 +76,17 @@ function M.build_system_prompt(prompts, model_alias)
 end
 
 --- Format gathered context into a readable string
-function M.format_context(ctx_list, include_lsp)
+function M.format_context(ctx_list, is_instruct)
   ctx_list = ctx_list or {};
   table.sort(ctx_list, function(a, b) return a.name < b.name end);
 
   local parts = {};
+  
+  -- 1. Bundled Environment Updates (Sync Sweep)
+  local acks = require("nzi.core.queue").pop_acks();
+  if acks ~= "" then
+    table.insert(parts, acks);
+  end
   
   -- 1. Universe Files (Open buffers and mapped project files)
   for _, item in ipairs(ctx_list) do
@@ -103,7 +109,7 @@ function M.format_context(ctx_list, include_lsp)
   end
 
   -- 2. LSP info
-  if include_lsp then
+  if is_instruct then
     local lsp_info = lsp.get_symbol_definition();
     if lsp_info then
       table.insert(parts, string.format("<agent:lsp_definition uri=\"%s\" line=\"%d\">\n%s\n</agent:lsp_definition>", 

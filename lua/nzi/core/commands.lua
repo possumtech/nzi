@@ -66,13 +66,27 @@ function M.run(cmd)
 
   elseif subcommand == "stop" then
     local engine = require("nzi.engine.engine");
+    local queue = require("nzi.core.queue");
     if engine.current_job then
       engine.current_job:kill(15);
       engine.current_job = nil;
       engine.is_busy = false;
       modal.set_thinking(false);
-      modal.write("\n[ABORTED BY USER]\n", "error", true);
-      config.notify("Generation aborted.", vim.log.levels.WARN);
+      modal.write("\n[STOPPED BY USER]\n", "error", true);
+
+      -- Clear any pending ACTIONS from the model
+      queue.clear_actions();
+
+      -- AUTO-DRAIN: Move to the next user instruction if any
+      local next_work = queue.pop_instruction();
+      if next_work then
+        config.notify("Skipping to next queued instruction...", vim.log.levels.INFO);
+        vim.schedule(function()
+          engine.run_loop(next_work.instruction, next_work.type, false, next_work.target_file, next_work.selection);
+        end);
+      else
+        config.notify("Generation stopped.", vim.log.levels.WARN);
+      end
     else
       -- Force reset state even if no job handle exists
       engine.is_busy = false;
@@ -166,12 +180,18 @@ function M.run(cmd)
     end, test_cmd);
 
   elseif subcommand == "reset" then
+    local queue = require("nzi.core.queue");
     history.clear();
     modal.clear();
     diff.pending_diffs = {};
     -- We can't easily clear all context states without iterating all bufs
     require("nzi.context.context").states = {};
-    config.notify("Session fully reset.", vim.log.levels.INFO);
+    
+    -- FLUSH ALL QUEUES
+    queue.clear();
+    queue.clear_actions();
+    
+    config.notify("Session and queues fully reset.", vim.log.levels.INFO);
 
   elseif subcommand == "test" then
     local test_cmd = config.options.test_command or "./run_tests.sh";

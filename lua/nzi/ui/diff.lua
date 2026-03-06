@@ -143,12 +143,8 @@ function M.accept(bufnr)
   M.cleanup(actual_buf);
   config.notify("Edit diff finalized and saved.", vim.log.levels.INFO);
 
-  -- NOTIFY MODEL OF CHANGE (OpenAI Best Practice)
-  local history = require("nzi.context.history");
-  history.add("internal", 
-    string.format("<agent:status>User accepted and saved changes to '%s'.</agent:status>", relative_name),
-    "<model:summary>Acknowledged. I will use the updated file content for future turns.</model:summary>"
-  );
+  -- STAGE ACK FOR NEXT TURN
+  require("nzi.core.queue").enqueue_ack(string.format("User accepted and saved changes to '%s'.", relative_name));
 
   -- AUTO-DRAIN QUEUE: If turns were blocked by this diff, try to resume
   vim.schedule(function()
@@ -186,6 +182,9 @@ function M.reject(bufnr)
 
   M.cleanup(actual_buf);
   config.notify("Suggestion discarded.", vim.log.levels.INFO);
+
+  -- STAGE ACK FOR NEXT TURN
+  require("nzi.core.queue").enqueue_ack(string.format("User REJECTED and discarded proposed changes to '%s'.", relative_name));
 
   -- AUTO-DRAIN QUEUE
   vim.schedule(function()
