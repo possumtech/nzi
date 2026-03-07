@@ -1,8 +1,8 @@
 local assert = require("luassert");
-local engine = require("nzi.engine.engine");
-local history = require("nzi.context.history");
+local engine = require("nzi.service.llm.bridge");
+local history = require("nzi.dom.session");
 local config = require("nzi.core.config");
-local job = require("nzi.engine.job");
+local job = require("nzi.service.llm.job");
 local queue = require("nzi.core.queue");
 
 describe("AI Edit Loop Integration", function()

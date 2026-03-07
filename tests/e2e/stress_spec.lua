@@ -8,7 +8,7 @@ describe("STRESS E2E: Context and Synthesis", function()
 
   before_each(function()
     require("nzi").setup();
-    require("nzi.context.history").clear();
+    require("nzi.dom.session").clear();
     require("nzi.ui.modal").clear();
     pcall(vim.cmd, "close");
   end);

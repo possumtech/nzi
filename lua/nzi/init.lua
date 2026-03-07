@@ -1,6 +1,6 @@
 local config = require("nzi.core.config");
 local buffers = require("nzi.ui.buffers");
-local engine = require("nzi.engine.engine");
+local engine = require("nzi.service.llm.bridge");
 local modal = require("nzi.ui.modal");
 local commands = require("nzi.core.commands");
 
@@ -14,7 +14,7 @@ local function complete_ai_command(arg_lead, cmd_line)
   local subcommands = { 
     "model", "clear", "status", "buffers", "toggle", "undo", "config",
     "active", "read", "ignore", "state", "stop", "yank", "Tree", "tree",
-    "next", "prev", "yolo", "ralph", "accept", "reject", "reset"
+    "next", "prev", "yolo", "ralph", "accept", "reject", "reset", "save", "load"
   };
   
   -- If we're at the very start of the command arguments
@@ -74,7 +74,7 @@ function M.setup(opts)
         stop = true, yank = true, next = true, prev = true, accept = true,
         reject = true, yolo = true, ralph = true, reset = true, test = true,
         config = true, active = true, read = true, ignore = true, state = true,
-        Tree = true, tree = true, buffers = true
+        Tree = true, tree = true, buffers = true, save = true, load = true
       };
 
       -- If it's a known internal command OR no range is present, run as internal
@@ -105,7 +105,7 @@ function M.setup(opts)
 
       if shell_cmd ~= "" then
         config.log(shell_cmd, "RUN");
-        require("nzi.tools.shell").run(shell_cmd, bufnr, line1, false);
+        require("nzi.service.vim.effector").run_shell(shell_cmd, bufnr, line1, false);
       else
         vim.notify("AI!: No command provided.", vim.log.levels.WARN);
       end
@@ -130,7 +130,9 @@ function M.setup(opts)
       end
 
       if type == "instruct" then
-        engine.run_loop(instruction, "instruct", true, vim.fn.fnamemodify(0, ":."));
+        local cur_file = vim.api.nvim_buf_get_name(0);
+        local relative_file = vim.fn.fnamemodify(cur_file, ":.");
+        engine.run_loop(instruction, "instruct", true, relative_file);
       else
         engine.run_loop(instruction, "ask", true);
       end
@@ -219,6 +221,16 @@ function M.setup(opts)
     end)
   end, { desc = "AI: Load Session" });
   vim.keymap.set("n", "<leader>aa", function() vim.cmd("AI/toggle") end, { desc = "AI: Toggle Modal" });
+
+  -- Handle Execute selection (Visual mode shortcut)
+  vim.keymap.set("v", "<leader>av", function()
+    local selection = engine.get_visual_selection();
+    vim.ui.input({ prompt = "AI Ask on selection: " }, function(input)
+      if input and input ~= "" then
+        engine.run_loop(input, "ask", false, nil, selection);
+      end
+    end);
+  end, { desc = "AI: Ask on selection" });
 
   -- Context State Keymaps
   vim.keymap.set("n", "<leader>aA", function() vim.cmd("AI/active") end, { desc = "AI: Mark buffer as Active" });

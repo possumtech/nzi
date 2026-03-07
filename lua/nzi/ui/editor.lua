@@ -162,4 +162,39 @@ function M.apply(bufnr, start_line, end_line, replace_lines)
   vim.api.nvim_buf_set_lines(bufnr, start_line - 1, end_line, false, replace_lines);
 end
 
+--- Apply a series of SEARCH/REPLACE blocks to a list of lines
+--- @param buffer_lines table: The original lines
+--- @param replacement_content string: The raw SEARCH/REPLACE content
+--- @return boolean success
+--- @return table new_lines
+function M.apply_replacement(buffer_lines, replacement_content)
+  local new_lines = {};
+  for _, l in ipairs(buffer_lines) do table.insert(new_lines, l) end
+  
+  local success = true;
+  local block_pattern = "<<<<<<< SEARCH\n(.-)=======\n(.-)>>>>>>> REPLACE"
+  local found_any = false;
+
+  for search_part, replace_part in replacement_content:gmatch(block_pattern) do
+    found_any = true;
+    local search_lines = vim.split(search_part, "\n", { trimempty = true });
+    local replace_lines = vim.split(replace_part, "\n", { trimempty = true });
+
+    local s_start, s_end, quality = find_block_internal(new_lines, search_lines);
+    if s_start then
+      local head = {}; for i=1, s_start-1 do table.insert(head, new_lines[i]) end
+      local tail = {}; for i=s_end+1, #new_lines do table.insert(tail, new_lines[i]) end
+      
+      new_lines = {};
+      for _, l in ipairs(head) do table.insert(new_lines, l) end
+      for _, l in ipairs(replace_lines) do table.insert(new_lines, l) end
+      for _, l in ipairs(tail) do table.insert(new_lines, l) end
+    else
+      success = false;
+    end
+  end
+
+  return found_any and success, new_lines;
+end
+
 return M;

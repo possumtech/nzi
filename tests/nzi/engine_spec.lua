@@ -1,5 +1,5 @@
 local assert = require("luassert");
-local engine = require("nzi.engine.engine");
+local engine = require("nzi.service.llm.bridge");
 local shell = require("nzi.tools.shell");
 
 describe("AI engine dispatcher", function()

@@ -11,25 +11,37 @@ This is the canonical source of truth for **nzi** development, technical specifi
 - [x] Session persistence (Save/Load).
 - [x] Surgical Edit & Diff UX (Auto-save/tab cleanup).
 - [x] Systematic XML validation.
-
 ### Pending Focus
-- [ ] Revisit and reflect on sysprompts and processes for edits/sync/queues
+- [ ] Refactor LLM Service (DOM <--> LLM) to use pure XML streaming and validation.
+- [ ] Refactor Vim Service (Vim <--> DOM) to use effector/watcher pattern.
+- [ ] Complete the "Purge" of legacy imperative state tables.
 
 ---
 
-## 2. Technical Architecture
+## 2. Technical Architecture (Service-Oriented)
 
 ### Core Modules
 | Module | Location | Purpose |
 | :--- | :--- | :--- |
-| **Engine** | `lua/nzi/engine/` | Loop orchestration and prompt building. |
-| **Protocol** | `lua/nzi/protocol/` | Tag parsing and LLM bridge (bridge.py). |
-| **UI** | `lua/nzi/ui/` | Modal, Diff, and Visual management. |
-| **Context** | `lua/nzi/context/` | Buffer states, history, and path resolution. |
-| **Tools** | `lua/nzi/tools/` | Shell, LSP, and Instruct execution. |
+| **DOM** | `lua/nzi/dom/` | **Single Source of Truth.** XML Document, Schema, and XPath Query engine. |
+| **Vim Service** | `lua/nzi/service/vim/` | **Hardware Sync.** Translates between Vim events/UI and the XML DOM. |
+| **LLM Service** | `lua/nzi/service/llm/` | **Cognitive Bridge.** Translates between XML DOM and LLM Chat APIs. |
+| **UI** | `lua/nzi/ui/` | **Ergonomics.** Projections of the DOM (Modal, Statusline) for the Human. |
+| **Tools** | `lua/nzi/tools/` | Stateless utilities used by effector and parser. |
 
-### Context Visibility Hierarchy
-| State | Documentation Term | Logic |
+---
+
+## 3. Master Functional Checklist
+
+### Declarative Architecture (SSOT)
+- [x] **Root Document**: Entire session wrapped in `<session>` with global state attributes.
+- [x] **XPath State Derivation**: `is_blocked()` and `get_pending_actions()` derived from XML.
+- [x] **Formal Validation**: Real-time XSD/Schematron enforcement on the DOM.
+- [ ] **Vim Watcher**: Synchronous update of `<agent:context>` on buffer events.
+- [ ] **Vim Effector**: Declarative opening of diffs/terminals based on DOM state.
+- [ ] **LLM Bridge**: Pure-function translation of XML tree to OpenAI JSON.
+- [ ] **XML Streaming**: Direct real-time injection of LLM chunks into the DOM.
+
 | :--- | :--- | :--- |
 | **`active`** | **Full Context** | Content sent; model can propose edits. |
 | **`read`** | **Context Only** | Content sent; model treats as read-only doc. |

@@ -14,7 +14,7 @@ function M.validate(xml_str)
   clean_xml = clean_xml:gsub("^%s*", ""):gsub("%s*$", "");
   
   local python_cmd = config.options.python_cmd[1] or "python3";
-  local validator_script = vim.fn.getcwd() .. "/lua/nzi/protocol/validator.py";
+  local validator_script = vim.fn.getcwd() .. "/lua/nzi/dom/validator.py";
   
   local cmd = string.format("%s %s %s %s", python_cmd, validator_script, xsd_path, sch_path);
   local res = vim.fn.system(cmd, clean_xml);

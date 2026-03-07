@@ -1,6 +1,6 @@
-local context = require("nzi.context.context");
-local prompts = require("nzi.engine.prompts");
-local job = require("nzi.engine.job");
+local context = require("nzi.service.vim.watcher");
+local prompts = require("nzi.service.llm.prompt");
+local job = require("nzi.service.llm.job");
 local diff = require("nzi.ui.diff");
 local modal = require("nzi.ui.modal");
 
@@ -27,7 +27,7 @@ function M.run(instruction, bufnr, include_lsp)
   };
 
   local messages, system_prompt, context_str, ctx_list, turn_block = prompts.build_messages(instruction, "instruct", target_file, include_lsp, selection);
-  local hist_str = require("nzi.context.history").format();
+  local hist_str = require("nzi.dom.session").format();
   
   -- Use the modal for status updates
   modal.open();
@@ -59,7 +59,7 @@ function M.run(instruction, bufnr, include_lsp)
       modal.set_thinking(false);
       if success and result then
         -- Add to structured history for the next turn
-        require("nzi.context.history").add("instruct", instruction, result);
+        require("nzi.dom.session").add("instruct", instruction, result);
         
         modal.write("Code change received. Opening diff view...\n", "system", false);
         modal.write(result .. "\n", "response", false);

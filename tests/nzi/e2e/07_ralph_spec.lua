@@ -1,5 +1,5 @@
 local assert = require("luassert")
-local agent = require("nzi.protocol.agent")
+local agent = require("nzi.service.llm.actions")
 local config = require("nzi.core.config")
 
 describe("7. Ralph & Verification", function()

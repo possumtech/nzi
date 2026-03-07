@@ -1,5 +1,5 @@
 local assert = require("luassert");
-local context = require("nzi.context.context");
+local context = require("nzi.service.vim.watcher");
 
 describe("AI context engine", function()
   it("should have default buffer state as active for named buffers", function()

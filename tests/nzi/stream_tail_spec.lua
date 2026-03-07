@@ -1,6 +1,6 @@
 local assert = require("luassert");
 local nzi = require("nzi");
-local job = require("nzi.engine.job");
+local job = require("nzi.service.llm.job");
 
 describe("AI stream tail processing", function()
   

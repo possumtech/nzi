@@ -8,7 +8,7 @@ describe("TRUE E2E: Full UI Lifecycle", function()
 
   before_each(function()
     require("nzi").setup();
-    require("nzi.context.history").clear();
+    require("nzi.dom.session").clear();
     require("nzi.ui.modal").clear();
     -- Close the modal window if it's open
     pcall(vim.cmd, "close");

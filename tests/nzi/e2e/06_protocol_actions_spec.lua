@@ -1,8 +1,8 @@
 local assert = require("luassert")
-local agent = require("nzi.protocol.agent")
+local agent = require("nzi.service.llm.actions")
 local diff = require("nzi.ui.diff")
-local context = require("nzi.context.context")
-local history = require("nzi.context.history")
+local context = require("nzi.service.vim.watcher")
+local history = require("nzi.dom.session")
 local xml_helper = require("tests.xml_helper")
 
 describe("6. Protocol & Actions", function()
@@ -17,8 +17,8 @@ describe("6. Protocol & Actions", function()
       { name = "read", attr = "file=\"dummy.lua\"", content = "" }
     }
     
-    local orig_resolve = require("nzi.context.resolver").resolve
-    require("nzi.context.resolver").resolve = function(f) return f, nil end
+    local orig_resolve = require("nzi.dom.resolver").resolve
+    require("nzi.dom.resolver").resolve = function(f) return f, nil end
     
     local called_back = false
     agent.dispatch_actions(actions, "instruct", function(resp)
@@ -30,7 +30,7 @@ describe("6. Protocol & Actions", function()
     local bufnr = vim.fn.bufadd("dummy.lua")
     assert.equals("active", context.get_state(bufnr))
     
-    require("nzi.context.resolver").resolve = orig_resolve
+    require("nzi.dom.resolver").resolve = orig_resolve
   end)
 
   it("should process <model:delete> and register a pending deletion", function()
@@ -38,8 +38,8 @@ describe("6. Protocol & Actions", function()
       { name = "delete", attr = "file=\"delete_me.lua\"", content = "" }
     }
     
-    local orig_resolve = require("nzi.context.resolver").resolve
-    require("nzi.context.resolver").resolve = function(f) return f, nil end
+    local orig_resolve = require("nzi.dom.resolver").resolve
+    require("nzi.dom.resolver").resolve = function(f) return f, nil end
     
     local orig_yolo = require("nzi.core.config").options.yolo
     require("nzi.core.config").options.yolo = false
@@ -58,7 +58,7 @@ describe("6. Protocol & Actions", function()
     assert.equals(1, diff.get_count())
     
     require("nzi.core.config").options.yolo = orig_yolo
-    require("nzi.context.resolver").resolve = orig_resolve
+    require("nzi.dom.resolver").resolve = orig_resolve
   end)
 
   it("AI/accept should confirm deletion and AI/reject should discard it", function()

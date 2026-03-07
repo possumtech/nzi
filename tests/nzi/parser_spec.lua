@@ -1,5 +1,5 @@
 local assert = require("luassert");
-local parser = require("nzi.engine.parser");
+local parser = require("nzi.dom.parser");
 
 describe("AI parser", function()
   it("should parse :AI: instruct at BOL", function()

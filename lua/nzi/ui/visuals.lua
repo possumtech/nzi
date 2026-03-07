@@ -55,7 +55,7 @@ function M.stop_thinking()
 end
 
 function M.get_status_data()
-  local context = require("nzi.context.context");
+  local context = require("nzi.service.vim.watcher");
   local config = require("nzi.core.config");
   local alias = config.options.active_model or "AI";
   local bufnr = vim.api.nvim_get_current_buf();

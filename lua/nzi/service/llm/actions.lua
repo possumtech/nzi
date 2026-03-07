@@ -1,9 +1,9 @@
 local tools = require("nzi.tools.tools");
-local resolver = require("nzi.context.resolver");
-local protocol = require("nzi.protocol.protocol");
+local resolver = require("nzi.dom.resolver");
+local protocol = require("nzi.dom.parser");
 local modal = require("nzi.ui.modal");
 local config = require("nzi.core.config");
-local context = require("nzi.context.context");
+local context = require("nzi.service.vim.watcher");
 local editor = require("nzi.ui.editor");
 local diff = require("nzi.ui.diff");
 

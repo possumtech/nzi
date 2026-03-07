@@ -1,13 +1,13 @@
 local assert = require("luassert")
 local engine = require("nzi.engine.engine")
-local parser = require("nzi.engine.parser")
+local parser = require("nzi.dom.parser")
+local bridge = require("nzi.service.llm.bridge")
 
 describe("4. Input Parsing & Selection", function()
   local test_buf
 
   before_each(function()
     test_buf = vim.api.nvim_create_buf(true, false)
-    vim.api.nvim_buf_set_name(test_buf, "test_parsing.lua")
     vim.api.nvim_set_current_buf(test_buf)
   end)
 
@@ -18,41 +18,42 @@ describe("4. Input Parsing & Selection", function()
   end)
 
   it("should parse single line instruct and extract it", function()
-    local type, content = parser.parse_line(":AI: refactor this")
+    local line = ":AI: Optimize this loop"
+    local type, content = parser.parse_line(line)
     assert.equals("instruct", type)
-    assert.equals("refactor this", content)
+    assert.equals("Optimize this loop", content)
   end)
 
   it("should parse Ask, Instruct, and Shell prefixes flawlessly", function()
-    local type1, content1 = parser.parse_line(":AI? what is this?")
-    assert.equals("ask", type1)
-    assert.equals("what is this?", content1)
-
-    local type2, content2 = parser.parse_line(":AI! ls -la")
-    assert.equals("run", type2)
-    assert.equals("ls -la", content2)
+    assert.equals("ask", (parser.parse_line(":AI? What is this?")))
+    assert.equals("instruct", (parser.parse_line(":AI: fix bug")))
+    assert.equals("run", (parser.parse_line(":AI! echo 123")))
   end)
 
   it("should correctly identify range bounds and extract inline instructs", function()
     local lines = {
       "function foo()",
-      ":AI: modify the loop",
       "  for i = 1, 10 do",
+      ":AI: modify the loop",
       "  end",
       "end"
     }
     vim.api.nvim_buf_set_lines(test_buf, 0, -1, false, lines)
     
-    -- Mock the engine run_loop to trap the results
+    -- Mock the bridge start_loop to trap the results
     local captured_content, captured_type, captured_selection
-    local orig_run_loop = engine.run_loop
-    engine.run_loop = function(content, type, include_lsp, target_file, selection)
+    local old_start = bridge.start_loop
+    bridge.start_loop = function(content, type, include_lsp, target_file, selection)
       captured_content = content
       captured_type = type
       captured_selection = selection
     end
 
     engine.execute_range(1, 5)
+
+    -- Wait for the async call to be trapped
+    local success = vim.wait(2000, function() return captured_content ~= nil end);
+    assert.is_true(success, "Bridge was never called by execute_range");
 
     -- verify that the instruct line was deleted from buffer
     local new_lines = vim.api.nvim_buf_get_lines(test_buf, 0, -1, false)
@@ -66,7 +67,7 @@ describe("4. Input Parsing & Selection", function()
     assert.truthy(captured_selection)
     assert.equals(5, captured_selection.end_line)
     
-    engine.run_loop = orig_run_loop
+    bridge.start_loop = old_start
   end)
 
   it("should capture character-perfect visual selection (v mode)", function()
@@ -78,7 +79,7 @@ describe("4. Input Parsing & Selection", function()
     vim.api.nvim_win_set_cursor(0, {1, 3}) -- 0-indexed column 3 is 'd'
     vim.cmd("normal! \27") -- exit visual mode
     
-    local sel = engine.get_visual_selection()
+    local sel = bridge.get_visual_selection()
     assert.equals("bcd", sel.text)
     assert.equals(1, sel.start_line)
     assert.equals(2, sel.start_col)

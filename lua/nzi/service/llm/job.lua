@@ -71,8 +71,7 @@ function M.run(messages, callback, on_stdout)
 
   local info = debug.getinfo(M.run);
   local script_dir = info.source:match("@?(.*/)")
-  -- bridge.py moved from engine/ to protocol/
-  local script_path = vim.fn.fnamemodify(script_dir .. "../protocol/bridge.py", ":p");
+  local script_path = vim.fn.fnamemodify(script_dir .. "bridge.py", ":p");
 
   local cmd = {}
   local python_parts = opts.python_cmd or { "python3" }

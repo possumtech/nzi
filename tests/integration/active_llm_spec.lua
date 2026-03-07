@@ -1,7 +1,7 @@
 local assert = require("luassert");
 local ai = require("nzi");
-local history = require("nzi.context.history");
-local engine = require("nzi.engine.engine");
+local history = require("nzi.dom.session");
+local engine = require("nzi.service.llm.bridge");
 local config = require("nzi.core.config");
 
 describe("AI active model integration", function()

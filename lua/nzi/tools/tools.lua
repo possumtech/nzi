@@ -1,4 +1,4 @@
-local context = require("nzi.context.context");
+local context = require("nzi.service.vim.watcher");
 local config = require("nzi.core.config");
 
 local M = {};

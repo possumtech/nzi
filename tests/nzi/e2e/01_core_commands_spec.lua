@@ -6,7 +6,7 @@ local modal = require("nzi.ui.modal")
 describe("1. Initialization & Core Commands", function()
   before_each(function()
     require("nzi").setup({})
-    require("nzi.context.history").clear()
+    require("nzi.dom.session").clear()
     modal.clear()
     -- reset config to defaults
     config.setup({})

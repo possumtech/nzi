@@ -7,7 +7,7 @@ local M = {};
 --- @param inject boolean | nil: Whether to inject output into the buffer
 function M.run(command, bufnr, line_idx, inject)
   local modal = require("nzi.ui.modal");
-  local history = require("nzi.context.history");
+  local history = require("nzi.dom.session");
   
   bufnr = bufnr or vim.api.nvim_get_current_buf();
   if inject == nil then inject = true; end

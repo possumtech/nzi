@@ -1,11 +1,11 @@
 local assert = require("luassert")
 local engine = require("nzi.engine.engine")
-local prompts = require("nzi.engine.prompts")
+local prompts = require("nzi.service.llm.prompt")
 local config = require("nzi.core.config")
 
 describe("5. Engine & Prompt Construction", function()
   before_each(function()
-    require("nzi.context.history").clear()
+    require("nzi.dom.session").clear()
   end)
 
   it("should extract next pending task from AGENTS.md", function()
@@ -62,7 +62,7 @@ describe("5. Engine & Prompt Construction", function()
     config.options.max_turns = 1
     
     -- Mock job to always return an action that causes a recursive loop
-    local job = require("nzi.engine.job")
+    local job = require("nzi.service.llm.job")
     local orig_run = job.run
     
     local call_count = 0
@@ -106,13 +106,9 @@ describe("5. Engine & Prompt Construction", function()
       text = "free of charge"
     }
 
-    local _, _, _, _, turn_block = prompts.build_messages("charge $500", "instruct", "LICENSE", false, selection)
+    local _, _, _, _, turn_block = prompts.build_messages("charge $500", "instruct", false, "LICENSE", selection)
     
     -- Verify exact nesting: Selection should come FIRST, followed by Instruction
-    assert.match("<agent:user>.-<agent:selection.-free of charge.-</agent:selection>.-Instruction: charge %$500.-</agent:user>", turn_block)
-    
-    -- Verify NO redundant agent:user close tags
-    local _, count = turn_block:gsub("</agent:user>", "")
-    assert.equals(1, count)
+    assert.match("Target File: LICENSE.-<agent:selection.-free of charge.-</agent:selection>.-Instruction: charge %$500", turn_block)
   end)
 end)

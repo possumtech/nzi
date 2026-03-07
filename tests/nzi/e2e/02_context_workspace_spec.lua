@@ -1,5 +1,5 @@
 local assert = require("luassert")
-local context = require("nzi.context.context")
+local context = require("nzi.service.vim.watcher")
 local config = require("nzi.core.config")
 
 describe("2. Context & Workspace State", function()
@@ -7,7 +7,7 @@ describe("2. Context & Workspace State", function()
 
   before_each(function()
     require("nzi").setup({})
-    require("nzi.context.history").clear()
+    require("nzi.dom.session").clear()
     context.states = {} -- clear states
     
     test_buf = vim.api.nvim_create_buf(true, false)
@@ -44,8 +44,8 @@ describe("2. Context & Workspace State", function()
     end
     
     -- Mute sitter for the test
-    local orig_get_skeleton = require("nzi.context.sitter").get_skeleton
-    require("nzi.context.sitter").get_skeleton = function(path)
+    local orig_get_skeleton = require("nzi.service.vim.sitter").get_skeleton
+    require("nzi.service.vim.sitter").get_skeleton = function(path)
       return "skeleton code for " .. path, nil
     end
 
@@ -64,7 +64,7 @@ describe("2. Context & Workspace State", function()
     
     -- restore
     context.get_universe = orig_get_universe
-    require("nzi.context.sitter").get_skeleton = orig_get_skeleton
+    require("nzi.service.vim.sitter").get_skeleton = orig_get_skeleton
   end)
   
   it("context.gather() should correctly compile file metadata and contents based on states", function()

@@ -132,6 +132,34 @@ function M.get_attr(attr_str, key)
   return attr_str:match(pattern1) or attr_str:match(pattern2)
 end
 
+--- Parse a single line for AI instructs
+function M.parse_line(line)
+  local patterns = {
+    instruct = ":[Aa][Ii]:",
+    ask = ":[Aa][Ii]%?",
+    run = ":[Aa][Ii]!",
+    internal = ":[Aa][Ii]/"
+  };
+
+  for type, prefix in pairs(patterns) do
+    local match = line:match("^" .. prefix .. "%s*(.*)$");
+    if match then
+      local content = match:gsub("%s*[-]*>$", ""):gsub("%s*%*/$", ""):gsub("%s*#]$", "");
+      return type, content;
+    end
+  end
+  return nil, nil;
+end
+
+--- Find the first AI instruct in a range of lines
+function M.find_in_lines(lines)
+  for i, line in ipairs(lines) do
+    local type, content = M.parse_line(line);
+    if type then return i, type, content; end
+  end
+  return nil, nil, nil;
+end
+
 --- Execute an XPath query on an XML string
 --- @param xml_str string: The raw XML (will be wrapped in <session>)
 --- @param xpath string: The XPath expression

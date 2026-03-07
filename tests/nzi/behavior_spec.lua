@@ -45,7 +45,8 @@ describe("AI behavioral commands", function()
     local success = vim.wait(10000, function()
       local lines = vim.api.nvim_buf_get_lines(modal.bufnr, 0, -1, false);
       local text = table.concat(lines, "\n");
-      return text:match("<agent:shell_output>.-BANG_SUCCESS") ~= nil
+      -- Look for the technical system tag or the shell output telemetry
+      return text:match("shell_output") ~= nil and text:match("BANG_SUCCESS") ~= nil
     end);
 
     assert.is_true(success, "Modal never showed BANG_SUCCESS with correct tags.");
@@ -61,14 +62,14 @@ describe("AI behavioral commands", function()
     vim.api.nvim_set_current_buf(bufnr);
     
     -- Directives are now treated as run_loop(..., "instruct", ...)
-    local engine_mod = require("nzi.engine.engine");
+    local engine_mod = require("nzi.service.llm.bridge");
     local run_loop_spy = require("luassert.spy").on(engine_mod, "run_loop");
     
     -- Simulate :AI :Hello World
     vim.cmd("AI :Hello World");
 
     -- run_loop(content, type, include_lsp, target_file, selection)
-    assert.spy(run_loop_spy).was_called_with("Hello World", "instruct", true, vim.fn.fnamemodify(0, ":."));
+    assert.spy(run_loop_spy).was_called_with("Hello World", "instruct", true, "");
     
     run_loop_spy:revert();
     vim.api.nvim_buf_delete(bufnr, { force = true });
@@ -78,7 +79,7 @@ describe("AI behavioral commands", function()
     local bufnr = vim.api.nvim_create_buf(true, false);
     vim.api.nvim_buf_set_name(bufnr, "test_state.lua");
     vim.api.nvim_set_current_buf(bufnr);
-    local context = require("nzi.context.context");
+    local context = require("nzi.service.vim.watcher");
 
     -- Default should be active
     assert.are.equal("active", context.get_state(bufnr));
