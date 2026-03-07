@@ -8,8 +8,11 @@
   <xs:element name="session">
     <xs:complexType>
       <xs:sequence>
-        <xs:element ref="nzi:turn" minOccurs="1" maxOccurs="unbounded"/>
+        <xs:element ref="nzi:turn" minOccurs="0" maxOccurs="unbounded"/>
       </xs:sequence>
+      <xs:attribute name="model" type="xs:string"/>
+      <xs:attribute name="yolo" type="xs:string"/>
+      <xs:attribute name="roadmap" type="xs:string"/>
     </xs:complexType>
   </xs:element>
 

@@ -140,11 +140,7 @@ function M.xpath(xml_str, xpath)
   local config = require("nzi.core.config");
   local python_cmd = config.options.python_cmd[1];
   
-  -- Ensure we have a valid XML structure for the tool
   local wrapped = xml_str;
-  if not xml_str:match("^%s*<session") then
-    wrapped = "<session xmlns:nzi=\"nzi\" xmlns:agent=\"nzi\" xmlns:model=\"nzi\">\n" .. xml_str .. "\n</session>";
-  end
 
   local script = [[
 import sys

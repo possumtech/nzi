@@ -3,7 +3,7 @@ local M = {};
 -- Array of turns: { id = number, type = string, user = string, assistant = string }
 -- Content is stored WITH line numbers (e.g. "1: text")
 M.turns = {};
-local next_id = 1;
+local next_id = 0;
 
 --- Escape special characters for XML safety
 function M.xml_escape(text)
@@ -77,12 +77,22 @@ function M.get_next_id()
   return next_id;
 end
 
---- Format history into a structured XML block for the modal view
+--- Format history into a structured XML block
 --- @return string
 function M.format()
-  if #M.turns == 0 then return ""; end
+  local config = require("nzi.core.config");
+  local model = config.options.active_model or "unknown";
+  local yolo = config.options.yolo and "true" or "false";
+  local roadmap = config.options.roadmap_file or "AGENTS.md";
+  
+  local header = string.format("<session xmlns:nzi=\"nzi\" xmlns:agent=\"nzi\" xmlns:model=\"nzi\" model=\"%s\" yolo=\"%s\" roadmap=\"%s\">", 
+    model, yolo, roadmap);
 
-  local parts = {};
+  if #M.turns == 0 then 
+    return header .. "\n</session>";
+  end
+
+  local parts = { header };
   for _, turn in ipairs(M.turns) do
     local user_clean = M.strip_line_numbers(turn.user);
     local assistant_clean = M.strip_line_numbers(turn.assistant);
@@ -94,7 +104,6 @@ function M.format()
     
     if user_clean ~= "" then
       local user_formatted = user_clean;
-      -- Only escape if NOT a protocol tag
       if not (user_clean:match("^%s*<agent:") or user_clean:match("^%s*<model:")) then
         user_formatted = M.xml_escape(user_clean);
       end
@@ -102,7 +111,6 @@ function M.format()
     end
     
     if assistant_clean ~= "" then
-      -- assistant_clean is usually a sequence of <model:*> tags
       turn_xml = turn_xml .. "\n" .. assistant_clean;
     end
     
@@ -110,6 +118,7 @@ function M.format()
     table.insert(parts, turn_xml);
   end
   
+  table.insert(parts, "</session>");
   return table.concat(parts, "\n\n");
 end
 
@@ -184,7 +193,7 @@ function M.delete_after(id)
     if #M.turns > 0 then
       next_id = M.turns[#M.turns].id + 1;
     else
-      next_id = 1;
+      next_id = 0;
     end
     return true;
   end
