@@ -253,11 +253,11 @@ local function get_telemetry_line(msg_type, id, metadata)
   end
 
   if msg_type == "user" or msg_type == "ask" or msg_type == "instruct" then
-    return "[ USER ]";
+    return ""; -- Let the XML tags speak for themselves
   elseif msg_type == "reasoning_content" then
-    return "[ ASSISTANT | reasoning ]";
+    return "[ SYSTEM | reasoning ]";
   elseif msg_type == "content" then
-    return "[ ASSISTANT | content ]";
+    return ""; -- No header for primary content blocks
   elseif msg_type == "shell" or msg_type == "shell_output" then
     return "[ SYSTEM | shell_output ]";
   elseif msg_type == "error" then
@@ -341,8 +341,9 @@ function M.write(text, msg_type, append, turn_id, metadata)
     local tag = get_tag_name(msg_type);
     local telemetry = get_telemetry_line(msg_type);
     local lc = vim.api.nvim_buf_line_count(bufnr);
-    vim.api.nvim_buf_set_lines(bufnr, lc, lc, false, { telemetry, "<" .. tag .. ">" });
-    highlight_lines(bufnr, lc, lc + 1, "NziTelemetry");
+    local lines_to_add = (telemetry ~= "") and { telemetry, "<" .. tag .. ">" } or { "<" .. tag .. ">" };
+    vim.api.nvim_buf_set_lines(bufnr, lc, lc, false, lines_to_add);
+    highlight_lines(bufnr, lc, lc + #lines_to_add - 1, "NziTelemetry");
     M.current_open_sub_tag = msg_type;
     append = false;
   end

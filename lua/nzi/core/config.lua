@@ -65,6 +65,7 @@ M.defaults = {
 
   -- Agentic Loop settings
   roadmap_file = "AGENTS.md", -- Project roadmap/task list file
+  prompt_file = "nzi.prompt", -- System rules file
   max_turns = 5, -- Safety cap for autonomous tool loops
   yolo = false,  -- If true, skip permission prompts for shell/env tools
   auto_test = nil, -- Command string to run after turns (e.g. "npm test")

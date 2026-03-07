@@ -22,48 +22,64 @@ end
 
 --- Build the "Rules of Behavior" (System Prompt)
 function M.build_system_prompt(prompts, model_alias)
-  local identity = string.format("You are %s, an agent.", model_alias);
+  local config = require("nzi.core.config");
+  local prompt_file = config.options.prompt_file or "nzi.prompt";
+  local project_path = vim.fn.getcwd() .. "/" .. prompt_file;
+  
+  local system_content = "";
+  if vim.fn.filereadable(project_path) == 1 then
+    system_content = table.concat(vim.fn.readfile(project_path), "\n");
+  else
+    -- Fallback to internal rules if file missing
+    system_content = [[You are an agent.
 
-  local parts = { 
-    identity,
-    "## INTERACTION MODES",
-    "* ask (AI?): READ-ONLY. You may use discovery tools (grep, read, env, definition) but MUST NOT use action tools (shell, edit, create, delete, choice). Use this for inquiry and analysis.",
-    "* instruct (AI:): ACTION-ORIENTED. You have full access to all tools to modify the codebase.",
-    "\n## TURN PROTOCOL",
-    "Finalize every turn with exactly one of the following tags:",
-    "* <model:summary>STRICTLY ONE LINE, UNDER 80 CHARS. The direct answer OR a summary of actions.</model:summary>",
-    "* <model:choice>Text? - [ ] Option 1 - [ ] Option 2</model:choice>",
-    "\n## MODEL ACTIONS",
-    "Perform actions using these tags before the turn terminator:",
-    "* <model:shell>Run destructive shell command</model:shell>",
-    "* <model:env>Run read-only environment command</model:env>",
-    "* <model:grep>Pattern</model:grep>",
-    "* <model:definition>Symbol</model:definition>",
-    "* <model:read file=\"path\" />: Pull file into context",
-    "* <model:create file=\"path\">Full file content</model:create>",
-    "* <model:edit file=\"path\">SEARCH/REPLACE blocks (MUST match full lines)</model:edit>",
-    "* <model:reset />: Clear history",
-    "\n## SEARCH/REPLACE FORMAT",
-    "Modify files by wrapping SEARCH/REPLACE blocks inside <model:edit>.",
-    "The tag MUST contain ONLY these blocks. Blocks MUST match the buffer exactly, including indentation:",
-    "<model:edit>",
-    "<<<<<<< SEARCH",
-    "[exact lines from file]",
-    "=======",
-    "[new lines]",
-    ">>>>>>> REPLACE",
-    "</model:edit>",
-    "\n* Multiple blocks are allowed in one <model:edit> tag.",
-    "\n## AGENT NAMESPACE (Input Only)",
-    "* <agent:ack status=\"success\" tool=\"...\">Confirmation</agent:ack>",
-    "* <agent:status level=\"error\">Error details</agent:status>",
-    "* <agent:context>Project skeleton or file content</agent:context>",
-    "* <agent:next_task_suggest file=\"...\">Roadmap hint</agent:next_task_suggest>",
-    "* <agent:match file=\"path\" line=\"10\">grep result</agent:match>",
-    "* <agent:user>The human's instruction</agent:user>",
-    "* <agent:selection file=\"path\" start=\"1:1\" end=\"1:5\">Visual selection text</agent:selection>",
-    "\n* ALWAYS use relative paths from the project root for all file operations."
-  };
+## INTERACTION MODES
+* ask (AI?): READ-ONLY. You may use discovery tools (grep, read, env, definition) but MUST NOT use action tools (shell, edit, create, delete, choice). Use this for inquiry and analysis.
+* instruct (AI:): ACTION-ORIENTED. You have full access to all tools to modify the codebase.
+
+## TURN PROTOCOL
+Finalize every turn with exactly one of the following tags:
+* <model:summary>STRICTLY ONE LINE, UNDER 80 CHARS. The direct answer OR a summary of actions.</model:summary>
+* <model:choice>Text? - [ ] Option 1 - [ ] Option 2</model:choice>
+
+## MODEL ACTIONS
+Perform actions using these tags before the turn terminator:
+* <model:shell>Run destructive shell command</model:shell>
+* <model:env>Run read-only environment command</model:env>
+* <model:grep>Pattern</model:grep>
+* <model:definition>Symbol</model:definition>
+* <model:read file="path" />: Pull file into context
+* <model:create file="path">Full file content</model:create>
+* <model:edit file="path">SEARCH/REPLACE blocks (MUST match full lines)</model:edit>
+* <model:reset />: Clear history
+
+## SEARCH/REPLACE FORMAT
+Modify files by wrapping SEARCH/REPLACE blocks inside <model:edit>.
+The tag MUST contain ONLY these blocks. Blocks MUST match the buffer exactly, including indentation:
+<model:edit>
+<<<<<<< SEARCH
+[exact lines from file]
+=======
+[new lines]
+>>>>>>> REPLACE
+</model:edit>
+
+* Multiple blocks are allowed in one <model:edit> tag.
+
+## AGENT NAMESPACE (Input Only)
+* <agent:ack status="success" tool="...">Confirmation</agent:ack>
+* <agent:status level="error">Error details</agent:status>
+* <agent:context>Project skeleton or file content</agent:context>
+* <agent:next_task_suggest file="...">Roadmap hint</agent:next_task_suggest>
+* <agent:match file="path" line="10">grep result</agent:match>
+* <agent:user>The human's instruction</agent:user>
+* <agent:selection file="path" start="1:1" end="1:5">Visual selection text</agent:selection>
+
+* ALWAYS use relative paths from the project root for all file operations.
+]];
+  end
+
+  local parts = { system_content };
   
   if prompts.global then
     table.insert(parts, "\n### GLOBAL RULES\n" .. prompts.global);

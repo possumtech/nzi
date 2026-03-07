@@ -88,6 +88,7 @@ function M.run_loop(content, mode, include_lsp, target_file, selection)
         local active_model = config.options.active_model or "unknown";
 
         if not success then
+          modal.set_thinking(false);
           if not error_displayed then
             modal.write(result, "error", false, current_turn_id);
             modal.close_tag();
@@ -100,6 +101,7 @@ function M.run_loop(content, mode, include_lsp, target_file, selection)
         end
 
         tag_parser:feed(""); -- Finalize parser
+        modal.set_thinking(false);
         local actions = tag_parser:get_actions();
         local remaining = tag_parser:get_remaining();
 
@@ -351,7 +353,9 @@ function M.dispatch(args)
     if first_char == "?" then
       M.handle_ask(instruction, true);
     else
-      M.run_loop(instruction, "instruct", true, vim.fn.fnamemodify(0, ":."));
+      local cur_file = vim.api.nvim_buf_get_name(0);
+      local relative_file = vim.fn.fnamemodify(cur_file, ":.");
+      M.run_loop(instruction, "instruct", true, relative_file);
     end
   else
     M.handle_ask(input, false);
