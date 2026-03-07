@@ -81,31 +81,33 @@ end
 --- @param content string: The ask and checkbox list from the model
 --- @param callback function: Called with the final user answer string
 function M.choice(content, callback)
-  -- 1. Extract the ask and the options using flexible regex
-  -- We search for lines starting with - [ ] or * [ ] or -[] etc.
+  -- 1. Extract the prompt and options using a flexible split
+  -- We split on common markdown checkbox patterns: "- [ ]" or "* [ ]"
+  -- We use Lua patterns: escape [ and ] as %[ and %]
+  local parts = vim.split(content, "[-*]%s*%[%s*%]", { trimempty = false });
+  
+  local prompt = parts[1]:gsub("^%s*", ""):gsub("%s*$", "");
   local options = {};
-  local lines = vim.split(content, "\n");
-  local prompt_lines = {};
-  local in_options = false;
-
-  for _, line in ipairs(lines) do
-    local opt = line:match("^[%s%-]*%*?%s*%[ %]%s*(.*)$")
-    if opt then
-      opt = opt:gsub("^%s*", ""):gsub("%s*$", "");
-      if opt ~= "" then
-        table.insert(options, opt);
-        in_options = true;
+  
+  for i = 2, #parts do
+    local opt = parts[i]:gsub("^%s*", ""):gsub("%s*$", "");
+    -- If the option contains newlines, it might be a multi-line prompt 
+    -- where the next option starts on a new line. We want to trim those.
+    -- But usually, each part after the split is a single option.
+    if opt ~= "" then
+      -- If there's a newline, only take the first line as the option text
+      -- to avoid consuming the next prompt lines if the model is messy.
+      local opt_lines = vim.split(opt, "\n");
+      local clean_opt = opt_lines[1]:gsub("^%s*", ""):gsub("%s*$", "");
+      if clean_opt ~= "" then
+        table.insert(options, clean_opt);
       end
-    elseif not in_options then
-      table.insert(prompt_lines, line);
     end
   end
 
-  local prompt = table.concat(prompt_lines, "\n"):gsub("^%s*", ""):gsub("%s*$", "");
   if prompt == "" then prompt = "Please choose an option:"; end
 
   -- 2. Fallback: If fewer than 2 options found, provide Yes/No
-  -- The user prefers a clean Yes/No/Freeform if the model format is ambiguous.
   if #options < 2 then
     options = { "Yes", "No" };
     prompt = content:gsub("^%s*", ""):gsub("%s*$", "");

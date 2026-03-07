@@ -64,6 +64,17 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 }
 ```
 
+## The AI Modal (`:AI/toggle`)
+
+The modal is your persistent log of the current session.
+
+- **`q` / `<Esc>`**: Close modal.
+- **`X`**: **Rewind** history. Deletes the turn under the cursor and everything that follows it. Useful for pruning "poisoned" context.
+- **Folding**: History turns are automatically folded to keep the view clean. The *active* turn remains expanded.
+- **Hijack Protection**: Commands like `:e .` typed while the cursor is inside the modal will trigger a safe closure of the modal first.
+
+**Timeout Policy**: Every turn has an absolute **15 second timeout**. If a model takes longer than 15s to respond, the turn is aborted to prevent hangs and over-scoped operations.
+
 ---
 
 ## Interaction Matrix

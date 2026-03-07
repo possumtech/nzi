@@ -79,7 +79,6 @@ end
 
 local function get_title()
   local config = require("nzi.core.config");
-  local diff = require("nzi.ui.diff");
   local visuals = require("nzi.ui.visuals");
   
   local model_alias = config.options.active_model or "AI";
@@ -119,8 +118,14 @@ function M.open()
   local opts = { buffer = bufnr, silent = true };
   vim.keymap.set("n", "q", M.close, opts);
   vim.keymap.set("n", "<Esc>", M.close, opts);
-  vim.keymap.set("n", "x", function() M.handle_delete(false) end, opts);
   vim.keymap.set("n", "X", function() M.handle_delete(true) end, opts);
+
+  -- Prevent window hijacking: If they try to move away, close it
+  vim.api.nvim_create_autocmd({ "WinLeave" }, {
+    buffer = bufnr,
+    once = true,
+    callback = function() M.close() end,
+  });
 end
 
 --- Find the turn ID at the current cursor position
@@ -143,23 +148,18 @@ end
 --- @param is_rewind boolean: If true, delete everything after the turn as well
 function M.handle_delete(is_rewind)
   local turn_id = get_turn_id_at_cursor();
-  if not turn_id or turn_id == 0 then
-    vim.notify("No turn selected for deletion.", vim.log.levels.WARN);
+  if not turn_id or type(turn_id) ~= "number" or turn_id == 0 then
+    vim.notify("No turn selected for rewind.", vim.log.levels.WARN);
     return;
   end
 
   local history = require("nzi.context.history");
-  local msg = is_rewind and "Rewind history to this turn?" or "Delete this turn from history?"
+  local msg = "Rewind history to this turn?"
   if vim.fn.confirm(msg, "&Yes\n&No", 2) ~= 1 then return end
 
-  if is_rewind then
-    history.delete_after(turn_id);
-  else
-    history.delete_at(turn_id);
-  end
-
+  history.delete_after(turn_id);
   M.render_history();
-  vim.notify("History updated.", vim.log.levels.INFO);
+  vim.notify("History rewound.", vim.log.levels.INFO);
 end
 
 --- Clear modal and re-render everything from history
@@ -233,7 +233,7 @@ local function highlight_lines(bufnr, start_line, end_line, hl_group)
 end
 
 --- Lexicon Mapping
-local function get_tag_name(type)
+local function get_tag_name(msg_type)
   local map = {
     reasoning_content = "agent:reasoning",
     content = "agent:content",
@@ -246,10 +246,10 @@ local function get_tag_name(type)
     shell_output = "agent:shell_output",
     error = "agent:error",
   };
-  return map[type] or type;
+  return map[msg_type] or msg_type;
 end
 
-local function get_hl_group(type)
+local function get_hl_group(msg_type)
   local map = {
     system = "NziSystem",
     user = "NziUser",
@@ -262,7 +262,7 @@ local function get_hl_group(type)
     shell = "NziAssistant",
     error = "NziError",
   };
-  return map[type] or "Normal";
+  return map[msg_type] or "Normal";
 end
 
 local function get_telemetry_line(msg_type, id, metadata)
@@ -347,13 +347,13 @@ function M.close_tag()
   vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr });
 end
 
-function M.write(text, type, append, turn_id, metadata)
+function M.write(text, msg_type, append, turn_id, metadata)
   if not text or text == "" then return end
   local bufnr = get_or_create_buffer();
   vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr });
 
   -- 1. Structural Transitions
-  if (M.current_open_tag and M.current_open_tag ~= type) or (not append and M.current_open_tag) then
+  if (M.current_open_tag and M.current_open_tag ~= msg_type) or (not append and M.current_open_tag) then
     _close_current_tag(bufnr);
   end
 
@@ -361,13 +361,13 @@ function M.write(text, type, append, turn_id, metadata)
     local lc = vim.api.nvim_buf_line_count(bufnr);
     local is_empty = (lc == 1 and vim.api.nvim_buf_get_lines(bufnr, 0, 1, false)[1] == "");
     
-    local telemetry = get_telemetry_line(type, turn_id, metadata);
-    local tag = get_tag_name(type);
+    local telemetry = get_telemetry_line(msg_type, turn_id, metadata);
+    local tag = get_tag_name(msg_type);
     local meta_attrs = "";
-    if turn_id and turn_id > 0 and metadata and metadata.model then
+    if turn_id and type(turn_id) == "number" and turn_id > 0 and metadata and metadata.model then
       meta_attrs = string.format(" id=\"%d\" model=\"%s\" duration=\"%.2f\" acts=\"%d\"", 
         turn_id, metadata.model, metadata.duration or 0, metadata.changes or 0);
-    elseif turn_id and turn_id > 0 then
+    elseif turn_id and type(turn_id) == "number" and turn_id > 0 then
       meta_attrs = string.format(" id=\"%d\"", turn_id);
     end
     
@@ -379,16 +379,16 @@ function M.write(text, type, append, turn_id, metadata)
     highlight_lines(bufnr, start_idx, start_idx + #header - 1, "NziTelemetry");
 
     -- MARK THE TURN ID with an extmark in turn_ns_id
-    if turn_id then
+    if turn_id and type(turn_id) == "number" then
       local mid = vim.api.nvim_buf_set_extmark(bufnr, M.turn_ns_id, start_idx, 0, {});
       M.mark_to_turn[mid] = turn_id;
     end
 
-    M.current_open_tag = type;
+    M.current_open_tag = msg_type;
     append = false; -- First write in a section is never an "append" to existing text
 
     -- Ensure reasoning is EXPANDED when starting
-    if type == "reasoning_content" and M.winid and vim.api.nvim_win_is_valid(M.winid) then
+    if msg_type == "reasoning_content" and M.winid and vim.api.nvim_win_is_valid(M.winid) then
       vim.api.nvim_win_call(M.winid, function()
         pcall(vim.cmd, "normal! zR"); -- Expand all just in case
       end);
@@ -397,7 +397,7 @@ function M.write(text, type, append, turn_id, metadata)
 
   -- 2. Content Injection
   local content_lines = vim.split(text, "\n");
-  local hl_group = get_hl_group(type);
+  local hl_group = get_hl_group(msg_type);
   local lc = vim.api.nvim_buf_line_count(bufnr);
   
   if append and lc > 0 then

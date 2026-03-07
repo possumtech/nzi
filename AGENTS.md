@@ -66,6 +66,11 @@ This is the canonical source of truth for **nzi** development, technical specifi
 - [x] **Ralph Mode**: Autonomous test-failure auto-retry.
 - [x] **Interpolation**: "Ghost writing" execution on save.
 
+### Loop Management
+-   **Timeout**: Absolute **15 second limit** per turn. Enforced via `vim.loop.new_timer`. Models that exceed this are killed to prevent context bloating and hangs.
+-   **Max Turns**: Default cap of 5 turns per instruction.
+-   **Pruning**: The `X` key in the modal allows the user to **Rewind** the context. This deletes the turn at the cursor and everything following it, maintaining context linearity.
+
 ---
 
 ## 4. E2E & Behavior Validation
