@@ -53,28 +53,43 @@ function M.xpath(xml_str, xpath)
   local script = [[
 import sys
 from lxml import etree
-xml_str = sys.stdin.read()
-root = etree.fromstring(xml_str)
-ns = {"nzi": "nzi", "agent": "nzi", "model": "nzi"}
-results = root.xpath("]] .. xpath .. [[", namespaces=ns)
-print("---XPATH_RESULTS_START---")
-for r in results:
-    if isinstance(r, etree._Element):
-        print(etree.tostring(r, encoding='unicode').strip())
-    else:
-        print(str(r).strip())
+try:
+    xml_str = sys.stdin.read()
+    root = etree.fromstring(xml_str)
+    ns = {"nzi": "nzi", "agent": "nzi", "model": "nzi"}
+    results = root.xpath("]] .. xpath .. [[", namespaces=ns)
+    print("---XPATH_RESULTS_START---")
+    for r in results:
+        if isinstance(r, etree._Element):
+            print(etree.tostring(r, encoding='unicode').strip())
+        else:
+            print(str(r).strip())
+except Exception as e:
+    print("---XPATH_ERROR---")
+    print(str(e))
+    sys.exit(1)
 ]];
 
-  local res = vim.fn.system(python_cmd .. " -", script .. "\n" .. wrapped);
+  local res = vim.fn.system({ python_cmd, "-c", script }, wrapped);
   local lines = vim.split(res, "\n", { trimempty = true });
   local final_results = {};
   local in_results = false;
+  local err_msg = nil;
+  local in_error = false;
   for _, line in ipairs(lines) do
     if line == "---XPATH_RESULTS_START---" then
       in_results = true;
+    elseif line == "---XPATH_ERROR---" then
+      in_error = true;
+    elseif in_error then
+      err_msg = (err_msg or "") .. line .. "\n";
     elseif in_results then
       table.insert(final_results, line);
     end
+  end
+
+  if in_error then
+    error("XPath Python Error: " .. err_msg .. "\nXML was:\n" .. wrapped);
   end
   return final_results;
 end

@@ -3,7 +3,10 @@ local M = {};
 M.bufnr = nil;
 M.winid = nil;
 M.timer = nil;
-M.current_open_tag = nil;
+M.current_open_tag = nil; -- Tracks the turn level
+M.current_open_turn_id = nil;
+M.current_open_sub_tag = nil; -- Tracks blocks inside a turn
+
 M.ns_id = vim.api.nvim_create_namespace("nzi_modal");
 M.turn_ns_id = vim.api.nvim_create_namespace("nzi_turn_ids");
 M.mark_to_turn = {}; -- Mapping of extmark IDs to turn IDs
@@ -23,12 +26,10 @@ local function setup_highlights()
 end
 
 --- Folding expression for nzi modal
---- Folds completed turn blocks
 _G.nzi_modal_foldexpr = function(lnum)
   local line = vim.api.nvim_buf_get_lines(0, lnum - 1, lnum, false)[1] or ""
   
   if line:match("^<agent:turn id=\"%d+\".*>") then
-    -- History turn: Fold by default
     return ">1"
   end
 
@@ -36,8 +37,6 @@ _G.nzi_modal_foldexpr = function(lnum)
     return "<1"
   end
 
-  -- Expand reasoning blocks specifically if they are part of the active turn
-  -- (Reasoning blocks inside a folded turn won't be seen anyway)
   if line:match("^<agent:reasoning>") then
     return "0"
   end
@@ -45,7 +44,6 @@ _G.nzi_modal_foldexpr = function(lnum)
     return "0"
   end
 
-  -- Keep current level
   return "="
 end
 
@@ -56,7 +54,6 @@ local function get_or_create_buffer()
     vim.api.nvim_set_option_value("buftype", "nofile", { buf = M.bufnr });
     vim.api.nvim_set_option_value("bufhidden", "hide", { buf = M.bufnr });
     vim.api.nvim_set_option_value("modifiable", false, { buf = M.bufnr });
-    
     setup_highlights();
   end
   return M.bufnr;
@@ -65,11 +62,8 @@ end
 local function get_title()
   local config = require("nzi.core.config");
   local visuals = require("nzi.ui.visuals");
-  
   local model_alias = config.options.active_model or "AI";
   local branch = vim.fn.system("git branch --show-current 2>/dev/null"):gsub("\n", "");
-  
-  -- Get the same status info used in the global statusline
   local status_data = visuals.get_status_data();
   local status_str = status_data.text ~= "" and string.format(" %s ", status_data.text) or "";
 
@@ -85,7 +79,7 @@ function M.open()
 
   local title = get_title();
 
-  M.winid = vim.api.nvim_open_win(bufnr, true, { -- ENTER = true for cursor focus
+  M.winid = vim.api.nvim_open_win(bufnr, true, { 
     relative = "editor",
     width = math.floor(vim.o.columns * 0.8),
     height = math.floor(vim.o.lines * 0.8),
@@ -95,7 +89,6 @@ function M.open()
     title = title, title_pos = "center",
   });
 
-  -- Folding setup (Window-local)
   vim.wo[M.winid].foldmethod = "expr";
   vim.wo[M.winid].foldexpr = "v:lua.nzi_modal_foldexpr(v:lnum)";
   vim.wo[M.winid].foldlevel = 0;
@@ -105,7 +98,6 @@ function M.open()
   vim.keymap.set("n", "<Esc>", M.close, opts);
   vim.keymap.set("n", "X", function() M.handle_delete(true) end, opts);
 
-  -- Prevent window hijacking: If they try to move away, close it
   vim.api.nvim_create_autocmd({ "WinLeave" }, {
     buffer = bufnr,
     once = true,
@@ -113,13 +105,10 @@ function M.open()
   });
 end
 
---- Find the turn ID at the current cursor position
 local function get_turn_id_at_cursor()
   if not M.winid or not vim.api.nvim_win_is_valid(M.winid) then return nil end
   local cursor = vim.api.nvim_win_get_cursor(M.winid);
-  local line = cursor[1] - 1; -- 0-indexed for extmarks
-
-  -- Search for the closest extmark with a turn_id at or before current line
+  local line = cursor[1] - 1;
   local marks = vim.api.nvim_buf_get_extmarks(M.bufnr, M.turn_ns_id, { 0, 0 }, { line, -1 }, {});
   if #marks > 0 then
     local mark_id = marks[#marks][1];
@@ -128,43 +117,35 @@ local function get_turn_id_at_cursor()
   return nil;
 end
 
-
---- Handle turn deletion or rewind
---- @param is_rewind boolean: If true, delete everything after the turn as well
 function M.handle_delete(is_rewind)
   local turn_id = get_turn_id_at_cursor();
-  -- FIX: Use global type() correctly
-  if not turn_id or _G.type(turn_id) ~= "number" or turn_id == 0 then
+  if not turn_id or _G.type(turn_id) ~= "number" then
     vim.notify("No turn selected for rewind.", vim.log.levels.WARN);
     return;
   end
 
   local history = require("nzi.context.history");
-  local msg = "Rewind history to this turn?"
-  if vim.fn.confirm(msg, "&Yes\n&No", 2) ~= 1 then return end
+  if vim.fn.confirm("Rewind history to this turn?", "&Yes\n&No", 2) ~= 1 then return end
 
   history.delete_after(turn_id);
   M.render_history();
   vim.notify("History rewound.", vim.log.levels.INFO);
 end
 
---- Clear modal and re-render everything from history
 function M.render_history()
   local history = require("nzi.context.history");
   M.clear();
-  
   local turns = history.get_all();
   for _, turn in ipairs(turns) do
     local user_clean = history.strip_line_numbers(turn.user);
     local assistant_clean = history.strip_line_numbers(turn.assistant);
-    
     if user_clean ~= "" then
       M.write(user_clean, "user", false, turn.id, turn.metadata);
     end
     if assistant_clean ~= "" then
-      -- For history, we just write the assistant block as a whole
       M.write(assistant_clean, "assistant", false, turn.id, turn.metadata);
     end
+    M.close_tag();
   end
 end
 
@@ -219,7 +200,6 @@ local function highlight_lines(bufnr, start_line, end_line, hl_group)
   end
 end
 
---- Lexicon Mapping
 local function get_tag_name(msg_type)
   local map = {
     reasoning_content = "agent:reasoning",
@@ -283,35 +263,35 @@ local function get_telemetry_line(msg_type, id, metadata)
   end
 end
 
---- Internal helper to close the currently open section
+local function _close_sub_tag(bufnr)
+  if not M.current_open_sub_tag then return end
+  local tag = get_tag_name(M.current_open_sub_tag);
+  local lc = vim.api.nvim_buf_line_count(bufnr);
+  vim.api.nvim_buf_set_lines(bufnr, lc, lc, false, { "</" .. tag .. ">" });
+  highlight_lines(bufnr, lc, lc, "NziTelemetry");
+  M.current_open_sub_tag = nil;
+end
+
 local function _close_current_tag(bufnr)
   if not M.current_open_tag then return end
-  local msg_type = M.current_open_tag;
-  local tag = get_tag_name(msg_type);
+  _close_sub_tag(bufnr);
   local lc = vim.api.nvim_buf_line_count(bufnr);
-  local tag_line = "</" .. tag .. ">";
-  vim.api.nvim_buf_set_lines(bufnr, lc, lc, false, { tag_line });
+  vim.api.nvim_buf_set_lines(bufnr, lc, lc, false, { "</agent:turn>" });
   highlight_lines(bufnr, lc, lc, "NziTelemetry");
   
-  -- Special handling for turn closure
-  if msg_type == "turn" and M.winid and vim.api.nvim_win_is_valid(M.winid) then
-    local start_line = -1;
+  if M.winid and vim.api.nvim_win_is_valid(M.winid) then
     local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false);
     for i = #lines, 1, -1 do
       if lines[i]:match("^<agent:turn id=\"%d+\".*>") then
-        start_line = i;
+        vim.api.nvim_win_call(M.winid, function()
+          pcall(vim.cmd, tostring(i) .. "foldclose");
+        end);
         break;
       end
     end
-    
-    if start_line ~= -1 then
-      vim.api.nvim_win_call(M.winid, function()
-        pcall(vim.cmd, tostring(start_line + 1) .. "foldclose");
-      end);
-    end
   end
-
   M.current_open_tag = nil;
+  M.current_open_turn_id = nil;
 end
 
 function M.close_tag()
@@ -326,62 +306,65 @@ function M.write(text, msg_type, append, turn_id, metadata)
   local bufnr = get_or_create_buffer();
   vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr });
 
-  -- TURN WRAPPING: Mandatory for all writes. Default to 0 (Preamble/System)
-  local current_tid = turn_id or 0;
-  if M.current_open_tag ~= "turn" then
-    if M.current_open_tag then _close_current_tag(bufnr); end
-    
-    local telemetry = get_telemetry_line("turn", current_tid, metadata);
-    local model_name = metadata and metadata.model or (current_tid == 0 and "system" or "unknown");
-    local meta_attrs = string.format(" id=\"%d\" model=\"%s\"", current_tid, model_name);
-    
-    if metadata and metadata.duration then
-      meta_attrs = meta_attrs .. string.format(" duration=\"%.2f\" acts=\"%d\"", metadata.duration, metadata.changes or 0);
-    end
-    
-    local open_tag = "<agent:turn" .. meta_attrs .. ">";
+  local target_tid = turn_id or 0;
+
+  -- 1. If Turn ID changed, close old turn
+  if M.current_open_tag == "turn" and M.current_open_turn_id ~= target_tid then
+    _close_current_tag(bufnr);
+  end
+
+  -- 2. Open Turn if needed
+  if not M.current_open_tag then
+    local telemetry = get_telemetry_line("turn", target_tid, metadata);
+    local model_name = metadata and metadata.model or (target_tid == 0 and "system" or "unknown");
+    local open_tag = string.format("<agent:turn id=\"%d\" model=\"%s\">", target_tid, model_name);
     local lc = vim.api.nvim_buf_line_count(bufnr);
     local is_empty = (lc == 1 and vim.api.nvim_buf_get_lines(bufnr, 0, 1, false)[1] == "");
     local start_idx = is_empty and 0 or lc;
-    local header = is_empty and { telemetry, open_tag } or { "", telemetry, open_tag };
-    
-    vim.api.nvim_buf_set_lines(bufnr, start_idx, -1, false, header);
-    highlight_lines(bufnr, start_idx, start_idx + #header - 1, "NziTelemetry");
-    
+    vim.api.nvim_buf_set_lines(bufnr, start_idx, -1, false, is_empty and { telemetry, open_tag } or { "", telemetry, open_tag });
+    highlight_lines(bufnr, start_idx, start_idx + (is_empty and 1 or 2), "NziTelemetry");
     local mid = vim.api.nvim_buf_set_extmark(bufnr, M.turn_ns_id, start_idx, 0, {});
-    M.mark_to_turn[mid] = current_tid;
-    
+    M.mark_to_turn[mid] = target_tid;
     M.current_open_tag = "turn";
+    M.current_open_turn_id = target_tid;
   end
 
-  -- 2. Sub-tag management
-  local tag = get_tag_name(msg_type);
-  local telemetry = get_telemetry_line(msg_type);
-  local sub_header = { telemetry, "<" .. tag .. ">" };
-  
-  local lc = vim.api.nvim_buf_line_count(bufnr);
-  vim.api.nvim_buf_set_lines(bufnr, lc, lc, false, sub_header);
-  highlight_lines(bufnr, lc, lc + 1, "NziTelemetry");
+  -- 3. Manage Sub-tags (user, content, etc.)
+  if M.current_open_sub_tag ~= msg_type then
+    _close_sub_tag(bufnr);
+    local tag = get_tag_name(msg_type);
+    local telemetry = get_telemetry_line(msg_type);
+    local lc = vim.api.nvim_buf_line_count(bufnr);
+    vim.api.nvim_buf_set_lines(bufnr, lc, lc, false, { telemetry, "<" .. tag .. ">" });
+    highlight_lines(bufnr, lc, lc + 1, "NziTelemetry");
+    M.current_open_sub_tag = msg_type;
+    append = false;
+  end
 
-  -- 3. Content Injection
+  -- 4. Content Injection
   local content_lines = vim.split(text, "\n");
   local hl_group = get_hl_group(msg_type);
-  local start_lc = vim.api.nvim_buf_line_count(bufnr);
-  vim.api.nvim_buf_set_lines(bufnr, start_lc, start_lc, false, content_lines);
-  highlight_lines(bufnr, start_lc, start_lc + #content_lines - 1, hl_group);
-
-  -- 4. Immediate Sub-tag Closure
-  local final_lc = vim.api.nvim_buf_line_count(bufnr);
-  vim.api.nvim_buf_set_lines(bufnr, final_lc, final_lc, false, { "</" .. tag .. ">" });
-  highlight_lines(bufnr, final_lc, final_lc, "NziTelemetry");
+  local lc = vim.api.nvim_buf_line_count(bufnr);
+  
+  if append and lc > 0 then
+    local last_line = vim.api.nvim_buf_get_lines(bufnr, lc - 1, lc, false)[1] or "";
+    vim.api.nvim_buf_set_lines(bufnr, lc - 1, lc, false, { last_line .. content_lines[1] });
+    if #content_lines > 1 then
+      local rem = {}; for i=2,#content_lines do table.insert(rem, content_lines[i]) end
+      vim.api.nvim_buf_set_lines(bufnr, lc, lc, false, rem);
+      highlight_lines(bufnr, lc - 1, lc + #rem - 1, hl_group);
+    else
+      highlight_lines(bufnr, lc - 1, lc - 1, hl_group);
+    end
+  else
+    vim.api.nvim_buf_set_lines(bufnr, lc, lc, false, content_lines);
+    highlight_lines(bufnr, lc, lc + #content_lines - 1, hl_group);
+  end
 
   vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr });
-  
   if M.winid and vim.api.nvim_win_is_valid(M.winid) then
-    local new_lc = vim.api.nvim_buf_line_count(bufnr);
-    if new_lc > 0 then
-      pcall(vim.api.nvim_win_set_cursor, M.winid, { new_lc, 0 });
-    end
+    local nlc = vim.api.nvim_buf_line_count(bufnr);
+    pcall(vim.api.nvim_win_set_cursor, M.winid, { nlc, 0 });
   end
 end
 
@@ -389,6 +372,8 @@ function M.clear()
   local bufnr = get_or_create_buffer();
   vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr });
   M.current_open_tag = nil;
+  M.current_open_sub_tag = nil;
+  M.current_open_turn_id = nil;
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {});
   vim.api.nvim_buf_clear_namespace(bufnr, M.ns_id, 0, -1);
   vim.api.nvim_buf_clear_namespace(bufnr, M.turn_ns_id, 0, -1);

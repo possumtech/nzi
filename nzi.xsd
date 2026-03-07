@@ -19,6 +19,8 @@
       <xs:sequence>
         <xs:choice minOccurs="0" maxOccurs="unbounded">
           <xs:element ref="nzi:user"/>
+          <xs:element ref="nzi:project_state"/>
+          <xs:element ref="nzi:next_task_suggest"/>
           <xs:element name="system" type="xs:string"/>
           <xs:element name="error" type="xs:string"/>
           <xs:element ref="nzi:summary"/>

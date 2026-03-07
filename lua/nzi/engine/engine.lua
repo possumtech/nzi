@@ -8,11 +8,12 @@ local config = require("nzi.core.config");
 local history = require("nzi.context.history");
 local protocol = require("nzi.protocol.protocol");
 local agent = require("nzi.protocol.agent");
+local visuals = require("nzi.ui.visuals");
 
 local M = {};
 
 M.current_job = nil;
-M.is_busy = false; -- Reliable state for testing and UI
+M.is_busy = false; 
 
 --- Handle an ai? ask or an AI: instruct in a multi-turn loop
 --- @param content string: The initial ask or instruct text
@@ -37,7 +38,8 @@ function M.run_loop(content, mode, include_lsp, target_file, selection)
   end
 
   M.is_busy = true;
-  require("nzi.ui.visuals").start_thinking();
+  visuals.set_busy(true);
+  
   local turn_count = 0;
   local max_turns = config.options.max_turns or 5;
   local current_prompt = content;
@@ -48,11 +50,10 @@ function M.run_loop(content, mode, include_lsp, target_file, selection)
     turn_count = turn_count + 1;
     if turn_count > max_turns then
       modal.write("Max turns reached. Loop halted for safety.", "error", false, current_turn_id);
-      modal.set_thinking(false);
       modal.close_tag();
       vim.schedule(function() 
         M.is_busy = false; 
-        require("nzi.ui.visuals").stop_thinking();
+        visuals.set_busy(false);
       end);
       return;
     end
@@ -86,10 +87,10 @@ function M.run_loop(content, mode, include_lsp, target_file, selection)
       if M.current_job then
         M.current_job:kill(15);
         modal.write("Turn timed out after 15 seconds (Policy Violation).", "error", false, current_turn_id);
+        modal.close_tag();
         M.current_job = nil;
         M.is_busy = false;
-        modal.set_thinking(false);
-        require("nzi.ui.visuals").stop_thinking();
+        visuals.set_busy(false);
       end
     end));
 
@@ -106,14 +107,13 @@ function M.run_loop(content, mode, include_lsp, target_file, selection)
         local active_model = config.options.active_model or "unknown";
 
         if not success then
-          modal.set_thinking(false);
           if not error_displayed then
             modal.write(result, "error", false, current_turn_id);
             modal.close_tag();
           end
           vim.schedule(function() 
             M.is_busy = false; 
-            require("nzi.ui.visuals").stop_thinking();
+            visuals.set_busy(false);
           end);
           return;
         end
@@ -139,11 +139,10 @@ function M.run_loop(content, mode, include_lsp, target_file, selection)
             vim.schedule(function()
               if signal == "ABORTED" then
                 modal.write("User aborted turn. Agent momentum halted.", "system", false, current_turn_id);
-                modal.set_thinking(false);
                 modal.close_tag();
                 vim.schedule(function() 
                   M.is_busy = false; 
-                  require("nzi.ui.visuals").stop_thinking();
+                  visuals.set_busy(false);
                 end);
                 return;
               end
@@ -167,9 +166,8 @@ function M.run_loop(content, mode, include_lsp, target_file, selection)
                   -- RECURSIVE TURN: We stay BUSY
                   vim.schedule(function() start_turn(); end);
                 else
-                  modal.set_thinking(false);
                   M.is_busy = false;
-                  require("nzi.ui.visuals").stop_thinking();
+                  visuals.set_busy(false);
                   config.log("Turn sequence suspended for user review/choice.", "ENGINE");
                 end
 
@@ -178,17 +176,16 @@ function M.run_loop(content, mode, include_lsp, target_file, selection)
                 -- We terminate the turn here and return control to the user.
                 -- The passive buffer will be flushed and piggybacked on the NEXT turn.
                 history.add(mode, turn_block, result, metadata);
-                modal.set_thinking(false);
                 modal.close_tag(); -- Final closure
 
                 -- COMPLETELY FINISHED
                 vim.schedule(function() 
                   M.is_busy = false; 
-                  require("nzi.ui.visuals").stop_thinking();
+                  visuals.set_busy(false);
                   -- AUTO-DRAIN: Check if there's more work in the queue
                   local next_work = queue.pop_instruction();
                   if next_work and not queue.is_blocked() then
-                    M.run_loop(next_work.instruction, next_work.type, false, next_work.target_file, next_work.selection);
+                    M.run_loop(next_work.instruction, next_work.mode, false, next_work.target_file, next_work.selection);
                   end
                 end);
               end
@@ -208,17 +205,15 @@ function M.run_loop(content, mode, include_lsp, target_file, selection)
                 -- Final response, all good
                 -- CRITICAL: Ensure history is updated so tests/UI see the completion
                 history.add(mode, turn_block, result, metadata);
-
-                modal.set_thinking(false);
                 modal.close_tag();
 
                 vim.schedule(function() 
                   M.is_busy = false; 
-                  require("nzi.ui.visuals").stop_thinking();
+                  visuals.set_busy(false);
                   -- AUTO-DRAIN: Check if there's more work in the queue
                   local next_work = queue.pop_instruction();
                   if next_work and not queue.is_blocked() then
-                    M.run_loop(next_work.instruction, next_work.type, false, next_work.target_file, next_work.selection);
+                    M.run_loop(next_work.instruction, next_work.mode, false, next_work.target_file, next_work.selection);
                   end
                 end);
               end

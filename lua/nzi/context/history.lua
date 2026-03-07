@@ -189,7 +189,7 @@ end
 --- Clear the session history
 function M.clear()
   M.turns = {};
-  next_id = 0; -- Reset to 0 for Preamble
+  next_id = 0;
 end
 
 return M;
