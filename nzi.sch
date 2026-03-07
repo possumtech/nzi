@@ -5,10 +5,11 @@
   <sch:ns prefix="model" uri="nzi"/>
 
   <!-- SESSION Rules -->
+  <!-- Structural Integrity -->
   <sch:pattern id="session-structure">
     <sch:rule context="nzi:session">
-      <sch:assert test="count(nzi:turn[@id='0']) = 1">
-        A session must contain exactly one Preamble turn (ID 0).
+      <sch:assert test="count(nzi:system) = 1">
+        A session must contain exactly one system prompt element at the root.
       </sch:assert>
     </sch:rule>
   </sch:pattern>

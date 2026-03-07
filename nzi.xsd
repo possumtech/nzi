@@ -8,6 +8,11 @@
   <xs:element name="session">
     <xs:complexType>
       <xs:sequence>
+        <!-- Environment / Global Knowledge -->
+        <xs:element ref="nzi:system"/>
+        <xs:element ref="nzi:project_roadmap" minOccurs="0"/>
+        <xs:element ref="nzi:file" minOccurs="0" maxOccurs="unbounded"/>
+        <!-- Interaction History -->
         <xs:element ref="nzi:turn" minOccurs="0" maxOccurs="unbounded"/>
       </xs:sequence>
       <xs:attribute name="model" type="xs:string"/>
@@ -33,6 +38,7 @@
           <xs:element ref="nzi:create"/>
           <xs:element ref="nzi:read"/>
           <xs:element ref="nzi:grep"/>
+          <xs:element ref="nzi:delete"/>
           <xs:element ref="nzi:shell"/>
           <xs:element ref="nzi:env"/>
           <xs:element ref="nzi:choice"/>
@@ -40,7 +46,7 @@
           <xs:element ref="nzi:status"/>
           <xs:element ref="nzi:ack"/>
           <xs:element ref="nzi:match"/>
-          <xs:element ref="nzi:context"/>
+          <xs:element ref="nzi:file"/>
         </xs:choice>
       </xs:sequence>
       <xs:attribute name="id" type="xs:integer" use="required"/>
@@ -56,6 +62,9 @@
       <xs:choice minOccurs="0" maxOccurs="unbounded">
         <xs:element ref="nzi:selection"/>
         <xs:element ref="nzi:next_task_suggest"/>
+        <xs:element ref="nzi:status"/>
+        <xs:element ref="nzi:ack"/>
+        <xs:element ref="nzi:match"/>
       </xs:choice>
       <xs:attribute name="type" type="xs:string"/>
     </xs:complexType>
@@ -94,11 +103,11 @@
     </xs:complexType>
   </xs:element>
 
-  <xs:element name="context">
+  <xs:element name="file">
     <xs:complexType>
       <xs:simpleContent>
         <xs:extension base="xs:string">
-          <xs:attribute name="file" type="xs:string"/>
+          <xs:attribute name="name" type="xs:string" use="required"/>
           <xs:attribute name="type" type="xs:string"/>
         </xs:extension>
       </xs:simpleContent>
@@ -176,6 +185,11 @@
   <xs:element name="shell" type="xs:string"/>
   <xs:element name="env" type="xs:string"/>
   <xs:element name="read">
+    <xs:complexType>
+      <xs:attribute name="file" type="xs:string" use="required"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="delete">
     <xs:complexType>
       <xs:attribute name="file" type="xs:string" use="required"/>
     </xs:complexType>

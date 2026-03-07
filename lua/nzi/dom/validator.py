@@ -17,12 +17,14 @@ def validate_and_heal(xml_str, xsd_path, sch_path=None):
     try:
         # Normalize input: Ensure it has a root <session> tag for validation
         xml_trimmed = xml_str.strip()
-        if not xml_trimmed.startswith("<session"):
-            wrapped = f'<session xmlns="nzi" xmlns:agent="nzi" xmlns:model="nzi">{xml_str}</session>'
+        if "<session" not in xml_trimmed[:100]:
+            # If it's just a fragment, we must provide the minimum required root state
+            wrapped = f'<session xmlns="nzi" xmlns:agent="nzi" xmlns:model="nzi" xmlns:nzi="nzi"><system/><project_roadmap/>{xml_str}</session>'
         else:
             # Ensure namespaces are present if it is already a session
-            if 'xmlns="nzi"' not in xml_trimmed:
-                xml_trimmed = xml_trimmed.replace("<session", '<session xmlns="nzi" xmlns:agent="nzi" xmlns:model="nzi"', 1)
+            if 'xmlns="nzi"' not in xml_trimmed and 'xmlns:agent="nzi"' not in xml_trimmed:
+                xml_trimmed = xml_trimmed.replace("<session", '<session xmlns="nzi" xmlns:agent="nzi" xmlns:model="nzi" xmlns:nzi="nzi"', 1)
+                xml_trimmed = xml_trimmed.replace("<agent:session", '<agent:session xmlns:agent="nzi" xmlns:model="nzi" xmlns:nzi="nzi"', 1)
             wrapped = xml_trimmed
 
         root = etree.fromstring(wrapped, parser=parser)

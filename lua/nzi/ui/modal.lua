@@ -72,6 +72,7 @@ local function get_tag_name(msg_type)
     error = "agent:status level='error'",
     shell = "agent:shell_output",
     shell_output = "agent:shell_output",
+    run = "agent:shell_output",
     response = "agent:content"
   };
   return map[msg_type] or "agent:status";
@@ -203,12 +204,14 @@ function M.render_history()
   
   for i, line in ipairs(lines) do
     local idx = i - 1;
-    if line:match("^<session") or line:match("^</session") or line:match("^%[ TURN") or line:match("^<agent:turn") or line:match("^</agent:turn>") or line:match("^<agent:ack") or line:match("^<agent:status") then
+    -- Detect Tags for Highlighting (Robust)
+    if line:match("^%s*<[/?]?[%a:]+") then
       highlight_lines(bufnr, idx, idx, "NziTelemetry");
     end
     
+    -- Register Turn IDs for navigation
     local tid = tonumber(line:match("id=\"(%d+)\""));
-    if tid then
+    if tid and line:match("<nzi:turn") then
       local mid = vim.api.nvim_buf_set_extmark(bufnr, M.turn_ns_id, idx, 0, {});
       M.mark_to_turn[mid] = tid;
     end
@@ -218,72 +221,73 @@ function M.render_history()
 end
 
 function M.write(text, msg_type, append, turn_id, metadata)
-  if not text or text == "" then return end
   local bufnr = M.get_or_create_buffer();
   vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr });
 
-  local target_tid = turn_id or 0;
-
-  if M.current_open_tag == "turn" and M.current_open_turn_id ~= target_tid then
-    _close_current_tag(bufnr);
-  end
-
-  if not M.current_open_tag then
-    local config = require("nzi.core.config");
-    local active_model = config.options.active_model or "AI";
-    local telemetry = get_telemetry_line("turn", target_tid, metadata);
-    local model_name = metadata and metadata.model or (target_tid == 0 and "system" or active_model);
-    local open_tag = string.format("<agent:turn id=\"%d\" model=\"%s\">", target_tid, model_name);
-    
-    local lc = vim.api.nvim_buf_line_count(bufnr);
-    local insert_idx = lc - 1;
-    local lines_to_add = { "", telemetry, open_tag };
-    vim.api.nvim_buf_set_lines(bufnr, insert_idx, insert_idx, false, lines_to_add);
-    highlight_lines(bufnr, insert_idx, insert_idx + 2, "NziTelemetry");
-    
-    local mid = vim.api.nvim_buf_set_extmark(bufnr, M.turn_ns_id, insert_idx + 1, 0, {});
-    M.mark_to_turn[mid] = target_tid;
-    M.current_open_tag = "turn";
-    M.current_open_turn_id = target_tid;
-  end
-
-  if M.current_open_sub_tag ~= msg_type then
-    _close_sub_tag(bufnr);
+  if not append then
     local tag = get_tag_name(msg_type);
-    local telemetry = get_telemetry_line(msg_type);
     local lc = vim.api.nvim_buf_line_count(bufnr);
-    local insert_idx = lc - 1;
-    local lines_to_add = (telemetry ~= "") and { telemetry, "<" .. tag .. ">" } or { "<" .. tag .. ">" };
-    vim.api.nvim_buf_set_lines(bufnr, insert_idx, insert_idx, false, lines_to_add);
-    highlight_lines(bufnr, insert_idx, insert_idx + #lines_to_add - 1, "NziTelemetry");
-    M.current_open_sub_tag = msg_type;
-    append = false;
-  end
-
-  local content_lines = vim.split(text, "\n");
-  local hl_group = get_hl_group(msg_type);
-  local lc = vim.api.nvim_buf_line_count(bufnr);
-  local insert_idx = lc - 1;
-  
-  if append and lc > 2 then
-    local last_line = vim.api.nvim_buf_get_lines(bufnr, lc - 2, lc - 1, false)[1] or "";
-    vim.api.nvim_buf_set_lines(bufnr, lc - 2, lc - 1, false, { last_line .. content_lines[1] });
-    if #content_lines > 1 then
-      local rem = {}; for i=2,#content_lines do table.insert(rem, content_lines[i]) end
-      vim.api.nvim_buf_set_lines(bufnr, lc - 1, lc - 1, false, rem);
-      highlight_lines(bufnr, lc - 2, lc + #rem - 2, hl_group);
-    else
-      highlight_lines(bufnr, lc - 2, lc - 2, hl_group);
+    local insert_at = lc - 1;
+    if insert_at < 1 then insert_at = 1 end
+    
+    local effective_turn_id = turn_id or 999; -- Default for passive/status
+    local header = get_telemetry_line(msg_type, effective_turn_id, metadata);
+    
+    local new_lines = {};
+    table.insert(new_lines, string.format("<agent:turn id=\"%d\">", effective_turn_id));
+    if header ~= "" then table.insert(new_lines, "  <!-- " .. header .. " -->") end
+    table.insert(new_lines, string.format("  <%s>", tag));
+    
+    local text_lines = vim.split(text, "\n");
+    for _, l in ipairs(text_lines) do table.insert(new_lines, "    " .. l) end
+    
+    local tag_base = vim.split(tag, " ")[1];
+    table.insert(new_lines, string.format("  </%s>", tag_base));
+    table.insert(new_lines, "</agent:turn>");
+    table.insert(new_lines, "");
+    
+    vim.api.nvim_buf_set_lines(bufnr, insert_at, insert_at, false, new_lines);
+    
+    -- Highlight new lines
+    local start_idx = insert_at;
+    local end_idx = insert_at + #new_lines - 1;
+    for i = start_idx, end_idx do
+      local line = vim.api.nvim_buf_get_lines(bufnr, i, i+1, false)[1];
+      if line:match("<[/?]?[%a:]+") or line:match("%[ .* %]") then
+        highlight_lines(bufnr, i, i, "NziTelemetry");
+      end
     end
   else
-    vim.api.nvim_buf_set_lines(bufnr, insert_idx, insert_idx, false, content_lines);
-    highlight_lines(bufnr, insert_idx, insert_idx + #content_lines - 1, hl_group);
+    -- Streaming append
+    local lc = vim.api.nvim_buf_line_count(bufnr);
+    local tag_base = vim.split(get_tag_name(msg_type), " ")[1];
+    local target_line = -1;
+    for i = lc - 1, 0, -1 do
+      local line = vim.api.nvim_buf_get_lines(bufnr, i, i+1, false)[1];
+      if line and line:match("</" .. tag_base .. ">") then
+        target_line = i;
+        break;
+      end
+    end
+    
+    if target_line ~= -1 then
+      local lines = vim.api.nvim_buf_get_lines(bufnr, target_line - 1, target_line, false);
+      lines[1] = lines[1] .. text;
+      vim.api.nvim_buf_set_lines(bufnr, target_line - 1, target_line, false, lines);
+    else
+      -- Fallback: if no block exists, create one
+      M.write(text, msg_type, false, turn_id, metadata);
+    end
   end
 
   vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr });
+  
+  -- Scroll to bottom
   if M.winid and vim.api.nvim_win_is_valid(M.winid) then
-    local nlc = vim.api.nvim_buf_line_count(bufnr);
-    pcall(vim.api.nvim_win_set_cursor, M.winid, { nlc, 0 });
+    local lc = vim.api.nvim_buf_line_count(bufnr);
+    if lc > 0 then
+      pcall(vim.api.nvim_win_set_cursor, M.winid, { lc, 0 });
+    end
   end
 end
 

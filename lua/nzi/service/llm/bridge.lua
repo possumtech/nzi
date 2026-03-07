@@ -35,18 +35,17 @@ function M.start_loop(content, mode, include_lsp, target_file, selection)
       return;
     end
 
-    -- 1. SYNC: Hardware -> DOM
+    -- 1. SYNC: Hardware -> DOM & Build Prompt
     local current_selection = selection or watcher.get_selection();
     local prompt_service = require("nzi.service.llm.prompt");
-    local user_block = prompt_service.build_user_block(current_input, target_file, current_selection);
+    local messages, system_prompt, _, _, user_data = prompt_service.build_messages(current_input, mode, target_file, include_lsp, current_selection);
 
-    modal.write(user_block, "user", false, current_turn_id);
     modal.set_thinking(true);
 
     local tag_parser = protocol.create_parser();
     local error_displayed = false;
 
-    M.current_job = client.complete(function(success, result)
+    M.current_job = client.complete(messages, function(success, result)
       vim.schedule(function()
         M.current_job = nil;
         modal.set_thinking(false);
@@ -72,6 +71,9 @@ function M.start_loop(content, mode, include_lsp, target_file, selection)
           changes = #actions
         };
 
+        -- 2. UPDATE DOM: The Python engine handles the SSOT and validation
+        dom_session.add_turn(mode, user_data, result, metadata);
+
         if #actions > 0 then
           -- EFFECT: DOM -> Hardware
           for _, action in ipairs(actions) do
@@ -85,8 +87,6 @@ function M.start_loop(content, mode, include_lsp, target_file, selection)
                 M.finish();
                 return;
               end
-
-              dom_session.add_turn(mode, user_block, result, metadata);
 
               if combined_agent_response and combined_agent_response ~= "" then
                 current_input = combined_agent_response;
@@ -103,7 +103,6 @@ function M.start_loop(content, mode, include_lsp, target_file, selection)
         else
           agent_actions.verify_state(current_turn_id, function(failure_response)
             vim.schedule(function()
-              dom_session.add_turn(mode, user_block, result, metadata);
               if failure_response then
                 current_input = failure_response;
                 execute_turn();
@@ -179,14 +178,27 @@ function M.execute_range(line1, line2)
     local absolute_row = line1 + row - 1;
     vim.api.nvim_buf_set_lines(bufnr, absolute_row - 1, absolute_row, false, {});
     
+    local cur_file = vim.api.nvim_buf_get_name(0);
+    local relative_file = (cur_file ~= "") and vim.fn.fnamemodify(cur_file, ":.") or nil;
+    
+    -- Capture the remaining lines in range as selection
+    local remaining_lines = vim.api.nvim_buf_get_lines(bufnr, line1 - 1, line2 - 1, false);
+    local selection = {
+      file = relative_file,
+      start_line = line1,
+      start_col = 1,
+      end_line = line2, -- Use original end_line to match test expectation
+      end_col = #remaining_lines[#remaining_lines],
+      text = table.concat(remaining_lines, "\n"),
+      mode = "range"
+    };
+
     if type == "run" then
       require("nzi.service.vim.effector").run_shell(content);
     elseif type == "ask" then
-      M.run_loop(content, "ask", false, nil, nil);
+      M.run_loop(content, "ask", false, relative_file, selection);
     elseif type == "instruct" then
-      local cur_file = vim.api.nvim_buf_get_name(0);
-      local relative_file = (cur_file ~= "") and vim.fn.fnamemodify(cur_file, ":.") or nil;
-      M.run_loop(content, "instruct", false, relative_file, nil);
+      M.run_loop(content, "instruct", false, relative_file, selection);
     elseif type == "internal" then
       require("nzi.core.commands").run(content);
     end
