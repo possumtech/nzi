@@ -117,7 +117,7 @@ function M.run(cmd)
       if b == current then
         for j = 1, #bufs do
           local next_b = bufs[(i + j - 1) % #bufs + 1];
-          if diff.pending_diffs[next_b] then
+          if diff.has_pending_diff(next_b) then
             vim.api.nvim_set_current_buf(next_b);
             found = true;
             break;
@@ -137,7 +137,7 @@ function M.run(cmd)
       if b == current then
         for j = 1, #bufs do
           local prev_b = bufs[(i - j - 1) % #bufs + 1];
-          if diff.pending_diffs[prev_b] then
+          if diff.has_pending_diff(prev_b) then
             vim.api.nvim_set_current_buf(prev_b);
             found = true;
             break;
@@ -150,19 +150,11 @@ function M.run(cmd)
 
   elseif subcommand == "accept" then
     local bufnr = vim.api.nvim_get_current_buf();
-    local name = vim.api.nvim_buf_get_name(bufnr);
-    local short_name = vim.fn.fnamemodify(name, ":.");
     diff.accept(bufnr);
-    queue.clear_actions();
-    queue.add_passive(string.format("<agent:ack status='success' tool='edit' file='%s'>User accepted and saved changes.</agent:ack>", short_name));
 
   elseif subcommand == "reject" then
     local bufnr = vim.api.nvim_get_current_buf();
-    local name = vim.api.nvim_buf_get_name(bufnr);
-    local short_name = vim.fn.fnamemodify(name, ":.");
     diff.reject(bufnr);
-    queue.clear_actions();
-    queue.add_passive(string.format("<agent:ack status='denied' tool='edit' file='%s'>User rejected the proposed changes.</agent:ack>", short_name));
 
   elseif subcommand == "yolo" then
     config.options.yolo = not config.options.yolo;

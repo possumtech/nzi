@@ -65,7 +65,32 @@ end
 
 --- Check if the engine should wait for user input
 function M.is_blocked()
-  return M.blocked_by_interaction or #M.action_queue > 0;
+  local history = require("nzi.context.history");
+  local protocol = require("nzi.protocol.protocol");
+  
+  local xml = history.format();
+  if xml == "" then return false; end
+
+  -- A session is blocked if:
+  -- 1. The LAST turn is a model turn with blocking tags
+  -- 2. AND there is no subsequent user/agent turn resolving it.
+  
+  -- Optimization: We only care about the very last model actions that haven't been "acked"
+  -- XPath logic: Find turns that contain blocking elements but aren't followed by a resolving turn
+  -- Actually, let's keep it simpler for now: Is there ANY unresolved <model:edit/create/delete/choice>?
+  
+  -- Find all blocking elements
+  local blocking_query = "//model:edit | //model:create | //model:delete | //model:choice";
+  local blockers = protocol.xpath(xml, blocking_query);
+  if #blockers == 0 then return false; end
+
+  -- Find all resolving elements
+  local resolving_query = "//agent:ack | //agent:choice | //agent:status[@status='denied']";
+  local resolvers = protocol.xpath(xml, resolving_query);
+
+  -- If we have more blockers than resolvers, we are likely blocked.
+  -- This is a heuristic that works because our turns are sequential.
+  return #blockers > #resolvers;
 end
 
 return M;

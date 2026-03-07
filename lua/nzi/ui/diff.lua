@@ -1,10 +1,77 @@
 local config = require("nzi.core.config");
+local protocol = require("nzi.protocol.protocol");
 local M = {};
 
+-- UI State mapping (NOT session state)
 -- Map of original buffer IDs to metadata (sugg_buf, tab_id)
-M.pending_diffs = {};
--- Map of file paths to be deleted
-M.pending_deletions = {};
+-- This is now just a CACHE for open windows, not the source of truth for "pending"
+M.active_views = {};
+
+--- Derive pending changes from XML history
+--- @return table: { edits = table, creations = table, deletions = table }
+function M.get_pending_from_xml()
+  local history = require("nzi.context.history");
+  local xml = history.format();
+  if xml == "" then return { edits = {}, creations = {}, deletions = {} }; end
+
+  -- 1. Find all proposed actions
+  local edits = protocol.xpath(xml, "//model:edit | //model:replace_all");
+  local creations = protocol.xpath(xml, "//model:create");
+  local deletions = protocol.xpath(xml, "//model:delete");
+  
+  -- 2. Find all resolutions
+  local acks = protocol.xpath(xml, "//agent:ack");
+  local rejections = protocol.xpath(xml, "//agent:status[@status='denied']");
+  
+  -- 3. Match resolutions to actions
+  -- Strategy: Create a list of all potential actions and all resolutions.
+  -- Since our protocol is sequential, resolutions should resolve the *earliest* matching action.
+  
+  local all_actions = {};
+  for _, e in ipairs(edits) do table.insert(all_actions, { type = "edit", xml = e, file = protocol.get_attr(e, "file") }) end
+  for _, c in ipairs(creations) do table.insert(all_actions, { type = "create", xml = c, file = protocol.get_attr(c, "file") }) end
+  for _, d in ipairs(deletions) do table.insert(all_actions, { type = "delete", xml = d, file = protocol.get_attr(d, "file") }) end
+  
+  -- Sort by document order (heuristic: lxml returns in order of appearance)
+  
+  local all_resolutions = {};
+  for _, a in ipairs(acks) do table.insert(all_resolutions, { type = "ack", xml = a, file = protocol.get_attr(a, "file") }) end
+  for _, r in ipairs(rejections) do table.insert(all_resolutions, { type = "rej", xml = r, file = protocol.get_attr(r, "file") }) end
+  
+  -- 4. Cross-reference
+  local resolved_indices = {};
+  for _, res in ipairs(all_resolutions) do
+    for i, act in ipairs(all_actions) do
+      if not resolved_indices[i] then
+        -- Match by file if available, otherwise just by order (if resolution has no file)
+        local file_match = (not res.file or not act.file or res.file == act.file);
+        if file_match then
+          resolved_indices[i] = true;
+          break;
+        end
+      end
+    end
+  end
+  
+  local pending = { edits = {}, creations = {}, deletions = {} };
+  for i, act in ipairs(all_actions) do
+    if not resolved_indices[i] then
+      if act.type == "edit" then table.insert(pending.edits, act.xml)
+      elseif act.type == "create" then table.insert(pending.creations, act.xml)
+      elseif act.type == "delete" then table.insert(pending.deletions, act.xml)
+      end
+    end
+  end
+  
+  return pending;
+end
+
+--- Re-sync the UI windows with the XML state
+function M.rehydrate()
+  local pending = M.get_pending_from_xml();
+  -- For each pending edit, if we don't have a view open, open one.
+  -- (Implementation of opening windows based on XML strings...)
+end
 
 --- Apply a change immediately (for YOLO mode)
 --- @param bufnr number
@@ -37,7 +104,7 @@ end
 function M.propose_edit(bufnr, new_lines)
   local name = vim.api.nvim_buf_get_name(bufnr);
   local ft = vim.api.nvim_get_option_value("filetype", { buf = bufnr });
-  local existing = M.pending_diffs[bufnr];
+  local existing = M.active_views[bufnr];
   
   if existing then
     -- Reuse existing suggestion buffer
@@ -46,8 +113,8 @@ function M.propose_edit(bufnr, new_lines)
       config.notify("Updated existing diff for " .. vim.fn.fnamemodify(name, ":."), vim.log.levels.INFO);
       return;
     else
-      -- Stale metadata, clean it up
-      M.pending_diffs[bufnr] = nil;
+      -- Stale cache, clean it up
+      M.active_views[bufnr] = nil;
     end
   end
 
@@ -82,7 +149,7 @@ function M.propose_edit(bufnr, new_lines)
   -- Focus the original buffer so user can use 'do' (diff obtain) to pull from suggestion
   vim.api.nvim_set_current_win(win_orig);
   
-  M.pending_diffs[bufnr] = { 
+  M.active_views[bufnr] = { 
     suggestion_buf = suggestion_buf,
     tab_id = tab_id
   };
@@ -93,7 +160,8 @@ end
 --- Propose a file deletion for diff
 --- @param file_path string: The file to delete
 function M.propose_deletion(file_path)
-  M.pending_deletions[file_path] = true;
+  -- In XML-driven model, we don't need a local table. 
+  -- The presence of <model:delete> without <agent:ack> IS the proposal.
   config.notify("Marked for deletion: " .. file_path .. ". Use AI/accept to confirm.", vim.log.levels.WARN);
 end
 
@@ -101,8 +169,8 @@ end
 --- @param bufnr number
 --- @return number|nil
 function M.find_original_buffer(bufnr)
-  if M.pending_diffs[bufnr] then return bufnr end
-  for orig_buf, diff in pairs(M.pending_diffs) do
+  if M.active_views[bufnr] then return bufnr end
+  for orig_buf, diff in pairs(M.active_views) do
     if diff.suggestion_buf == bufnr then
       return orig_buf;
     end
@@ -114,16 +182,29 @@ end
 function M.accept(bufnr)
   local actual_buf = M.find_original_buffer(bufnr);
   local config = require("nzi.core.config");
+  local queue = require("nzi.core.queue");
+  local engine = require("nzi.engine.engine");
+
   if not actual_buf then
-    -- Check for deletions
+    -- Check for deletions in XML
     local name = vim.api.nvim_buf_get_name(bufnr);
     local relative_name = vim.fn.fnamemodify(name, ":.");
-    if M.pending_deletions[relative_name] then
+    local pending = M.get_pending_from_xml();
+    local is_pending_deletion = false;
+    for _, del_xml in ipairs(pending.deletions) do
+      if protocol.get_attr(del_xml, "file") == relative_name then
+        is_pending_deletion = true;
+        break;
+      end
+    end
+
+    if is_pending_deletion then
       config.log(relative_name, "DIFF:DELETE");
       os.remove(vim.fn.getcwd() .. "/" .. relative_name);
-      M.pending_deletions[relative_name] = nil;
       vim.api.nvim_buf_delete(bufnr, { force = true });
       config.notify("File deleted: " .. relative_name, vim.log.levels.INFO);
+      -- RESOLVE in XML via history
+      require("nzi.context.history").add("ask", string.format("<agent:ack tool='delete' file='%s' status='success'>User confirmed deletion.</agent:ack>", relative_name), nil);
       return;
     end
     config.notify("No pending diff for this buffer.", vim.log.levels.WARN);
@@ -143,13 +224,11 @@ function M.accept(bufnr)
   M.cleanup(actual_buf);
   config.notify("Edit diff finalized and saved.", vim.log.levels.INFO);
 
-  -- STAGE ACK FOR NEXT TURN
-  require("nzi.core.queue").enqueue_ack(string.format("User accepted and saved changes to '%s'.", relative_name));
+  -- RESOLVE in XML
+  require("nzi.context.history").add("ask", string.format("<agent:ack status='success' tool='edit' file='%s'>User accepted and saved changes.</agent:ack>", relative_name), nil);
 
   -- AUTO-DRAIN QUEUE: If turns were blocked by this diff, try to resume
   vim.schedule(function()
-    local queue = require("nzi.core.queue");
-    local engine = require("nzi.engine.engine");
     if not queue.is_blocked() and not engine.is_busy then
       local next_work = queue.pop_instruction();
       if next_work then
@@ -163,13 +242,26 @@ end
 function M.reject(bufnr)
   local actual_buf = M.find_original_buffer(bufnr);
   local config = require("nzi.core.config");
+  local queue = require("nzi.core.queue");
+  local engine = require("nzi.engine.engine");
+
   if not actual_buf then
     local name = vim.api.nvim_buf_get_name(bufnr);
     local relative_name = vim.fn.fnamemodify(name, ":.");
-    if M.pending_deletions[relative_name] then
+    local pending = M.get_pending_from_xml();
+    local is_pending_deletion = false;
+    for _, del_xml in ipairs(pending.deletions) do
+      if protocol.get_attr(del_xml, "file") == relative_name then
+        is_pending_deletion = true;
+        break;
+      end
+    end
+
+    if is_pending_deletion then
       config.log(relative_name, "DIFF:REJECT_DELETE");
-      M.pending_deletions[relative_name] = nil;
       config.notify("Deletion rejected: " .. relative_name, vim.log.levels.INFO);
+      -- RESOLVE in XML
+      require("nzi.context.history").add("ask", string.format("<agent:status tool='delete' file='%s' status='denied'>User rejected deletion.</agent:status>", relative_name), nil);
       return;
     end
     config.notify("No pending diff for this buffer.", vim.log.levels.WARN);
@@ -183,13 +275,11 @@ function M.reject(bufnr)
   M.cleanup(actual_buf);
   config.notify("Suggestion discarded.", vim.log.levels.INFO);
 
-  -- STAGE ACK FOR NEXT TURN
-  require("nzi.core.queue").enqueue_ack(string.format("User REJECTED and discarded proposed changes to '%s'.", relative_name));
+  -- RESOLVE in XML
+  require("nzi.context.history").add("ask", string.format("<agent:status status='denied' tool='edit' file='%s'>User rejected the proposed changes.</agent:status>", relative_name), nil);
 
   -- AUTO-DRAIN QUEUE
   vim.schedule(function()
-    local queue = require("nzi.core.queue");
-    local engine = require("nzi.engine.engine");
     if not queue.is_blocked() and not engine.is_busy then
       local next_work = queue.pop_instruction();
       if next_work then
@@ -201,13 +291,13 @@ end
 
 --- Cleanup diff state and close suggest buffer
 function M.cleanup(bufnr)
-  local diff = M.pending_diffs[bufnr];
-  if not diff then return end
+  local diff_cache = M.active_views[bufnr];
+  if not diff_cache then return end
 
-  local sugg_buf = diff.suggestion_buf;
-  local tab_id = diff.tab_id;
+  local sugg_buf = diff_cache.suggestion_buf;
+  local tab_id = diff_cache.tab_id;
   
-  M.pending_diffs[bufnr] = nil;
+  M.active_views[bufnr] = nil;
 
   if sugg_buf and vim.api.nvim_buf_is_valid(sugg_buf) then
     vim.api.nvim_buf_delete(sugg_buf, { force = true });
@@ -230,14 +320,25 @@ function M.cleanup(bufnr)
 end
 
 function M.get_count()
-  local count = 0;
-  for _ in pairs(M.pending_diffs) do count = count + 1 end
-  for _ in pairs(M.pending_deletions) do count = count + 1 end
-  return count;
+  local pending = M.get_pending_from_xml();
+  return #pending.edits + #pending.creations + #pending.deletions;
 end
 
 function M.has_pending_diff(bufnr)
-  return M.pending_diffs[bufnr] ~= nil or M.pending_deletions[vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":.")] ~= nil;
+  local name = vim.api.nvim_buf_get_name(bufnr);
+  local relative_name = vim.fn.fnamemodify(name, ":.");
+  local pending = M.get_pending_from_xml();
+  
+  -- Function to check if any XML string in a list matches our file
+  local function matches(list)
+    for _, xml in ipairs(list) do
+      local f = protocol.get_attr(xml, "file");
+      if f == relative_name then return true end
+    end
+    return false;
+  end
+
+  return matches(pending.edits) or matches(pending.creations) or matches(pending.deletions);
 end
 
 return M;

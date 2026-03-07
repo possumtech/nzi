@@ -2,12 +2,13 @@ local assert = require("luassert")
 local agent = require("nzi.protocol.agent")
 local diff = require("nzi.ui.diff")
 local context = require("nzi.context.context")
+local history = require("nzi.context.history")
 local xml_helper = require("tests.xml_helper")
 
 describe("6. Protocol & Actions", function()
   before_each(function()
-    diff.pending_diffs = {}
-    diff.pending_deletions = {}
+    history.clear()
+    diff.active_views = {}
     context.states = {}
   end)
 
@@ -43,6 +44,9 @@ describe("6. Protocol & Actions", function()
     local orig_yolo = require("nzi.core.config").options.yolo
     require("nzi.core.config").options.yolo = false
     
+    -- Manually add the turn to history as engine would do
+    history.add("instruct", "<agent:user>delete file</agent:user>", "<model:delete file='delete_me.lua'/>")
+
     local called_back = false
     agent.dispatch_actions(actions, "instruct", function(resp)
       called_back = true
@@ -50,23 +54,40 @@ describe("6. Protocol & Actions", function()
     end)
     
     assert.True(called_back)
-    assert.truthy(diff.pending_deletions["delete_me.lua"])
+    -- Derive from XML
+    assert.equals(1, diff.get_count())
     
     require("nzi.core.config").options.yolo = orig_yolo
     require("nzi.context.resolver").resolve = orig_resolve
   end)
 
   it("AI/accept should confirm deletion and AI/reject should discard it", function()
-    diff.propose_deletion("target.lua")
+    -- 1. Setup pending deletion in XML
+    history.add("instruct", "<agent:user>delete file</agent:user>", "<model:delete file='target.lua'/>")
     assert.equals(1, diff.get_count())
     
-    -- Reject
+    -- 2. Reject
     local mock_bufnr = vim.api.nvim_create_buf(true, false)
     vim.api.nvim_buf_set_name(mock_bufnr, "target.lua")
     
     diff.reject(mock_bufnr)
-    assert.equals(0, diff.get_count())
-    assert.falsy(diff.pending_deletions["target.lua"])
+    
+    -- Verification: History should now have a status='denied' turn
+    local turns = history.get_all()
+    local last_turn = turns[#turns]
+    assert.match("status='denied'", last_turn.user)
+    
+    -- and count should be 0 because it's resolved
+    -- In some test environments, we might need a tiny nudge or just check immediately if synchronous
+    local success = false
+    for i = 1, 10 do
+      if diff.get_count() == 0 then
+        success = true
+        break
+      end
+      vim.cmd("sleep 10m")
+    end
+    assert.True(success, "Diff count did not drop to 0 after reject")
     
     vim.api.nvim_buf_delete(mock_bufnr, {force=true})
   end)
@@ -83,6 +104,9 @@ describe("6. Protocol & Actions", function()
     local orig_confirm = vim.fn.confirm
     vim.fn.confirm = function() return 1 end
     
+    -- Setup history
+    history.add("instruct", "<agent:user>create</agent:user>", "<model:create file='new_file.lua'>print('hello')</model:create>")
+
     local called_back = false
     agent.dispatch_actions(actions, "instruct", function(resp)
       called_back = true

@@ -126,7 +126,71 @@ end
 
 function M.get_attr(attr_str, key)
   if not attr_str then return nil end
-  return attr_str:match(key .. "=\"([^\"]+)\"") or attr_str:match(key .. "='([^']+)'")
+  -- Pattern matches key="value" or key='value' with optional whitespace
+  local pattern1 = key .. "%s*=%s*\"([^\"]+)\""
+  local pattern2 = key .. "%s*=%s*'([^']+)'"
+  return attr_str:match(pattern1) or attr_str:match(pattern2)
+end
+
+--- Execute an XPath query on an XML string
+--- @param xml_str string: The raw XML (will be wrapped in <session>)
+--- @param xpath string: The XPath expression
+--- @return table: List of results (strings)
+function M.xpath(xml_str, xpath)
+  local config = require("nzi.core.config");
+  local python_cmd = config.options.python_cmd[1];
+  
+  -- Ensure we have a valid XML structure for the tool
+  local wrapped = xml_str;
+  if not xml_str:match("^%s*<session") then
+    wrapped = "<session xmlns:nzi=\"nzi\" xmlns:agent=\"nzi\" xmlns:model=\"nzi\">\n" .. xml_str .. "\n</session>";
+  end
+
+  local script = [[
+import sys
+from lxml import etree
+try:
+    xml_str = sys.stdin.read()
+    root = etree.fromstring(xml_str)
+    ns = {"nzi": "nzi", "agent": "nzi", "model": "nzi"}
+    results = root.xpath("]] .. xpath .. [[", namespaces=ns)
+    print("---XPATH_RESULTS_START---")
+    for r in results:
+        if isinstance(r, etree._Element):
+            print(etree.tostring(r, encoding='unicode').strip())
+        else:
+            print(str(r).strip())
+except Exception as e:
+    print("---XPATH_ERROR---")
+    print(str(e))
+    sys.exit(1)
+]];
+
+  local res = vim.fn.system({ python_cmd, "-c", script }, wrapped);
+  local lines = vim.split(res, "\n", { trimempty = true });
+  local final_results = {};
+  local in_results = false;
+  local err_msg = nil;
+  local in_error = false;
+  
+  for _, line in ipairs(lines) do
+    if line == "---XPATH_RESULTS_START---" then
+      in_results = true;
+    elseif line == "---XPATH_ERROR---" then
+      in_error = true;
+    elseif in_error then
+      err_msg = (err_msg or "") .. line .. "\n";
+    elseif in_results then
+      table.insert(final_results, line);
+    end
+  end
+
+  if in_error then
+    config.log("XPath Error: " .. (err_msg or "unknown"), "PROTOCOL");
+    return {};
+  end
+  
+  return final_results;
 end
 
 return M;

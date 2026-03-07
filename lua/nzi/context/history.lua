@@ -93,7 +93,12 @@ function M.format()
     local turn_xml = string.format("<agent:turn%s>", meta);
     
     if user_clean ~= "" then
-      turn_xml = turn_xml .. string.format("\n<agent:user>\n%s\n</agent:user>", M.xml_escape(user_clean));
+      local user_formatted = user_clean;
+      -- Only escape if NOT a protocol tag
+      if not (user_clean:match("^%s*<agent:") or user_clean:match("^%s*<model:")) then
+        user_formatted = M.xml_escape(user_clean);
+      end
+      turn_xml = turn_xml .. string.format("\n<agent:user>\n%s\n</agent:user>", user_formatted);
     end
     
     if assistant_clean ~= "" then
