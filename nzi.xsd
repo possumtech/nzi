@@ -8,7 +8,7 @@
       <xs:sequence>
         <xs:element ref="turn" minOccurs="1" maxOccurs="unbounded"/>
       </xs:sequence>
-      <xs:attribute name="model" type="xs:string"/>
+      <xs:attribute name="alias" type="xs:string"/>
       <xs:attribute name="yolo" type="xs:boolean" default="false"/>
       <xs:attribute name="roadmap" type="xs:string" default="AGENTS.md"/>
     </xs:complexType>
@@ -22,7 +22,10 @@
         <xs:element ref="assistant" minOccurs="0"/>
       </xs:sequence>
       <xs:attribute name="id" type="xs:integer" use="required"/>
-      <xs:attribute name="timestamp" type="xs:dateTime"/>
+      <xs:attribute name="start" type="xs:dateTime"/>
+      <xs:attribute name="stop" type="xs:dateTime"/>
+      <xs:attribute name="alias" type="xs:string"/>
+      <xs:attribute name="yolo" type="xs:boolean"/>
     </xs:complexType>
   </xs:element>
 
@@ -32,16 +35,12 @@
       <xs:sequence>
         <!-- Static Preamble (Strictly Turn 0) -->
         <xs:element ref="system" minOccurs="0"/>
-        <xs:element ref="project_roadmap" minOccurs="0"/>
         
         <!-- Environmental Context -->
         <xs:element ref="history" minOccurs="0"/>
-        <xs:element ref="selection" minOccurs="0"/>
-        <xs:element ref="match" minOccurs="0" maxOccurs="unbounded"/>
-        
-        <!-- Feedback from previous model actions -->
-        <xs:element ref="ack" minOccurs="0" maxOccurs="unbounded"/>
-        <xs:element ref="status" minOccurs="0" maxOccurs="unbounded"/>
+
+        <xs:element ref="project_roadmap" minOccurs="0"/>
+        <xs:element ref="suggest_next_task" minOccurs="0"/>
         
         <!-- The human's literal instruction -->
         <xs:element ref="user"/>
@@ -65,10 +64,8 @@
           <xs:element ref="shell"/>
           <xs:element ref="env"/>
           <xs:element ref="choice"/>
-          <xs:element ref="reset"/>
         </xs:choice>
       </xs:sequence>
-      <xs:attribute name="model" type="xs:string"/>
       <xs:attribute name="duration" type="xs:decimal"/>
     </xs:complexType>
   </xs:element>
@@ -76,7 +73,15 @@
   <!-- CORE DATA ELEMENTS -->
   
   <xs:element name="system" type="xs:string"/>
-  <xs:element name="user" type="xs:string"/>
+  <xs:element name="user">
+    <xs:complexType mixed="true">
+      <xs:sequence>
+        <xs:element ref="selection" minOccurs="0"/>
+        <xs:element ref="choice" minOccurs="0"/>
+        <xs:element ref="summary" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
   <xs:element name="content" type="xs:string"/>
   <xs:element name="reasoning" type="xs:string"/>
   
@@ -98,7 +103,28 @@
     </xs:complexType>
   </xs:element>
 
+  <xs:element name="suggest_next_task">
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base="xs:string">
+          <xs:attribute name="file" type="xs:string" use="required"/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+
   <xs:element name="history">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="files" minOccurs="0"/>
+        <xs:element ref="match" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element ref="ack" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element ref="status" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="files">
     <xs:complexType>
       <xs:sequence>
         <xs:element ref="file" minOccurs="0" maxOccurs="unbounded"/>
@@ -110,9 +136,9 @@
     <xs:complexType>
       <xs:simpleContent>
         <xs:extension base="xs:string">
-          <xs:attribute name="name" type="xs:string" use="required"/>
+          <xs:attribute name="path" type="xs:string" use="required"/>
           <xs:attribute name="type" type="xs:string" use="required"/>
-          <xs:attribute name="size" type="xs:integer"/>
+          <xs:attribute name="size" type="xs:integer" use="required" />
         </xs:extension>
       </xs:simpleContent>
     </xs:complexType>
@@ -123,7 +149,10 @@
       <xs:simpleContent>
         <xs:extension base="xs:string">
           <xs:attribute name="file" type="xs:string" use="required"/>
-          <xs:attribute name="range" type="xs:string" use="required"/>
+          <xs:attribute name="first_row" type="xs:integer" use="required"/>
+          <xs:attribute name="first_col" type="xs:integer" use="required"/>
+          <xs:attribute name="final_row" type="xs:integer" use="required"/>
+          <xs:attribute name="final_col" type="xs:integer" use="required"/>
         </xs:extension>
       </xs:simpleContent>
     </xs:complexType>
@@ -155,7 +184,6 @@
   <xs:element name="env" type="xs:string"/>
   <xs:element name="grep" type="xs:string"/>
   <xs:element name="choice" type="xs:string"/>
-  <xs:element name="reset"><xs:complexType/></xs:element>
 
   <xs:element name="read">
     <xs:complexType><xs:attribute name="file" type="xs:string" use="required"/></xs:complexType>
