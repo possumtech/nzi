@@ -5,8 +5,8 @@
   <sch:pattern id="session-structure">
     <sch:rule context="session">
       <!-- Ensure the constitution is established in the first turn -->
-      <sch:assert test="turn[@id='0']/agent/system">
-        Turn 0 must contain the system constitution in the agent envelope.
+      <sch:assert test="turn[@id='0']/system">
+        Turn 0 must contain the system constitution.
       </sch:assert>
     </sch:rule>
   </sch:pattern>
@@ -15,18 +15,18 @@
   <sch:pattern id="turn-rules">
     <sch:rule context="turn">
       <sch:assert test="@id >= 0">Turn IDs must be non-negative.</sch:assert>
-      <sch:assert test="count(agent) = 1">Every turn must have exactly one agent envelope.</sch:assert>
+      <sch:assert test="count(user) = 1">Every turn must have exactly one user envelope.</sch:assert>
       <sch:assert test="count(assistant) &lt;= 1">Every turn must have 0 or 1 assistant envelopes.</sch:assert>
     </sch:rule>
     
-    <sch:rule context="agent">
+    <sch:rule context="user">
       <sch:assert test="ask or instruct or shell or error or answer">
-        Every agent envelope must contain a valid interaction tag (ask, instruct, shell, error, or answer).
+        Every user envelope must contain a valid interaction tag (ask, instruct, shell, error, or answer).
       </sch:assert>
     </sch:rule>
 
     <!-- The "Ask" Constraint: Inquiry-only turns cannot perform destructive actions -->
-    <sch:rule context="turn[agent/ask]/assistant">
+    <sch:rule context="turn[user/ask]/assistant">
       <sch:assert test="not(edit or create or delete or shell or choice)">
         An inquiry (ask) turn cannot be answered with state-changing model actions (edit, shell, choice, etc.), but may use discovery tools (read, search, env).
       </sch:assert>

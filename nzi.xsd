@@ -9,8 +9,11 @@
         <xs:element ref="turn" minOccurs="1" maxOccurs="unbounded"/>
       </xs:sequence>
       <xs:attribute name="alias" type="xs:string"/>
+      <xs:attribute name="role" type="xs:string" default="system"/>
       <xs:attribute name="yolo" type="xs:boolean" default="false"/>
       <xs:attribute name="roadmap" type="xs:string" default="AGENTS.md"/>
+      <xs:attribute name="seed" type="xs:integer"/>
+      <xs:attribute name="system_fingerprint" type="xs:string"/>
     </xs:complexType>
   </xs:element>
 
@@ -18,7 +21,12 @@
   <xs:element name="turn">
     <xs:complexType>
       <xs:sequence>
-        <xs:element ref="agent"/>
+        <!-- Static Preamble (Turn 0 ONLY) -->
+        <xs:element ref="system" minOccurs="0"/>
+        <xs:element ref="project_roadmap" minOccurs="0"/>
+        <xs:element ref="suggest_next_task" minOccurs="0"/>
+        
+        <xs:element ref="user"/>
         <xs:element ref="assistant" minOccurs="0"/>
       </xs:sequence>
       <xs:attribute name="id" type="xs:integer" use="required"/>
@@ -29,18 +37,12 @@
     </xs:complexType>
   </xs:element>
 
-  <!-- AGENT: The input envelope (Package to the model) -->
-  <xs:element name="agent">
+  <!-- USER: The input envelope (Package to the model) -->
+  <xs:element name="user">
     <xs:complexType>
       <xs:sequence>
-        <!-- Static Preamble (Strictly Turn 0) -->
-        <xs:element ref="system" minOccurs="0"/>
-        
         <!-- Environmental Context -->
         <xs:element ref="history" minOccurs="0"/>
-
-        <xs:element ref="project_roadmap" minOccurs="0"/>
-        <xs:element ref="suggest_next_task" minOccurs="0"/>
         
         <!-- The interaction choice -->
         <xs:choice>
@@ -125,6 +127,8 @@
         </xs:choice>
       </xs:sequence>
       <xs:attribute name="duration" type="xs:decimal"/>
+      <xs:attribute name="prompt_tokens" type="xs:integer"/>
+      <xs:attribute name="completion_tokens" type="xs:integer"/>
     </xs:complexType>
   </xs:element>
 
