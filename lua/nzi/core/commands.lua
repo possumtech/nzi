@@ -153,14 +153,16 @@ function M.run(cmd)
     local name = vim.api.nvim_buf_get_name(bufnr);
     local short_name = vim.fn.fnamemodify(name, ":.");
     diff.accept(bufnr);
-    require("nzi.core.queue").add_passive(string.format("<agent:ack status='success' tool='edit' file='%s'>User accepted and saved changes.</agent:ack>", short_name));
+    queue.clear_actions();
+    queue.add_passive(string.format("<agent:ack status='success' tool='edit' file='%s'>User accepted and saved changes.</agent:ack>", short_name));
 
   elseif subcommand == "reject" then
     local bufnr = vim.api.nvim_get_current_buf();
     local name = vim.api.nvim_buf_get_name(bufnr);
     local short_name = vim.fn.fnamemodify(name, ":.");
     diff.reject(bufnr);
-    require("nzi.core.queue").add_passive(string.format("<agent:ack status='denied' tool='edit' file='%s'>User rejected the proposed changes.</agent:ack>", short_name));
+    queue.clear_actions();
+    queue.add_passive(string.format("<agent:ack status='denied' tool='edit' file='%s'>User rejected the proposed changes.</agent:ack>", short_name));
 
   elseif subcommand == "yolo" then
     config.options.yolo = not config.options.yolo;
@@ -190,7 +192,6 @@ function M.run(cmd)
     end, test_cmd);
 
   elseif subcommand == "reset" then
-    local queue = require("nzi.core.queue");
     history.clear();
     modal.clear();
     diff.pending_diffs = {};
@@ -198,8 +199,9 @@ function M.run(cmd)
     require("nzi.context.context").states = {};
     
     -- FLUSH ALL QUEUES
-    queue.clear();
     queue.clear_actions();
+    queue.clear_instructions();
+    queue.set_blocked(false);
     
     config.notify("Session and queues fully reset.", vim.log.levels.INFO);
 

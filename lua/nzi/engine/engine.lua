@@ -27,7 +27,7 @@ function M.run_loop(content, mode, include_lsp, target_file, selection)
   -- If we are busy or blocked by actions, enqueue this as a pending instruction
   if M.is_busy or queue.is_blocked() then
     queue.enqueue_instruction(content, mode, target_file, selection);
-    local reason = M.is_busy and "Model is busy" or "Pending diffs require resolution"
+    local reason = queue.is_blocked() and "Pending diffs require resolution" or "Model is busy";
     config.notify("Instruction enqueued (" .. reason .. ")", vim.log.levels.INFO);
     return;
   end
@@ -121,6 +121,7 @@ function M.run_loop(content, mode, include_lsp, target_file, selection)
               if signal == "ABORTED" then
                 modal.write("User aborted turn. Agent momentum halted.", "system", false, current_turn_id);
                 modal.close_tag();
+                queue.clear_actions(); -- ENSURE CLEANUP
                 vim.schedule(function() 
                   M.is_busy = false; 
                   visuals.set_busy(false);

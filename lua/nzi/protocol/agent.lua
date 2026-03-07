@@ -84,7 +84,7 @@ function M.dispatch_actions(actions, mode, turn_id, callback)
         end
       end
     else
-      queue.enqueue_action(action);
+      -- Non-blocking discovery/summary actions
       table.insert(other_actions, action);
     end
   end
@@ -249,6 +249,7 @@ function M.dispatch_actions(actions, mode, turn_id, callback)
               diff.apply_immediately(bufnr, lines);
               queue.add_passive(string.format("<agent:ack tool='create' file='%s' status='success'/>", raw_file));
             else
+              queue.enqueue_action(action); -- BLOCKING
               diff.propose_edit(bufnr, lines);
               table.insert(accumulated_responses, string.format("<agent:status>Proposed new file content for %s. Awaiting diff.</agent:status>", raw_file));
             end
@@ -271,6 +272,7 @@ function M.dispatch_actions(actions, mode, turn_id, callback)
             context.set_state(file, "map");
             table.insert(accumulated_responses, "<agent:status>File deleted (YOLO).</agent:status>");
           else
+            queue.enqueue_action(action); -- BLOCKING
             diff.propose_deletion(file);
             table.insert(accumulated_responses, string.format("<agent:status>Proposed deletion of %s. Awaiting diff.</agent:status>", file));
           end
@@ -287,7 +289,10 @@ function M.dispatch_actions(actions, mode, turn_id, callback)
 
     elseif action.name == "choice" then
       local is_headless = (#vim.api.nvim_list_uis() == 0);
-      if not is_headless then was_blocked = true; end
+      if not is_headless then 
+        was_blocked = true; 
+        queue.enqueue_action(action); -- BLOCKING
+      end
       
       modal.open();
       modal.write("User Choice Prompt: " .. action.content, "system", false, turn_id);
@@ -302,11 +307,13 @@ function M.dispatch_actions(actions, mode, turn_id, callback)
           first_choice = parts[2]:gsub("^%s*", ""):gsub("%s*$", "");
         end
         local resp = string.format("<agent:choice>%s</agent:choice>", first_choice);
+        queue.clear_actions(); -- RESOLVED
         table.insert(accumulated_responses, resp);
         run_others(idx + 1);
       else
         tools.choice(action.content, function(choice_res)
           vim.schedule(function()
+            queue.clear_actions(); -- RESOLVED
             if choice_res == "User cancelled selection." or choice_res:match("cancelled") then
               callback(nil, "ABORTED");
             else
