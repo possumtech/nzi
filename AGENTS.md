@@ -52,10 +52,12 @@ This is the canonical source of truth for **nzi** development, technical specifi
 
 ## 3. Master Functional Checklist
 
-### Interaction Modes
-- [x] **Instruct** (`:`): Direct modification (CLI, In-Code, Visual, `\a:`).
-- [x] **Ask** (`?`): Inquiry/Analysis (CLI, In-Code, Visual, `\a?`).
-- [x] **Run** (`!`): Terminal execution (CLI, In-Code, Visual, `\a!`).
+### Interaction Modes (Specialized Tags)
+- [x] **Instruct** (`:`): Directive action via `<instruct>` (`\a:`).
+- [x] **Ask** (`?`): Pure inquiry via `<ask>` (`\a?`).
+- [x] **Shell** (`!`): Terminal output via `<shell command="...">` (`\a!`).
+- [x] **Error** (Internal): System/Tool failure via `<error>`.
+- [x] **Answer** (Choice): Response to a `<choice>` via `<answer>`.
 - [x] **Internal** (`/`): Plugin control (CLI, `\a/`).
 
 ### Core Commands (Subcommands)

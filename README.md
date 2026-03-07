@@ -136,34 +136,46 @@ NZI uses a `<leader>a` prefix for quick command access.
 
 ## Technical Specifications (XML Sublanguage)
 
-### 1. Model Actions (Output Tags)
-The model communicates intentions using `<*>` tags.
+### 1. Interaction Modes (Incoming Agent Data)
+The agent envelope contains exactly one interaction tag.
 
 | Tag | Attributes | Purpose |
 | :--- | :--- | :--- |
-| `<summary>` | - | **Turn Terminator**: A one-sentence summary of actions |
-| `<choice>` | - | **Turn Terminator**: A question requiring user input |
-| `<edit>` | `file="path"` | Surgical SEARCH/REPLACE code modification |
-| `<create>` | `file="path"` | Create a new file with full content |
-| `<read>` | `file="path"` | Pull a file into active buffer context |
-| `<grep>` | - | Search the project for a pattern |
-| `<shell>` | - | Execute a destructive terminal command |
-| `<env>` | - | Execute a read-only terminal command |
-| `<choice>` | - | Present a multiple-choice menu to user |
-| `<reset>` | - | Reset history and context |
+| **`<ask>`** | - | Pure inquiry; no actions allowed in response |
+| **`<instruct>`** | - | Directive action |
+| **`<shell>`** | `command` | User feedback of command output |
+| **`<error>`** | - | User feedback of system/tool failure |
+| **`<answer>`** | - | User response to a `<choice>` |
 
-### 2. Agent Metadata (Input Tags)
-NZI provides structured environment data via `<*>` tags.
+### 2. Model Actions (Outgoing Assistant Data)
+The assistant communicates intentions via the `<response>` block and actions.
+
+| Tag | Attributes | Purpose |
+| :--- | :--- | :--- |
+| **`<summary>`** | - | **Turn Terminator**: A one-sentence summary of actions |
+| **`<choice>`** | - | **Turn Terminator**: A question requiring user input |
+| **`<response>`** | - | The text body of the assistant response (ends in summary/choice) |
+| **`<edit>`** | `file="path"` | Surgical SEARCH/REPLACE code modification |
+| **`<create>`** | `file="path"` | Create a new file with full content |
+| **`<read>`** | `file="path"` | Pull a file into active buffer context |
+| **`<grep>`** | - | Search the project for a pattern |
+| **`<shell>`** | `command` | Execute a destructive terminal command |
+| **`<env>`** | - | Execute a read-only terminal command |
+| **`<reset>`** | - | Reset history and context |
+
+### 3. Environment Metadata (Within `<history>`)
+NZI provides structured environment data via `<history>` sub-tags.
 
 | Tag | Attributes | Description |
 | :--- | :--- | :--- |
-| `<selection>` | `file, start, end` | Character-perfect visual selection |
-| `<user>` | - | The user's specific instruction |
-| `<context>` | - | Current workspace/buffer facts |
-| `<project_state>` | - | Contents of `./AGENTS.md` |
-| `<next_task_suggest>` | - | First pending task from checklist |
-| `<grep>` | - | List of `<match file="..." line="...">text<match>` |
-| `<test>` | - | Output from a failing test or terminal |
+| **`<selection>`** | `file, first_row, first_col, final_row, final_col` | Character-perfect visual selection |
+| **`<files>`** | - | Wrapper for project context files |
+| **`<file>`** | `path, type, size` | File contents and metadata |
+| **`<project_roadmap>`** | `file` | Contents of current roadmap |
+| **`<suggest_next_task>`** | `file` | First pending task from checklist |
+| **`<match>`** | `file, line` | Single grep result |
+| **`<ack>`** | `tool, status` | Tool execution confirmation |
+| **`<status>`** | `level` | Operational status (info, error) |
 
 ---
 
