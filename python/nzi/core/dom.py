@@ -12,7 +12,6 @@ class SessionDOM:
     """
     Single Source of Truth (SSOT) for the interaction session.
     Manages the XML tree and enforces schema validation.
-    VIOLATING THE SCHEMA IS A SHOW-STOPPER.
     """
     def __init__(self, xsd_path, sch_path, debug_mode=False):
         try:
@@ -38,23 +37,30 @@ class SessionDOM:
         if turn0 is None:
             turn0 = etree.Element("turn")
             turn0.set("id", "0")
-            turn0.set("model", "system")
-            # Turn 0 is the start of history
+            # No 'model' attribute on Turn itself according to refined theory
             self.root.insert(0, turn0)
         return turn0
 
+    def _get_agent_envelope(self, turn):
+        agent = turn.find("agent")
+        if agent is None:
+            agent = etree.SubElement(turn, "agent")
+        return agent
+
     def _add_preamble(self):
-        """Sets up the Constitution and Roadmap in Turn 0 only."""
+        """Sets up the Constitution in Turn 0/Agent only."""
         turn0 = self._get_turn_zero()
+        agent = self._get_agent_envelope(turn0)
         
-        if turn0.find("system") is None:
-            sys = etree.SubElement(turn0, "system")
+        if agent.find("system") is None:
+            sys = etree.Element("system")
             sys.text = "You are an agent."
+            # Ensure it's the first child
+            agent.insert(0, sys)
             
-        if turn0.find("project_roadmap") is None:
-            road = etree.SubElement(turn0, "project_roadmap")
-            road.set("file", "AGENTS.md")
-            road.text = "Initializing roadmap..."
+        if turn0.find("agent/user") is None:
+            user = etree.SubElement(agent, "user")
+            user.text = "Initialization"
 
     def dump_xml(self):
         return etree.tostring(self.root, encoding='unicode', pretty_print=True)
@@ -62,14 +68,11 @@ class SessionDOM:
     def validate_strictly(self):
         """
         Enforces the XSD and Schematron contracts.
-        Failure here stops the program.
         """
-        # 1. XSD Validation
         if not self.xsd.validate(self.root):
             errors = "\n".join([f"Line {e.line}: {e.message}" for e in self.xsd.error_log])
             raise ContractViolationError(f"CRITICAL SCHEMA VIOLATION (XSD):\n{errors}", self.dump_xml())
         
-        # 2. Schematron Validation
         if not self.sch.validate(self.root):
             errors = "Business Rule Violation"
             if self.sch.error_log:
@@ -79,25 +82,39 @@ class SessionDOM:
     def update_context(self, ctx_list, roadmap_content):
         """
         Synchronizes environment state into the history.
-        Roadmap goes in Turn 0 ONLY.
-        Files go in a <history> tag in EVERY turn.
+        Roadmap goes in Turn 0/Agent.
+        Files go in <agent/history> in EVERY turn.
         """
         turn0 = self._get_turn_zero()
+        agent0 = self._get_agent_envelope(turn0)
         
         # 1. Update Roadmap in Turn 0 ONLY
-        road = turn0.find("project_roadmap")
+        road = agent0.find("project_roadmap")
+        if road is None:
+            road = etree.Element("project_roadmap")
+            road.set("file", "AGENTS.md")
+            # Insert after system if exists
+            agent0.insert(1, road)
+        
         if roadmap_content:
             road.text = roadmap_content
+        elif not road.text:
+            road.text = "Roadmap not loaded."
 
         # 2. Add files to the <history> tag of the CURRENT ACTIVE TURN
         target_turn = self._active_turn if self._active_turn is not None else turn0
+        agent = self._get_agent_envelope(target_turn)
         
-        hist = target_turn.find("history")
+        hist = agent.find("history")
         if hist is None:
             hist = etree.Element("history")
-            target_turn.append(hist)
+            # Insert before user
+            user = agent.find("user")
+            if user is not None:
+                user.addprevious(hist)
+            else:
+                agent.append(hist)
         
-        # Purge existing files in the history tag to avoid duplicates on re-sync
         for el in hist.findall("file"):
             hist.remove(el)
             
@@ -108,46 +125,48 @@ class SessionDOM:
             f.set("size", str(item.get("size", "-1")))
             if item.get("content"):
                 f.text = item["content"]
-            
             hist.append(f)
         
         self.validate_strictly()
 
     def set_system_prompt(self, content):
-        """Updates the constitution in Turn 0."""
+        """Updates the constitution in Turn 0/Agent."""
         turn0 = self._get_turn_zero()
-        sys_node = turn0.find("system")
+        agent = self._get_agent_envelope(turn0)
+        sys_node = agent.find("system")
         if sys_node is None:
-            sys_node = etree.SubElement(turn0, "system")
+            sys_node = etree.Element("system")
+            agent.insert(0, sys_node)
         sys_node.text = content
         self.validate_strictly()
 
     def start_turn(self, turn_id, user_data, metadata=None):
-        """Creates a new turn."""
+        """Creates a new turn with agent and assistant envelopes."""
         turn = etree.SubElement(self.root, "turn")
         turn.set("id", str(turn_id))
-        turn.set("model", (metadata or {}).get("model", "unknown"))
         
-        user = etree.SubElement(turn, "user")
+        agent = etree.SubElement(turn, "agent")
+        user = etree.SubElement(agent, "user")
         
         if isinstance(user_data, dict):
-            # Complex user data with potential selection
             if user_data.get("selection"):
                 s = user_data["selection"]
-                sel = etree.SubElement(user, "selection")
+                sel = etree.SubElement(agent, "selection")
                 sel.set("file", s.get("file", "unknown"))
-                sel.set("start", f"{s.get('start_line', 0)}:{s.get('start_col', 0)}")
-                sel.set("end", f"{s.get('end_line', 0)}:{s.get('end_col', 0)}")
-                # Metadata is in attributes, text is the content
+                sel.set("range", f"{s.get('start_line', 0)}:{s.get('start_col', 0)}-{s.get('end_line', 0)}:{s.get('end_col', 0)}")
                 sel.text = s.get("text", "")
+                # Ensure selection is before user
+                user.addprevious(sel)
             
             user.text = user_data.get("instruction", "")
         else:
             user.text = str(user_data)
         
         self._active_turn = turn
-        # Pre-create content node for streaming
-        self._active_content_node = etree.SubElement(turn, "content")
+        # Pre-create assistant and content node for streaming
+        assistant = etree.SubElement(turn, "assistant")
+        assistant.set("model", (metadata or {}).get("model", "unknown"))
+        self._active_content_node = etree.SubElement(assistant, "content")
         self._active_content_node.text = ""
         
         self.validate_strictly()
@@ -162,8 +181,12 @@ class SessionDOM:
         if self._active_turn is None:
             return
 
+        assistant = self._active_turn.find("assistant")
+        if assistant is None: return
+
+        # Remove the temporary streaming node
         if self._active_content_node is not None:
-            self._active_turn.remove(self._active_content_node)
+            assistant.remove(self._active_content_node)
             self._active_content_node = None
 
         try:
@@ -171,20 +194,16 @@ class SessionDOM:
                 frag_xml = f'<root>{full_assistant_content}</root>'
                 frag = etree.fromstring(frag_xml)
                 for child in frag:
-                    self._active_turn.append(child)
+                    assistant.append(child)
             else:
-                content_node = etree.SubElement(self._active_turn, "content")
+                content_node = etree.SubElement(assistant, "content")
                 content_node.text = full_assistant_content
         except Exception:
-            content_node = etree.SubElement(self._active_turn, "content")
+            content_node = etree.SubElement(assistant, "content")
             content_node.text = full_assistant_content
 
         self._active_turn = None
         self.validate_strictly()
-
-    def add_turn(self, turn_id, user_data, assistant_content=None, metadata=None):
-        self.start_turn(turn_id, user_data, metadata)
-        self.finalize_turn(assistant_content or "")
 
     def xpath(self, expression):
         results = self.root.xpath(expression)

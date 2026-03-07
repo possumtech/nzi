@@ -5,9 +5,9 @@ def project_dom_to_messages(dom, system_prompt_raw=None):
     """
     Projects the XML DOM state into an array of LLM messages.
     Follows history-based model:
-    - system and roadmap from Turn 0.
-    - files from Turn history.
-    Strictly follows the protocol defined in nzi.prompt.
+    - system from Turn 0 -> role: system
+    - everything else in Turn 0 (roadmap, history, user) -> role: user (Primordial)
+    - everything else -> sequential user/assistant roles
     """
     messages = []
     
@@ -15,77 +15,93 @@ def project_dom_to_messages(dom, system_prompt_raw=None):
     for t in turns:
         tid = t.get("id")
         
-        # 1. Handle System/Roadmap from Turn 0 (The Constitution)
+        # 1. Handle Turn 0 (Primordial)
         if tid == "0":
-            sys_node = t.find("system")
+            # A. System Constitution -> role: system
+            sys_node = t.find("agent/system")
             sys_content = ""
             if sys_node is not None and sys_node.text:
                 sys_content = html.unescape(sys_node.text)
             else:
                 sys_content = "You are an agent."
+            
+            messages.append({"role": "system", "content": sys_content})
 
-            road_node = t.find("project_roadmap")
-            road_content = ""
-            if road_node is not None and road_node.text:
-                road_content = f"\n\n<project_roadmap file=\"{road_node.get('file', 'AGENTS.md')}\">{road_node.text}</project_roadmap>"
-
-            # Initial history in Turn 0 (Initial context)
-            hist_node = t.find("history")
-            hist_content = ""
-            if hist_node is not None:
-                parts = []
-                for f in hist_node.findall("file"):
-                    f_xml = f"<file name=\"{f.get('name')}\" type=\"{f.get('type')}\">{f.text or ''}</file>"
-                    parts.append(f_xml)
-                if parts:
-                    hist_content = "\n\n" + "\n".join(parts)
-
-            messages.append({
-                "role": "system",
-                "content": sys_content + road_content + hist_content
-            })
+            # B. Everything else in Agent 0 -> role: user (First Prompt)
+            agent_node = t.find("agent")
+            if agent_node is not None:
+                primordial_text = ""
+                for child in agent_node:
+                    if child.tag == "system": continue
+                    
+                    if child.tag == "user":
+                        primordial_text += (child.text or "")
+                    elif child.tag == "project_roadmap":
+                        primordial_text += f"\n\nPROJECT_ROADMAP:\n{etree.tostring(child, encoding='unicode').strip()}"
+                    elif child.tag == "history":
+                        parts = []
+                        for f in child.findall("file"):
+                            # Strip internal metadata for protocol
+                            pf = etree.Element("file")
+                            pf.set("name", f.get("name"))
+                            pf.set("type", f.get("type"))
+                            pf.text = f.text
+                            parts.append(etree.tostring(pf, encoding='unicode').strip())
+                        if parts:
+                            primordial_text += "\n\nINITIAL_CONTEXT:\n" + "\n".join(parts)
+                    else:
+                        primordial_text += f"\n\n{etree.tostring(child, encoding='unicode').strip()}"
+                
+                if primordial_text.strip():
+                    messages.append({"role": "user", "content": primordial_text.strip()})
+            
+            # Assistant part of Turn 0
+            asst_node = t.find("assistant")
+            if asst_node is not None:
+                asst_parts = []
+                for child in asst_node:
+                    content = etree.tostring(child, encoding='unicode', with_tail=False).strip()
+                    if content != "<content/>" and content != "<content></content>":
+                        asst_parts.append(html.unescape(content))
+                if asst_parts:
+                    messages.append({"role": "assistant", "content": "\n".join(asst_parts)})
+            
             continue
 
-        # 2. Sequential Interaction (Turns > 0)
-        user_node = t.find("user")
-        if user_node is not None:
+        # 2. Subsequent Turns (N > 0)
+        agent_node = t.find("agent")
+        if agent_node is not None:
             user_text = ""
-            if user_node.text:
-                user_text += user_node.text
+            user_node = agent_node.find("user")
+            if user_node is not None:
+                user_text += (user_node.text or "")
             
-            for child in user_node:
-                if child.tag == "selection":
-                    sel_xml = f"<selection file=\"{child.get('file')}\" start=\"{child.get('start')}\" end=\"{child.get('end')}\">{child.text or ''}</selection>"
-                    user_text += sel_xml
+            for child in agent_node:
+                if child.tag == "user": continue
+                if child.tag == "history":
+                    parts = []
+                    for f in child.findall("file"):
+                        pf = etree.Element("file")
+                        pf.set("name", f.get("name"))
+                        pf.set("type", f.get("type"))
+                        pf.text = f.text
+                        parts.append(etree.tostring(pf, encoding='unicode').strip())
+                    if parts:
+                        user_text += "\n\nCONTEXT:\n" + "\n".join(parts)
                 else:
-                    user_text += etree.tostring(child, encoding='unicode').strip()
-                
-                if child.tail:
-                    user_text += child.tail
+                    user_text += f"\n\n{etree.tostring(child, encoding='unicode').strip()}"
             
-            # Append this turn's specific context RAW
-            hist_node = t.find("history")
-            if hist_node is not None:
-                parts = []
-                for f in hist_node.findall("file"):
-                    f_xml = f"<file name=\"{f.get('name')}\" type=\"{f.get('type')}\">{f.text or ''}</file>"
-                    parts.append(f_xml)
-                if parts:
-                    user_text += "\n\n" + "\n".join(parts)
-
             if user_text.strip():
                 messages.append({"role": "user", "content": user_text.strip()})
-        
-        # 3. Assistant parts (RAW protocol)
-        asst_parts = []
-        for child in t:
-            if child.tag not in ["user", "system", "project_roadmap", "history"]:
-                raw_xml = etree.tostring(child, encoding='unicode', with_tail=False).strip()
-                # DO NOT project empty content tags that haven't been filled yet
-                if raw_xml != "<content/>" and raw_xml != "<content></content>":
-                    asst_parts.append(html.unescape(raw_xml))
-        
-        if asst_parts:
-            messages.append({"role": "assistant", "content": "\n".join(asst_parts)})
+
+        assistant_node = t.find("assistant")
+        if assistant_node is not None:
+            asst_parts = []
+            for child in assistant_node:
+                content = etree.tostring(child, encoding='unicode', with_tail=False).strip()
+                if content != "<content/>" and content != "<content></content>":
+                    asst_parts.append(html.unescape(content))
+            if asst_parts:
+                messages.append({"role": "assistant", "content": "\n".join(asst_parts)})
             
     return messages
