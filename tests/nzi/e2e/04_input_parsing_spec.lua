@@ -44,6 +44,7 @@ describe("4. Input Parsing & Selection", function()
     local captured_content, captured_type, captured_selection
     local old_start = bridge.start_loop
     bridge.start_loop = function(content, type, include_lsp, target_file, selection)
+      print("DEBUG: MOCK start_loop called", content)
       captured_content = content
       captured_type = type
       captured_selection = selection

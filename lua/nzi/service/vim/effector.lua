@@ -21,14 +21,34 @@ function M.dispatch(action, turn_id)
         local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false);
         
         local success, new_lines = false, {};
-        if action.content:match("^```") then
-          -- Full file replacement (Markdown block)
-          local content = action.content:gsub("^```%w*\n", ""):gsub("\n```$", "");
+        if action.name == "replace_all" or (action.content and action.content:match("^```")) then
+          -- Full file replacement (Markdown block or replace_all)
+          local content = action.content or ""
+          if content:match("^```") then
+            content = content:gsub("^```%w*\n", ""):gsub("\n```$", "");
+          end
           new_lines = vim.split(content, "\n");
           success = true;
         else
-          -- Surgical SEARCH/REPLACE
-          success, new_lines = editor.apply_replacement(lines, action.content);
+          -- Surgical SEARCH/REPLACE using pre-parsed blocks
+          local blocks = action.blocks or {};
+          if #blocks > 0 then
+            local temp_buf = vim.api.nvim_create_buf(false, true);
+            vim.api.nvim_buf_set_lines(temp_buf, 0, -1, false, lines);
+            local any_match = false;
+            for _, block in ipairs(blocks) do
+              local s, e, q = editor.find_block(temp_buf, block.search);
+              if s then
+                editor.apply(temp_buf, s, e, block.replace);
+                any_match = true;
+              end
+            end
+            if any_match then
+              new_lines = vim.api.nvim_buf_get_lines(temp_buf, 0, -1, false);
+              success = true;
+            end
+            vim.api.nvim_buf_delete(temp_buf, { force = true });
+          end
         end
 
         if success then

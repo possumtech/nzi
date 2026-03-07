@@ -9,39 +9,6 @@ local diff = require("nzi.ui.diff");
 
 local M = {};
 
---- Parse SEARCH/REPLACE blocks from a string (Ultra-Resilient)
-local function parse_edit_blocks(content)
-  local blocks = {};
-  local lines = vim.split(content, "\n");
-  local current_block = nil;
-  local state = "none";
-
-  for _, line in ipairs(lines) do
-    if line:match("^<<<<<<<") then
-      current_block = { search = {}, replace = {} };
-      state = "search";
-    elseif line:match("^=======") then
-      state = "replace";
-    elseif line:match("^>>>>>>>") then
-      if current_block then
-        table.insert(blocks, current_block);
-        current_block = nil;
-      end
-      state = "none";
-    elseif state == "search" then
-      table.insert(current_block.search, line);
-    elseif state == "replace" then
-      table.insert(current_block.replace, line);
-    end
-  end
-  
-  if current_block and state == "replace" then
-    table.insert(blocks, current_block);
-  end
-  
-  return blocks;
-end
-
 --- Dispatch a set of model actions and return the combined agent responses
 --- @param actions table: The parsed model actions
 --- @param mode string: 'ask' or 'instruct'
@@ -122,7 +89,7 @@ function M.dispatch_actions(actions, mode, turn_id, callback)
         -- Apply all edits for this file sequentially to the same buffer copy
         for _, action in ipairs(file_actions) do
           if action.name == "edit" then
-            local blocks = parse_edit_blocks(action.content or "");
+            local blocks = action.blocks or {};
             local temp_buf = vim.api.nvim_create_buf(false, true);
             vim.api.nvim_buf_set_lines(temp_buf, 0, -1, false, current_lines);
             

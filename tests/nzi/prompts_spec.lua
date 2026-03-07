@@ -18,9 +18,10 @@ describe("AI prompts module", function()
   end);
 
   it("should format context correctly and skip roadmap file", function()
+    local cwd = vim.fn.getcwd() .. "/"
     local ctx = {
-      { bufnr = 1, name = "test.lua", state = "active", content = "print('hi')", size = 10 },
-      { bufnr = 2, name = "AGENTS.md", state = "active", content = "plan", size = 4 }
+      { bufnr = 1, name = cwd .. "test.lua", state = "active", content = "print('hi')", size = 10 },
+      { bufnr = 2, name = cwd .. "AGENTS.md", state = "active", content = "plan", size = 4 }
     };
     -- roadmap_content must be provided for the tag to appear
     local result = dom.format_context(ctx, false, "Plan: Fix bugs", "AGENTS.md");

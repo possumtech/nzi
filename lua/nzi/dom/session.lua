@@ -29,7 +29,7 @@ function M.format_context(ctx_list, is_instruct, roadmap_content, roadmap_file)
   end
 
   for _, item in ipairs(ctx_list) do
-    local short_name = vim.fn.fnamemodify(item.name, ":.");
+    local short_name = item.name;
     -- Simple skip logic: if the name contains the roadmap filename, skip it
     local escaped_roadmap = roadmap_file:gsub("%.", "%%.");
     if not short_name:match(escaped_roadmap .. "$") then
@@ -147,7 +147,17 @@ function M.format()
     end
     
     if assistant_clean ~= "" then
-      turn_xml = turn_xml .. "\n" .. assistant_clean;
+      local assistant_val = assistant_clean;
+      -- If it doesn't start with a tag, escape it all
+      if not assistant_val:match("^%s*<") then
+        assistant_val = M.xml_escape(assistant_val);
+      else
+        -- This is a mix of tags and potentially unescaped text.
+        -- Truly robust way would be to use the bridge to rebuild it,
+        -- but for now let's at least ensure it's wrapped or handled.
+        -- (Ideally LLM output parsing should have handled this)
+      end
+      turn_xml = turn_xml .. "\n" .. assistant_val;
     end
     
     turn_xml = turn_xml .. "\n</agent:turn>";
@@ -199,35 +209,43 @@ function M.hydrate(xml_str)
   M.turns = {};
   next_id = 0;
 
-  -- 2. Extract Global Attributes
-  local model = xml_str:match("model=\"([^\"]+)\"");
-  local yolo = xml_str:match("yolo=\"([^\"]+)\"");
-  local roadmap = xml_str:match("roadmap=\"([^\"]+)\"");
+  -- 2. Extract Global Attributes using XPath
+  local model = protocol.xpath(xml_str, "/nzi:session/@model")[1];
+  local yolo = protocol.xpath(xml_str, "/nzi:session/@yolo")[1];
+  local roadmap = protocol.xpath(xml_str, "/nzi:session/@roadmap")[1];
   
   if model then config.options.active_model = model; end
   if yolo then config.options.yolo = (yolo == "true"); end
   if roadmap then config.options.roadmap_file = roadmap; end
 
   -- 3. Extract Turns
-  -- (We use XPath via the query engine for robustness)
   local turn_xmls = protocol.xpath(xml_str, "//agent:turn");
   
   for _, tx in ipairs(turn_xmls) do
-    local tid = tonumber(tx:match("id=\"(%d+)\"")) or next_id;
-    local t_model = tx:match("model=\"([^\"]+)\"");
-    local t_duration = tonumber(tx:match("duration=\"([^\"]+)\"")) or 0;
-    local t_acts = tonumber(tx:match("acts=\"([^\"]+)\"")) or 0;
+    local tid = tonumber(protocol.xpath(tx, "/agent:turn/@id")[1]) or next_id;
+    local t_model = protocol.xpath(tx, "/agent:turn/@model")[1];
+    local t_duration = tonumber(protocol.xpath(tx, "/agent:turn/@duration")[1]) or 0;
+    local t_acts = tonumber(protocol.xpath(tx, "/agent:turn/@acts")[1]) or 0;
 
     local user_content = "";
-    local user_node = protocol.xpath(tx, "//agent:user");
-    if #user_node > 0 then
-      -- Remove the <agent:user> tags to get raw content
-      user_content = user_node[1]:gsub("^<agent:user.->\n?", ""):gsub("\n?</agent:user>$", "");
+    local user_nodes = protocol.xpath(tx, "/agent:turn/agent:user");
+    if #user_nodes > 0 then
+      -- Get text content from user node
+      user_content = protocol.xpath(tx, "/agent:turn/agent:user/text()")[1] or "";
+      -- Trim leading/trailing whitespace which lxml might preserve
+      user_content = user_content:gsub("^%s*", ""):gsub("%s*$", "");
     end
 
     local assistant_content = "";
     -- Assistant content is everything AFTER the user node inside the turn
-    assistant_content = tx:gsub("<agent:user.->.-</agent:user>", ""):gsub("^<agent:turn.->\n?", ""):gsub("\n?</agent:turn>$", "");
+    local assistant_nodes = protocol.xpath(tx, "/agent:turn/agent:user/following-sibling::node()");
+    local assistant_parts = {};
+    for _, node in ipairs(assistant_nodes) do
+      table.insert(assistant_parts, node);
+    end
+    assistant_content = table.concat(assistant_parts, "");
+    -- Trim leading/trailing whitespace which might be artifacts of formatting
+    assistant_content = assistant_content:gsub("^%s*", ""):gsub("%s*$", "");
 
     table.insert(M.turns, {
       id = tid,
