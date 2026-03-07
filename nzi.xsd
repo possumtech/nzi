@@ -28,22 +28,79 @@
         <xs:element ref="nzi:definition"/>
         <xs:element ref="nzi:choice"/>
         <xs:element ref="nzi:reset"/>
+        <xs:element ref="nzi:file"/>
+        <xs:element ref="nzi:project_state"/>
+        <xs:element ref="nzi:next_task_suggest"/>
+        <xs:element ref="nzi:selection"/>
+        <xs:element ref="nzi:lsp_definition"/>
       </xs:choice>
     </xs:complexType>
   </xs:element>
 
   <!-- USER Elements -->
   <xs:element name="user">
+    <xs:complexType mixed="true">
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element ref="nzi:selection"/>
+        <xs:element ref="nzi:project_state"/>
+        <xs:element ref="nzi:next_task_suggest"/>
+      </xs:choice>
+      <xs:attribute name="type" type="xs:string"/>
+      <xs:attribute name="id" type="xs:integer"/>
+      <xs:attribute name="model" type="xs:string"/>
+      <xs:attribute name="duration" type="xs:decimal"/>
+      <xs:attribute name="acts" type="xs:integer"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="history_user">
+    <xs:complexType mixed="true">
+      <xs:attribute name="id" type="xs:integer"/>
+      <xs:attribute name="model" type="xs:string"/>
+      <xs:attribute name="duration" type="xs:decimal"/>
+      <xs:attribute name="acts" type="xs:integer"/>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- AGENT Elements -->
+  <xs:element name="file">
     <xs:complexType>
       <xs:simpleContent>
         <xs:extension base="xs:string">
-          <xs:attribute name="type" type="xs:string"/>
+          <xs:attribute name="name" type="xs:string" use="required"/>
+          <xs:attribute name="state" type="xs:string"/>
+          <xs:attribute name="size" type="xs:string"/>
         </xs:extension>
       </xs:simpleContent>
     </xs:complexType>
   </xs:element>
 
-  <!-- AGENT Elements -->
+  <xs:element name="project_state" type="xs:string"/>
+  <xs:element name="next_task_suggest" type="xs:string"/>
+
+  <xs:element name="selection">
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base="xs:string">
+          <xs:attribute name="file" type="xs:string" use="required"/>
+          <xs:attribute name="start" type="xs:string"/>
+          <xs:attribute name="end" type="xs:string"/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="lsp_definition">
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base="xs:string">
+          <xs:attribute name="uri" type="xs:string" use="required"/>
+          <xs:attribute name="line" type="xs:integer" use="required"/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+
   <xs:element name="context">
     <xs:complexType>
       <xs:simpleContent>

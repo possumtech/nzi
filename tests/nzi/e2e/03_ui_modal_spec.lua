@@ -24,9 +24,9 @@ describe("3. UI & The Modal", function()
     modal.open()
     local config = vim.api.nvim_win_get_config(modal.winid)
     assert.truthy(config.title, "Modal should have a title")
-    -- The title is something like {{" DEEPSEEK ", "FloatTitle"}}
+    -- The title is something like {{" defaultModel ", "FloatTitle"}}
     local title_text = type(config.title) == "table" and config.title[1][1] or config.title
-    assert.match("DEEPSEEK", title_text)
+    assert.match("defaultModel", title_text)
   end)
 
   it("should toggle the 'Thinking' state in the title", function()

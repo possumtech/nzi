@@ -81,25 +81,42 @@ end
 --- @param content string: The ask and checkbox list from the model
 --- @param callback function: Called with the final user answer string
 function M.choice(content, callback)
-  -- 1. Extract the ask and the options from the markdown checkboxes
-  local parts = vim.split(content, "- [ ]", { plain = true });
-  local ask = parts[1]:gsub("^%s*", ""):gsub("%s*$", "");
-  if ask == "" then ask = "Please choose an option:"; end
-
+  -- 1. Extract the ask and the options using flexible regex
+  -- We search for lines starting with - [ ] or * [ ] or -[] etc.
   local options = {};
-  for i = 2, #parts do
-    local opt = parts[i]:gsub("^%s*", ""):gsub("%s*$", "");
-    if opt ~= "" then
-      table.insert(options, opt);
+  local lines = vim.split(content, "\n");
+  local prompt_lines = {};
+  local in_options = false;
+
+  for _, line in ipairs(lines) do
+    local opt = line:match("^[%s%-]*%*?%s*%[ %]%s*(.*)$")
+    if opt then
+      opt = opt:gsub("^%s*", ""):gsub("%s*$", "");
+      if opt ~= "" then
+        table.insert(options, opt);
+        in_options = true;
+      end
+    elseif not in_options then
+      table.insert(prompt_lines, line);
     end
   end
+
+  local prompt = table.concat(prompt_lines, "\n"):gsub("^%s*", ""):gsub("%s*$", "");
+  if prompt == "" then prompt = "Please choose an option:"; end
+
+  -- 2. Fallback: If fewer than 2 options found, provide Yes/No
+  -- The user prefers a clean Yes/No/Freeform if the model format is ambiguous.
+  if #options < 2 then
+    options = { "Yes", "No" };
+    prompt = content:gsub("^%s*", ""):gsub("%s*$", "");
+  end
   
-  -- 2. Append the mandatory "Open response" option
+  -- 3. Append the mandatory "Freeform Response" option
   table.insert(options, "None of the above (Respond with text)");
   
-  -- 3. Show the UI
+  -- 4. Show the UI
   vim.ui.select(options, {
-    prompt = ask:gsub("^%s*", ""),
+    prompt = prompt,
   }, function(choice, index)
     if not choice then
       callback("User cancelled selection.");
@@ -107,7 +124,7 @@ function M.choice(content, callback)
     end
     
     if index == #options then
-      -- User chose "Open response"
+      -- User chose "Freeform Response"
       vim.ui.input({ prompt = "Your response: " }, function(input)
         callback(input or "User provided no text response.");
       end);

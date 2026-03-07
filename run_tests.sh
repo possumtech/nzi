@@ -10,6 +10,7 @@ if [ -f .env ]; then
 fi
 
 # Ensure tests use the local virtual environment if available
+export NZI_MODEL_ALIAS="${NZI_MODEL_ALIAS:-defaultModel}"
 if [ -x "$PWD/.venv/bin/python" ] && [ -z "$NZI_PYTHON_CMD" ]; then
     export NZI_PYTHON_CMD="$PWD/.venv/bin/python"
 fi
@@ -50,7 +51,7 @@ fi
 # Integration tests (if a model is selected for testing)
 if [[ -n "$NZI_MODEL" ]]; then
     echo "Running integration tests using model alias: $NZI_MODEL..."
-    nvim --headless -i NONE --noplugin -u tests/init.lua \
+    nvim --headless --clean -u tests/init.lua \
         -c "lua require('plenary.test_harness').test_directory('tests/integration', { progressive = true, halt_on_error = true })" \
         -c "qa!"
 fi
@@ -58,11 +59,11 @@ fi
 # E2E lifecycle test (OpenRouter)
 if [[ -n "$OPENROUTER_API_KEY" ]]; then
     echo "Running OpenRouter E2E lifecycle test..."
-    nvim --headless -i NONE --noplugin -u tests/init.lua \
+    nvim --headless --clean -u tests/init.lua \
         -l tests/e2e/lifecycle.lua
     
     echo "Running Mandatory Beef Test..."
-    nvim --headless -i NONE --noplugin -u tests/init.lua \
+    nvim --headless --clean -u tests/init.lua \
         -l tests/e2e/beef_spec.lua
 fi
 

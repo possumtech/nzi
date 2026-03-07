@@ -47,9 +47,9 @@ describe("AI Interpolation and Visual Mode", function()
     -- 2. History should contain the content
     vim.wait(1000, function() return #history.get_all() > 0 end);
     local all = history.get_all();
-    assert.True(#all > 0);
+    assert.truthy(#all > 0);
     local user_msg = history.strip_line_numbers(all[1].user);
-    assert.match("How does this work?", user_msg);
+    assert.truthy(user_msg:find("How does this work?"));
   end);
 
   it("should handle visual range execution with a instruct", function()
@@ -71,14 +71,14 @@ describe("AI Interpolation and Visual Mode", function()
     -- 2. Structured tag should have precise range and content
     vim.wait(1000, function() return #history.get_all() > 0 end);
     local all = history.get_all();
-    assert.True(#all > 0);
+    assert.truthy(#all > 0);
     local user_msg = history.strip_line_numbers(all[1].user);
-    assert.match("start=\"1:1\"", user_msg);
-    assert.match("end=\"4:3\"", user_msg);
-    assert.match("optimize this", user_msg);
+    assert.truthy(user_msg:find("start=\"1:1\""));
+    assert.truthy(user_msg:find("end=\"4:3\""));
+    assert.truthy(user_msg:find("optimize this"));
     -- Content should be the code minus the :AI: line
-    assert.match("function test%(%)", user_msg);
-    assert.match("return 1 %+ 1", user_msg);
+    assert.truthy(user_msg:find("function test()", 1, true));
+    assert.truthy(user_msg:find("return 1 + 1", 1, true));
   end);
 
   it("should handle raw visual selection with no instruct (fallback to input)", function()
@@ -101,11 +101,11 @@ describe("AI Interpolation and Visual Mode", function()
     
     vim.wait(1000, function() return #history.get_all() > 0 end);
     local all = history.get_all();
-    assert.True(#all > 0);
+    assert.truthy(#all > 0);
     local user_msg = history.strip_line_numbers(all[1].user);
-    assert.match("Explain", user_msg);
-    assert.match("start=\"1:1\"", user_msg);
-    assert.match("line 1", user_msg);
+    assert.truthy(user_msg:find("Explain"));
+    assert.truthy(user_msg:find("start=\"1:1\""));
+    assert.truthy(user_msg:find("line 1"));
     
     vim.ui.input = old_input;
   end);

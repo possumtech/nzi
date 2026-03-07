@@ -50,7 +50,8 @@ end
 --- @param type string: 'ask', 'instruct', etc.
 --- @param user_content string | nil
 --- @param assistant_content string | nil
-function M.add(type, user_content, assistant_content)
+--- @param metadata table | nil: { model = string, duration = number, changes = number }
+function M.add(type, user_content, assistant_content, metadata)
   local config = require("nzi.core.config");
   config.log(string.format("Type: %s\nUser: %s\nAssistant: %s", type, user_content or "", assistant_content or ""), "TURN");
 
@@ -58,7 +59,8 @@ function M.add(type, user_content, assistant_content)
     id = next_id,
     type = type,
     user = add_line_numbers(user_content),
-    assistant = add_line_numbers(assistant_content)
+    assistant = add_line_numbers(assistant_content),
+    metadata = metadata or {}
   });
   next_id = next_id + 1;
 end
@@ -67,6 +69,12 @@ end
 --- @return table
 function M.get_all()
   return M.turns;
+end
+
+--- Get the ID of the next turn to be added
+--- @return number
+function M.get_next_id()
+  return next_id;
 end
 
 --- Format history into a structured XML block for the modal view
@@ -79,9 +87,15 @@ function M.format()
     local user_clean = M.strip_line_numbers(turn.user);
     local assistant_clean = M.strip_line_numbers(turn.assistant);
     
+    local meta = "";
+    if turn.metadata and turn.metadata.model then
+      meta = string.format(" id=\"%d\" model=\"%s\" duration=\"%.2f\" acts=\"%d\"", 
+        turn.id, turn.metadata.model, turn.metadata.duration or 0, turn.metadata.changes or 0);
+    end
+
     -- Format history as a sequence of XML-wrapped turns
     if user_clean ~= "" then
-      table.insert(parts, string.format("<agent:user>\n%s\n</agent:user>", M.xml_escape(user_clean)));
+      table.insert(parts, string.format("<agent:user%s>\n%s\n</agent:user>", meta, M.xml_escape(user_clean)));
     end
     if assistant_clean ~= "" then
       -- assistant_clean is usually the <model:summary> and other actions
@@ -100,11 +114,17 @@ function M.get_as_messages()
     local user_clean = M.strip_line_numbers(turn.user);
     local assistant_clean = M.strip_line_numbers(turn.assistant);
 
+    local meta = "";
+    if turn.metadata and turn.metadata.model then
+      meta = string.format(" id=\"%d\" model=\"%s\" duration=\"%.2f\" acts=\"%d\"", 
+        turn.id, turn.metadata.model, turn.metadata.duration or 0, turn.metadata.changes or 0);
+    end
+
     -- Order MUST be User then Assistant
     if user_clean ~= "" then
       table.insert(messages, { 
         role = "user", 
-        content = user_clean
+        content = string.format("<agent:history_user%s>\n%s\n</agent:history_user>", meta, user_clean)
       });
     end
     if assistant_clean ~= "" then
@@ -122,6 +142,46 @@ function M.pop()
   if #M.turns > 0 then
     table.remove(M.turns);
     next_id = next_id - 1;
+    return true;
+  end
+  return false;
+end
+
+--- Remove a specific turn by ID
+--- @param id number
+function M.delete_at(id)
+  for i, turn in ipairs(M.turns) do
+    if turn.id == id then
+      table.remove(M.turns, i);
+      -- We don't decrement next_id here to avoid collisions if more are added
+      return true;
+    end
+  end
+  return false;
+end
+
+--- Remove a turn and everything that follows it
+--- @param id number
+function M.delete_after(id)
+  local found_idx = -1;
+  for i, turn in ipairs(M.turns) do
+    if turn.id == id then
+      found_idx = i;
+      break;
+    end
+  end
+  
+  if found_idx ~= -1 then
+    local to_remove = #M.turns - found_idx + 1;
+    for _ = 1, to_remove do
+      table.remove(M.turns, found_idx);
+    end
+    -- Reset next_id based on what's left
+    if #M.turns > 0 then
+      next_id = M.turns[#M.turns].id + 1;
+    else
+      next_id = 1;
+    end
     return true;
   end
   return false;

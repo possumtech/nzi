@@ -43,158 +43,175 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
   local current_prompt = content;
 
   local function start_turn()
-    turn_count = turn_count + 1;
-    if turn_count > max_turns then
-      modal.write("Max turns reached. Loop halted for safety.", "error", false);
-      modal.set_thinking(false);
-      modal.close_tag();
-      vim.schedule(function() 
-        M.is_busy = false; 
-        require("nzi.ui.visuals").stop_thinking();
-      end);
-      return;
-    end
-
-    local messages, system_prompt, context_str, ctx_list, turn_block = prompts.build_messages(current_prompt, type, target_file, include_lsp, selection);
-    local user_message_content = messages[#messages].content;
-    
-    if turn_count == 1 then
-      -- Always write preamble to the buffer so it's there if modal opens later
-      if config.options.modal.show_context then
-        modal.write(system_prompt, "system", false);
-        local history_msgs = history.get_as_messages();
-        for _, msg in ipairs(history_msgs) do modal.write(msg.content, msg.role, false); end
-        modal.write(context_str, "context", false);
-      end
-      modal.write(user_message_content, "user", false);
-      -- DELETED: modal.open() call here to avoid immediate pop-up
-    end
-
-    modal.set_thinking(true);
-    local tag_parser = protocol.create_parser();
-    local error_displayed = false;
-
-    M.current_job = job.run(messages, function(success, result)
-      vim.schedule(function()
-        M.current_job = nil;
-        
-        if not success then
-          modal.set_thinking(false);
-          if not error_displayed then
-            modal.write(result, "error", false);
-            modal.close_tag();
-          end
-          vim.schedule(function() 
-            M.is_busy = false; 
-            require("nzi.ui.visuals").stop_thinking();
-          end);
-          return;
-        end
-
-        tag_parser:feed(""); -- Finalize parser
-        local actions = tag_parser:get_actions();
-        local remaining = tag_parser:get_remaining();
-        
-        -- Fallback: If model sent naked text with no tags, treat it as a summary/ask
-        if #actions == 0 and remaining:match("%S") then
-          table.insert(actions, { name = "summary", content = remaining:gsub("^%s*", ""):gsub("%s*$", "") });
-        end
-
-        if #actions > 0 then
-          -- 1. Discovery/Action Phase
-          agent.dispatch_actions(actions, type, function(combined_agent_response, signal, was_blocked)
-            vim.schedule(function()
-              if signal == "ABORTED" then
-                modal.write("User aborted turn. Agent momentum halted.", "system", false);
-                modal.set_thinking(false);
-                modal.close_tag();
-                vim.schedule(function() 
-                  M.is_busy = false; 
-                  require("nzi.ui.visuals").stop_thinking();
-                end);
-                return;
-              end
-
-              if combined_agent_response and combined_agent_response ~= "" then
-                -- At least one tool produced an ACTIVE response (grep, read, etc.)
-                -- We must force a new turn to deliver this data.
-                history.add(type, turn_block, result);
-                modal.write(combined_agent_response, "user", false);
-                current_prompt = combined_agent_response;
-                
-                if not was_blocked then
-                  vim.schedule(function() start_turn(); end);
-                else
-                  modal.set_thinking(false);
-                  modal.close_tag();
-                  M.is_busy = false;
-                  require("nzi.ui.visuals").stop_thinking();
-                  config.log("Turn sequence suspended for user review/choice.", "ENGINE");
-                end
-              else
-                -- Tools ran but were all PASSIVE (acks) or produced no context.
-                -- We terminate the turn here and return control to the user.
-                -- The passive buffer will be flushed and piggybacked on the NEXT turn.
-                history.add(type, turn_block, result);
-                modal.set_thinking(false);
-                modal.close_tag();
-                vim.schedule(function() 
-                  M.is_busy = false; 
-                  require("nzi.ui.visuals").stop_thinking();
-                  -- AUTO-DRAIN: Check if there's more work in the queue
-                  local next_work = queue.pop_instruction();
-                  if next_work and not queue.is_blocked() then
-                    M.run_loop(next_work.instruction, next_work.type, false, next_work.target_file, next_work.selection);
-                  end
-                end);
-              end
-            end);
-          end);
-        else
-          -- 2. Final Response & Verification Phase
-          agent.verify_state(function(failure_response)
-            vim.schedule(function()
-              if failure_response then
-                history.add(type, turn_block, result);
-                modal.write(failure_response, "user", false);
-                current_prompt = failure_response;
-                vim.schedule(function() start_turn(); end);
-              else
-                -- Final response, all good
-                history.add(type, turn_block, result);
-                
-                -- DELETED: modal.open() call here. User sees summary in notify/status.
-
-                modal.set_thinking(false);
-                modal.close_tag();
-                
-                vim.schedule(function() 
-                  M.is_busy = false; 
-                  require("nzi.ui.visuals").stop_thinking();
-                  -- AUTO-DRAIN: Check if there's more work in the queue
-                  local next_work = queue.pop_instruction();
-                  if next_work and not queue.is_blocked() then
-                    M.run_loop(next_work.instruction, next_work.type, false, next_work.target_file, next_work.selection);
-                  end
-                end);
-              end
-            end);
-          end);
-        end
-      end);
-    end, function(chunk, chunk_type)
-      vim.schedule(function()
-        if chunk_type == "error" then error_displayed = true; end
-        -- ONLY feed "content" to the action parser. 
-        -- Reasoning (thought tokens) must not be parsed as model actions.
-        if chunk_type == "content" then
-          tag_parser:feed(chunk);
-        end
-        modal.write(chunk, chunk_type, true);
-      end);
+  local current_turn_id = history.get_next_id();
+  local start_time = vim.loop.hrtime();
+  turn_count = turn_count + 1;
+  if turn_count > max_turns then
+    modal.write("Max turns reached. Loop halted for safety.", "error", false, current_turn_id);
+    modal.set_thinking(false);
+    modal.close_tag();
+    vim.schedule(function() 
+      M.is_busy = false; 
+      require("nzi.ui.visuals").stop_thinking();
     end);
+    return;
   end
 
+  local messages, system_prompt, context_str, ctx_list, turn_block = prompts.build_messages(current_prompt, type, target_file, include_lsp, selection);
+  local user_message_content = messages[#messages].content;
+
+  if turn_count == 1 then
+    -- Always write preamble to the buffer so it's there if modal opens later
+    if config.options.modal.show_context then
+      modal.write(system_prompt, "system", false, 0); -- 0 for non-history preamble
+      local history_msgs = history.get_as_messages();
+      for _, msg in ipairs(history_msgs) do modal.write(msg.content, msg.role, false, 0); end
+      modal.write(context_str, "context", false, 0);
+    end
+    modal.write(user_message_content, "user", false, current_turn_id);
+    -- DELETED: modal.open() call here to avoid immediate pop-up
+  end
+
+  modal.set_thinking(true);
+  local tag_parser = protocol.create_parser();
+  local error_displayed = false;
+
+  M.current_job = job.run(messages, function(success, result)
+    vim.schedule(function()
+      M.current_job = nil;
+      local duration = (vim.loop.hrtime() - start_time) / 1e9; -- seconds
+      local active_model = config.options.active_model or "unknown";
+
+      if not success then
+        modal.set_thinking(false);
+        if not error_displayed then
+          modal.write(result, "error", false, current_turn_id);
+          modal.close_tag();
+        end
+        vim.schedule(function() 
+          M.is_busy = false; 
+          require("nzi.ui.visuals").stop_thinking();
+        end);
+        return;
+      end
+
+      tag_parser:feed(""); -- Finalize parser
+      local actions = tag_parser:get_actions();
+      local remaining = tag_parser:get_remaining();
+
+      -- Fallback: If model sent naked text with no tags, treat it as a summary/ask
+      if #actions == 0 and remaining:match("%S") then
+        table.insert(actions, { name = "summary", content = remaining:gsub("^%s*", ""):gsub("%s*$", "") });
+      end
+
+      local metadata = {
+        model = active_model,
+        duration = duration,
+        changes = #actions
+      };
+
+      if #actions > 0 then
+        -- 1. Discovery/Action Phase
+        agent.dispatch_actions(actions, type, current_turn_id, function(combined_agent_response, signal, was_blocked)
+          vim.schedule(function()
+            if signal == "ABORTED" then
+              modal.write("User aborted turn. Agent momentum halted.", "system", false, current_turn_id);
+              modal.set_thinking(false);
+              modal.close_tag();
+              vim.schedule(function() 
+                M.is_busy = false; 
+                require("nzi.ui.visuals").stop_thinking();
+              end);
+              return;
+            end
+
+            if combined_agent_response and combined_agent_response ~= "" then
+              -- At least one tool produced an ACTIVE response (grep, read, etc.)
+              -- We must force a new turn to deliver this data.
+              history.add(type, turn_block, result, metadata);
+              modal.write(combined_agent_response, "user", false, history.get_next_id());
+              current_prompt = combined_agent_response;
+
+              -- Only block for choices/interactions if we have a real UI
+              local has_ui = (#vim.api.nvim_list_uis() > 0);
+              if not was_blocked or not has_ui then
+                -- RECURSIVE TURN: We stay BUSY
+                vim.schedule(function() start_turn(); end);
+              else
+                modal.set_thinking(false);
+                modal.close_tag();
+                M.is_busy = false;
+                require("nzi.ui.visuals").stop_thinking();
+                config.log("Turn sequence suspended for user review/choice.", "ENGINE");
+              end
+            else
+              -- Tools ran but were all PASSIVE (acks) or produced no context.
+              -- We terminate the turn here and return control to the user.
+              -- The passive buffer will be flushed and piggybacked on the NEXT turn.
+              history.add(type, turn_block, result, metadata);
+              modal.set_thinking(false);
+              modal.close_tag();
+
+              -- COMPLETELY FINISHED
+              vim.schedule(function() 
+                M.is_busy = false; 
+                require("nzi.ui.visuals").stop_thinking();
+                -- AUTO-DRAIN: Check if there's more work in the queue
+                local next_work = queue.pop_instruction();
+                if next_work and not queue.is_blocked() then
+                  M.run_loop(next_work.instruction, next_work.type, false, next_work.target_file, next_work.selection);
+                end
+              end);
+            end
+          end);
+        end);
+      else
+        -- 2. Final Response & Verification Phase
+        agent.verify_state(current_turn_id, function(failure_response)
+          vim.schedule(function()
+            if failure_response then
+              history.add(type, turn_block, result, metadata);
+              modal.write(failure_response, "user", false, history.get_next_id());
+              current_prompt = failure_response;
+              vim.schedule(function() start_turn(); end);
+            else
+              -- Final response, all good
+              -- CRITICAL: Ensure history is updated so tests/UI see the completion
+              history.add(type, turn_block, result, metadata);
+
+              -- DELETED: modal.open() call here. User sees summary in notify/status.
+
+              modal.set_thinking(false);
+              modal.close_tag();
+
+              vim.schedule(function() 
+                M.is_busy = false; 
+                require("nzi.ui.visuals").stop_thinking();
+                -- AUTO-DRAIN: Check if there's more work in the queue
+                local next_work = queue.pop_instruction();
+                if next_work and not queue.is_blocked() then
+                  M.run_loop(next_work.instruction, next_work.type, false, next_work.target_file, next_work.selection);
+                end
+              end);
+            end
+          end);
+        end);
+      end
+
+    end);
+  end, function(chunk, chunk_type)
+
+    vim.schedule(function()
+      if chunk_type == "error" then error_displayed = true; end
+      -- ONLY feed "content" to the action parser. 
+      -- Reasoning (thought tokens) must not be parsed as model actions.
+      if chunk_type == "content" then
+        tag_parser:feed(chunk);
+      end
+      modal.write(chunk, chunk_type, true, current_turn_id);
+    end);
+  end);
+  end
   start_turn();
 end
 

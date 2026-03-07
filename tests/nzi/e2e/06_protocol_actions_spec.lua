@@ -2,6 +2,7 @@ local assert = require("luassert")
 local agent = require("nzi.protocol.agent")
 local diff = require("nzi.ui.diff")
 local context = require("nzi.context.context")
+local xml_helper = require("tests.xml_helper")
 
 describe("6. Protocol & Actions", function()
   before_each(function()
@@ -19,12 +20,11 @@ describe("6. Protocol & Actions", function()
     require("nzi.context.resolver").resolve = function(f) return f, nil end
     
     local called_back = false
-    agent.dispatch_actions(actions, function(resp)
+    agent.dispatch_actions(actions, "instruct", function(resp)
       called_back = true
-      assert.match("File read and added to active context", resp)
+      assert.match("<agent:context", resp)
     end)
     
-    -- Needs wait since run_next uses vim.schedule in some places, but for read it doesn't currently.
     assert.True(called_back)
     local bufnr = vim.fn.bufadd("dummy.lua")
     assert.equals("active", context.get_state(bufnr))
@@ -44,7 +44,7 @@ describe("6. Protocol & Actions", function()
     require("nzi.core.config").options.yolo = false
     
     local called_back = false
-    agent.dispatch_actions(actions, function(resp)
+    agent.dispatch_actions(actions, "instruct", function(resp)
       called_back = true
       assert.match("Proposed deletion", resp)
     end)
@@ -84,7 +84,7 @@ describe("6. Protocol & Actions", function()
     vim.fn.confirm = function() return 1 end
     
     local called_back = false
-    agent.dispatch_actions(actions, function(resp)
+    agent.dispatch_actions(actions, "instruct", function(resp)
       called_back = true
       assert.match("Proposed new file content", resp)
     end)

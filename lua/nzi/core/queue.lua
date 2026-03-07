@@ -1,7 +1,8 @@
 local M = {};
 
---- Queue for maintaining agent actions and passive confirmations
+--- Queue for maintaining agent actions, passive confirmations, and pending instructions
 M.action_queue = {};
+M.instruction_queue = {}; -- Queue for new model tasks when engine is busy
 M.passive_buffer = {};
 M.blocked_by_interaction = false;
 
@@ -21,15 +22,35 @@ function M.clear_actions()
   M.blocked_by_interaction = false;
 end
 
+--- Queue a new model task for later processing
+function M.enqueue_instruction(content, type, target_file, selection)
+  table.insert(M.instruction_queue, {
+    instruction = content,
+    type = type or "ask",
+    target_file = target_file,
+    selection = selection
+  });
+end
+
+--- Pop a single instruction for serial processing if one exists
+function M.pop_instruction()
+  if #M.instruction_queue > 0 then
+    return table.remove(M.instruction_queue, 1);
+  end
+  return nil;
+end
+
+--- Clear the instruction queue
+function M.clear_instructions()
+  M.instruction_queue = {};
+end
+
 --- Add a passive confirmation/status to the buffer (e.g. Success Acks)
---- These do not trigger turns immediately but are piggybacked later.
---- @param msg string: The XML-namespaced message (e.g. <agent:ack>...</agent:ack>)
 function M.add_passive(msg)
   table.insert(M.passive_buffer, msg);
 end
 
 --- Get and clear all passive messages for piggybacking
---- @return string | nil: The combined XML block or nil if empty
 function M.flush_passive()
   if #M.passive_buffer == 0 then return nil; end
   local combined = table.concat(M.passive_buffer, "\n");
@@ -45,14 +66,6 @@ end
 --- Check if the engine should wait for user input
 function M.is_blocked()
   return M.blocked_by_interaction or #M.action_queue > 0;
-end
-
---- Pop a single instruction for serial processing if one exists
-function M.pop_instruction()
-  if #M.action_queue > 0 then
-    return table.remove(M.action_queue, 1);
-  end
-  return nil;
 end
 
 return M;

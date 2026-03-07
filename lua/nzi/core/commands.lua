@@ -149,10 +149,18 @@ function M.run(cmd)
     if not found then config.notify("No pending diffs found.", vim.log.levels.WARN) end
 
   elseif subcommand == "accept" then
-    diff.accept(vim.api.nvim_get_current_buf());
+    local bufnr = vim.api.nvim_get_current_buf();
+    local name = vim.api.nvim_buf_get_name(bufnr);
+    local short_name = vim.fn.fnamemodify(name, ":.");
+    diff.accept(bufnr);
+    require("nzi.core.queue").add_passive(string.format("<agent:ack status='success' tool='edit' file='%s'>User accepted and saved changes.</agent:ack>", short_name));
 
   elseif subcommand == "reject" then
-    diff.reject(vim.api.nvim_get_current_buf());
+    local bufnr = vim.api.nvim_get_current_buf();
+    local name = vim.api.nvim_buf_get_name(bufnr);
+    local short_name = vim.fn.fnamemodify(name, ":.");
+    diff.reject(bufnr);
+    require("nzi.core.queue").add_passive(string.format("<agent:ack status='denied' tool='edit' file='%s'>User rejected the proposed changes.</agent:ack>", short_name));
 
   elseif subcommand == "yolo" then
     config.options.yolo = not config.options.yolo;

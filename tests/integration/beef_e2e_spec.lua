@@ -5,10 +5,6 @@ local config = require("nzi.core.config");
 
 describe("BEEF E2E: Real LLM Integration", function()
   
-  -- We use the active model from the environment or default to deepseek
-  local model_alias = vim.env.NZI_MODEL or "deepseek";
-  local model_cfg = config.options.models[model_alias];
-
   before_each(function()
     -- Ensure we are using the environment variables
     require("nzi").setup();
@@ -16,9 +12,12 @@ describe("BEEF E2E: Real LLM Integration", function()
   end);
 
   it("should answer 'Where's the beef?' using a real LLM call", function()
+    local model_alias = config.options.active_model;
+    local model_cfg = config.get_active_model();
+
     -- Check if we have an API key or a local endpoint
-    if not model_cfg or (not model_cfg.api_key and not model_cfg.api_base:match("localhost")) then
-      pending("Skipping Beef E2E: No API key or local model configured for " .. model_alias);
+    if not model_cfg or (not model_cfg.api_key and not (model_cfg.api_base or ""):match("192%.168")) then
+      pending("Skipping Beef E2E: No API key or local model configured for " .. tostring(model_alias));
       return;
     end
 
@@ -26,7 +25,7 @@ describe("BEEF E2E: Real LLM Integration", function()
     local done = false;
     local success_result = false;
 
-    print("\n[BEEF E2E] Sending request to model: " .. model_alias .. " (" .. model_cfg.model .. ")\n");
+    print("\n[BEEF E2E] Sending request to model: " .. model_alias .. " (" .. (model_cfg.model or "unknown") .. ")\n");
 
     job.run("Say exactly 'Where's the beef?' and nothing else.", function(success, result)
       success_result = success;

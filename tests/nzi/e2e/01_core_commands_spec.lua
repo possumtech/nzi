@@ -36,10 +36,11 @@ describe("1. Initialization & Core Commands", function()
 
   it("should switch the active model with :AI/model <name>", function()
     local initial_model = config.options.active_model
-    assert.equals("deepseek", initial_model)
+    assert.equals("defaultModel", initial_model)
     
-    -- Inject a temporary model for the test
+    -- Inject temporary models for the test
     config.options.models["mock_model"] = { provider = "ollama", model = "mock" }
+    config.options.models["deepseek"] = { provider = "openrouter", model = "deepseek" }
     
     vim.cmd("AI/model mock_model")
     assert.equals("mock_model", config.options.active_model, "Model should switch to mock_model")

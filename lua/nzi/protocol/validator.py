@@ -14,7 +14,7 @@ def validate_and_heal(xml_str, xsd_path):
     
     # 1. Parsing with recovery (Healing)
     # This handles unclosed tags, entity errors, etc.
-    parser = etree.XMLParser(recover=True, remove_blank_text=True)
+    parser = etree.XMLParser(recover=True)
     try:
         # Wrap in root if multiple top-level elements exist
         # We use the 'nzi' namespace as the default for the dummy root

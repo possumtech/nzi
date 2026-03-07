@@ -50,11 +50,11 @@ describe("AI prompts module", function()
     assert.match("Task 2", last_msg);
     
     -- SYSTEMATIC XML VALIDATION
-    local ok, err = xml_helper.validate_xml(last_msg)
-    assert.is_true(ok, "Full prompt XML is invalid: " .. (err or ""))
+    local ok, _, errs = xml_helper.validate_strict(last_msg)
+    assert.is_true(ok, "Full prompt XML Schema Violation:\n" .. table.concat(errs or {}, "\n"))
     
-    local ok2, err2 = xml_helper.validate_xml(turn_block)
-    assert.is_true(ok2, "Turn block XML is invalid: " .. (err2 or ""))
+    local ok2, _, errs2 = xml_helper.validate_strict(turn_block)
+    assert.is_true(ok2, "Turn block XML Schema Violation:\n" .. table.concat(errs2 or {}, "\n"))
 
     prompts.gather = old_gather;
   end);
@@ -76,7 +76,7 @@ describe("AI prompts module", function()
     assert.match("<agent:user>", last_msg);
 
     -- SYSTEMATIC XML VALIDATION
-    local ok, err = xml_helper.validate_xml(last_msg)
-    assert.is_true(ok, "Instruct prompt XML is invalid: " .. (err or ""))
+    local ok, _, errs = xml_helper.validate_strict(last_msg)
+    assert.is_true(ok, "Instruct prompt XML Schema Violation:\n" .. table.concat(errs or {}, "\n"))
   end);
 end);

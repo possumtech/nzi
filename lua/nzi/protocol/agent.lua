@@ -45,12 +45,18 @@ end
 --- Dispatch a set of model actions and return the combined agent responses
 --- @param actions table: The parsed model actions
 --- @param mode string: 'ask' or 'instruct'
+--- @param turn_id number | nil
 --- @param callback function: Called with (response, signal, was_blocked)
-function M.dispatch_actions(actions, mode, callback)
+function M.dispatch_actions(actions, mode, turn_id, callback)
   local queue = require("nzi.core.queue");
-  local current_idx = 1;
   local accumulated_responses = {};
   local was_blocked = false;
+
+  -- Handle optional turn_id (shift arguments if needed)
+  if type(turn_id) == "function" then
+    callback = turn_id;
+    turn_id = nil;
+  end
   
   -- Clear turn-level action queue before processing
   queue.clear_actions();
@@ -63,7 +69,7 @@ function M.dispatch_actions(actions, mode, callback)
   for _, action in ipairs(actions) do
     -- ENFORCEMENT: Block restricted actions in 'ask' mode
     if mode == "ask" and restricted[action.name] then
-      table.insert(accumulated_responses, string.format("<agent:status>Action <%s> blocked: 'ask' mode is read-only. Use 'instruct' (AI:) for modifications.</agent:status>", action.name));
+      table.insert(accumulated_responses, string.format("<agent:status level='error'>Action <%s> blocked: 'ask' mode is read-only. Use 'instruct' (AI:) for modifications.</agent:status>", action.name));
     elseif action.name == "edit" or action.name == "replace_all" then
       queue.enqueue_action(action);
       was_blocked = true;
@@ -74,7 +80,7 @@ function M.dispatch_actions(actions, mode, callback)
           edits_by_file[file] = edits_by_file[file] or {};
           table.insert(edits_by_file[file], action);
         else
-          table.insert(accumulated_responses, string.format("<agent:status>Error: %s</agent:status>", err));
+          table.insert(accumulated_responses, string.format("<agent:status level='error'>%s</agent:status>", err));
         end
       end
     else
@@ -94,7 +100,6 @@ function M.dispatch_actions(actions, mode, callback)
       local function run_edits(f_idx)
         if f_idx > #file_list then
           -- FINISHED ALL ACTIONS
-          queue.clear_actions();
           if #accumulated_responses > 0 then
             callback(table.concat(accumulated_responses, "\n\n"), nil, was_blocked);
           else
@@ -108,7 +113,7 @@ function M.dispatch_actions(actions, mode, callback)
         local bufnr = vim.fn.bufadd(file);
         vim.fn.bufload(bufnr);
         
-        modal.write("Consolidating " .. #file_actions .. " edits for: " .. file, "system", false);
+        modal.write("Consolidating " .. #file_actions .. " edits for: " .. file, "system", false, turn_id);
         
         -- Start with the current base state
         local current_lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false);
@@ -134,7 +139,7 @@ function M.dispatch_actions(actions, mode, callback)
             if local_modified then
               current_lines = vim.api.nvim_buf_get_lines(temp_buf, 0, -1, false);
             else
-              table.insert(accumulated_responses, string.format("<agent:status>Warning: Some blocks in %s did not match.</agent:status>", file));
+              table.insert(accumulated_responses, string.format("<agent:status level='warning'>Some blocks in %s did not match.</agent:status>", file));
             end
             vim.api.nvim_buf_delete(temp_buf, { force = true });
 
@@ -153,7 +158,7 @@ function M.dispatch_actions(actions, mode, callback)
             table.insert(accumulated_responses, string.format("<agent:status>Proposed consolidated edits for %s. Awaiting diff.</agent:status>", file));
           end
         else
-          table.insert(accumulated_responses, string.format("<agent:status>Error: No edits could be applied to %s.</agent:status>", file));
+          table.insert(accumulated_responses, string.format("<agent:status level='error'>No edits could be applied to %s.</agent:status>", file));
         end
         
         run_edits(f_idx + 1);
@@ -166,19 +171,19 @@ function M.dispatch_actions(actions, mode, callback)
     local action = other_actions[idx];
     
     if action.name == "grep" then
-      modal.write("Searching universe: " .. action.content, "system", false);
+      modal.write("Searching universe: " .. action.content, "system", false, turn_id);
       local grep_res = tools.grep(action.content);
       table.insert(accumulated_responses, string.format("<agent:match>\n%s\n</agent:match>", grep_res));
       run_others(idx + 1);
 
     elseif action.name == "definition" then
-      modal.write("LSP Lookup: " .. action.content, "system", false);
+      modal.write("LSP Lookup: " .. action.content, "system", false, turn_id);
       local def_res = tools.definition(action.content);
       table.insert(accumulated_responses, string.format("<agent:status>%s</agent:status>", def_res));
       run_others(idx + 1);
 
     elseif action.name == "env" or action.name == "shell" then
-      modal.write("Executing " .. action.name .. ": " .. action.content, "system", false);
+      modal.write("Executing " .. action.name .. ": " .. action.content, "system", false, turn_id);
       local output = tools.shell(action.content, config.options.yolo);
       local resp = "";
       if output and output ~= "" then
@@ -194,11 +199,14 @@ function M.dispatch_actions(actions, mode, callback)
       if raw_file then
         local file, err = resolver.resolve(raw_file);
         if file then
-          modal.write("Reading file: " .. file, "system", false);
+          modal.write("Reading file: " .. file, "system", false, turn_id);
           context.set_state(file, "active");
-          -- Read content is ACTIVE, so we add to prompt
-          local content_text = context.get_content(file);
-          table.insert(accumulated_responses, string.format("<agent:context file='%s'>\n%s\n</agent:context>", raw_file, content_text));
+          -- ACTIVE result: return full content to model
+          local bufnr = vim.fn.bufadd(file);
+          vim.fn.bufload(bufnr);
+          local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false);
+          local content_text = table.concat(lines, "\n");
+          table.insert(accumulated_responses, string.format("<agent:context file='%s'>\n%s\n</agent:context>", file, content_text));
         else
           table.insert(accumulated_responses, string.format("<agent:status level='error'>%s</agent:status>", err));
         end
@@ -210,15 +218,15 @@ function M.dispatch_actions(actions, mode, callback)
       if raw_file then
         local file, err = resolver.resolve(raw_file);
         if file then
-          modal.write("Dropping file: " .. file, "system", false);
+          modal.write("Dropping file: " .. file, "system", false, turn_id);
           context.set_state(file, "map");
-          queue.add_passive(string.format("<agent:ack tool='drop' file='%s' status='success'/>", raw_file));
+          queue.add_passive(string.format("<agent:ack tool='drop' file='%s' status='success'/>", file));
         end
       end
       run_others(idx + 1);
 
     elseif action.name == "reset" then
-      modal.write("Agent requested session reset.", "system", false);
+      modal.write("Agent requested session reset.", "system", false, turn_id);
       require("nzi.core.commands").run("reset");
       queue.add_passive("<agent:ack tool='reset' status='success'>Session history and context have been reset.</agent:ack>");
       run_others(idx + 1);
@@ -231,7 +239,7 @@ function M.dispatch_actions(actions, mode, callback)
         if vim.fn.filereadable(file_path) == 1 then
           table.insert(accumulated_responses, string.format("<agent:status level='error'>File '%s' already exists.</agent:status>", raw_file));
         else
-          modal.write("Creating file: " .. raw_file, "system", false);
+          modal.write("Creating file: " .. raw_file, "system", false, turn_id);
           local confirmed = config.options.yolo or vim.fn.confirm("AI requests to CREATE file: " .. raw_file, "&Yes\n&No", 1) == 1;
           if confirmed then
             local bufnr = vim.fn.bufadd(raw_file);
@@ -242,7 +250,6 @@ function M.dispatch_actions(actions, mode, callback)
               queue.add_passive(string.format("<agent:ack tool='create' file='%s' status='success'/>", raw_file));
             else
               diff.propose_edit(bufnr, lines);
-              -- This is ACTIVE because it blocks until the diff is accepted
               table.insert(accumulated_responses, string.format("<agent:status>Proposed new file content for %s. Awaiting diff.</agent:status>", raw_file));
             end
           else
@@ -258,7 +265,7 @@ function M.dispatch_actions(actions, mode, callback)
       if raw_file then
         local file, err = resolver.resolve(raw_file);
         if file then
-          modal.write("Requesting delete: " .. file, "system", false);
+          modal.write("Requesting delete: " .. file, "system", false, turn_id);
           if config.options.yolo then
             os.remove(vim.fn.getcwd() .. "/" .. file);
             context.set_state(file, "map");
@@ -274,34 +281,42 @@ function M.dispatch_actions(actions, mode, callback)
     elseif action.name == "summary" then
       local clean_summary = action.content:gsub("\n", " "):gsub("%s+", " "):gsub("^%s*", ""):gsub("%s*$", "")
       if #clean_summary > 120 then clean_summary = clean_summary:sub(1, 117) .. "..." end
-      modal.write(clean_summary, "assistant", false);
+      modal.write(clean_summary, "assistant", false, turn_id);
       config.notify(clean_summary, vim.log.levels.INFO);
       run_others(idx + 1);
 
     elseif action.name == "choice" then
-      was_blocked = true;
+      local is_headless = (#vim.api.nvim_list_uis() == 0);
+      if not is_headless then was_blocked = true; end
+      
       modal.open();
-      modal.write("User Choice Prompt: " .. action.content, "system", false);
-      tools.choice(action.content, function(choice_res)
-        vim.schedule(function()
-          if choice_res == "User cancelled selection." or choice_res:match("cancelled") then
-            -- HALT SIGNAL: Return nil to callback to stop the engine loop
-            callback(nil, "ABORTED");
-          else
-            local resp = string.format("<agent:choice>%s</agent:choice>", choice_res);
-            
-            -- If this was the turn terminator, we need to manually trigger the next model turn
-            -- because the engine has already finished its 'dispatch_actions' sequence.
-            if current_idx > #actions then
-              local engine = require("nzi.engine.engine");
-              engine.run_loop(resp, "ask", false);
+      modal.write("User Choice Prompt: " .. action.content, "system", false, turn_id);
+      
+      -- AUTO-CHOOSE in headless mode (for integration tests)
+      if is_headless then
+        config.log("Headless mode: Auto-selecting first choice.", "AGENT");
+        -- Extract first choice using same logic as tools.choice
+        local parts = vim.split(action.content, "- [ ]", { plain = true });
+        local first_choice = "Auto-selected first option";
+        if #parts > 1 then
+          first_choice = parts[2]:gsub("^%s*", ""):gsub("%s*$", "");
+        end
+        local resp = string.format("<agent:choice>%s</agent:choice>", first_choice);
+        table.insert(accumulated_responses, resp);
+        run_others(idx + 1);
+      else
+        tools.choice(action.content, function(choice_res)
+          vim.schedule(function()
+            if choice_res == "User cancelled selection." or choice_res:match("cancelled") then
+              callback(nil, "ABORTED");
             else
+              local resp = string.format("<agent:choice>%s</agent:choice>", choice_res);
               table.insert(accumulated_responses, resp);
               run_others(idx + 1);
             end
-          end
+          end);
         end);
-      end);
+      end
     else
       run_others(idx + 1);
     end
@@ -311,15 +326,25 @@ function M.dispatch_actions(actions, mode, callback)
 end
 
 --- Run automated tests and return failure output
-function M.verify_state(callback, custom_cmd)
+--- @param turn_id number | nil
+--- @param callback function
+--- @param custom_cmd string | nil
+function M.verify_state(turn_id, callback, custom_cmd)
+  -- Handle optional turn_id (shift arguments if needed)
+  if type(turn_id) == "function" then
+    custom_cmd = callback;
+    callback = turn_id;
+    turn_id = nil;
+  end
+
   local test_cmd = custom_cmd or config.options.auto_test;
   if not test_cmd then callback(nil); return end
-  modal.write("Running test: " .. test_cmd, "system", false);
+  modal.write("Running test: " .. test_cmd, "system", false, turn_id);
   local test_output = vim.fn.systemlist(test_cmd);
   local exit_code = vim.v.shell_error;
   if exit_code ~= 0 then
     local failure_text = table.concat(test_output, "\n");
-    modal.write("Test failure detected.", "error", false);
+    modal.write("Test failure detected.", "error", false, turn_id);
     local should_retry = config.options.ralph;
     if not should_retry then
       should_retry = vim.fn.confirm("Test failed. Send output back to AI?", "&Yes\n&No", 1) == 1;
@@ -330,7 +355,7 @@ function M.verify_state(callback, custom_cmd)
       callback(nil);
     end
   else
-    modal.write("Tests passed.", "system", false);
+    modal.write("Tests passed.", "system", false, turn_id);
     callback(nil);
   end
 end

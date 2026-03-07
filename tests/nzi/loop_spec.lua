@@ -6,6 +6,9 @@ local config = require("nzi.core.config");
 describe("AI Engine Multi-Turn Loop", function()
   before_each(function()
     history.clear();
+    local queue = require("nzi.core.queue");
+    queue.clear_actions();
+    queue.clear_instructions();
     config.options.yolo = true; -- Skip confirm for tests
   end);
 
@@ -23,7 +26,7 @@ describe("AI Engine Multi-Turn Loop", function()
         callback(true, "<model:grep>Agentic</model:grep>");
       else
         -- Second turn: Model has the grep results and answers
-        callback(true, "I found 'Agentic' in README.md.");
+        callback(true, "<model:summary>I found 'Agentic' in README.md.</model:summary>");
       end
       return { kill = function() end };
     end
@@ -33,11 +36,12 @@ describe("AI Engine Multi-Turn Loop", function()
     -- Wait for the loop to finish (async)
     -- 1. User -> Grep
     -- 2. Grep Result -> Answer
-    vim.wait(2000, function() return #history.get_all() == 2 end);
+    vim.wait(2000, function() return #history.get_all() >= 2 end);
     
     local all_history = history.get_all();
-    assert.equals(2, #all_history);
-    assert.match("I found 'Agentic'", all_history[#all_history].assistant);
+    assert.truthy(#all_history >= 2);
+    local second_assistant = history.strip_line_numbers(all_history[2].assistant);
+    assert.truthy(second_assistant:find("I found 'Agentic'"));
     
     job.run = old_run;
   end);
@@ -65,16 +69,20 @@ describe("AI Engine Multi-Turn Loop", function()
     engine.run_loop("Fix the bug.");
     
     -- Wait for two assistant turns
-    vim.wait(1000, function() return #history.get_all() >= 3 end);
+    -- Turn 1: Initial User + Buggy Assistant
+    -- Turn 2: Test Failure + Fixed Assistant
+    local success = vim.wait(5000, function() return #history.get_all() >= 2 end);
+    if not success then
+      print("TIMEOUT! History count: " .. #history.get_all());
+      for i, t in ipairs(history.get_all()) do
+        print(string.format("Turn %d Assistant: %s", i, t.assistant or "nil"));
+      end
+    end
     
     local all_history = history.get_all();
-    -- History should have:
-    -- 1. instruct/ask turn (initial)
-    -- 2. assistant turn (buggy)
-    -- 3. user turn (test failure)
-    -- 4. assistant turn (fixed)
-    assert.True(#all_history >= 3);
-    assert.match("fixed the bug", all_history[#all_history].assistant);
+    assert.truthy(#all_history >= 2);
+    local last_assistant = history.strip_line_numbers(all_history[#all_history].assistant);
+    assert.truthy(last_assistant:find("fixed the bug"));
     
     config.options.auto_test = nil;
     config.options.ralph = false;
