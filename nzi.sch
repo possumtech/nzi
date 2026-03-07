@@ -16,10 +16,33 @@
     <sch:rule context="turn">
       <sch:assert test="@id >= 0">Turn IDs must be non-negative.</sch:assert>
       <sch:assert test="count(agent) = 1">Every turn must have exactly one agent envelope.</sch:assert>
+      <sch:assert test="count(assistant) &lt;= 1">Every turn must have 0 or 1 assistant envelopes.</sch:assert>
     </sch:rule>
     
     <sch:rule context="agent">
-      <sch:assert test="user">Every agent envelope must contain a user instruction.</sch:assert>
+      <sch:assert test="ask or instruct or shell or error or answer">
+        Every agent envelope must contain a valid interaction tag (ask, instruct, shell, error, or answer).
+      </sch:assert>
+    </sch:rule>
+
+    <!-- The "Ask" Constraint: Inquiry-only turns cannot perform actions -->
+    <sch:rule context="turn[agent/ask]/assistant">
+      <sch:assert test="not(edit or create or delete or shell or env or grep or choice)">
+        An inquiry (ask) turn cannot be answered with model actions (edit, shell, choice, etc.).
+      </sch:assert>
+    </sch:rule>
+
+    <!-- The "Payload" Constraint: Feedback tags require a selection -->
+    <sch:rule context="shell | error">
+      <sch:assert test="selection">
+        Shell and Error tags must contain a selection payload.
+      </sch:assert>
+    </sch:rule>
+
+    <sch:rule context="response">
+      <sch:assert test="*[last()][self::choice or self::summary]">
+        Response tag must contain either one &lt;choice&gt; or one &lt;summary&gt; tag, as the last element.
+      </sch:assert>
     </sch:rule>
   </sch:pattern>
 

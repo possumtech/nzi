@@ -42,8 +42,66 @@
         <xs:element ref="project_roadmap" minOccurs="0"/>
         <xs:element ref="suggest_next_task" minOccurs="0"/>
         
-        <!-- The human's literal instruction -->
-        <xs:element ref="user"/>
+        <!-- The interaction choice -->
+        <xs:choice>
+          <xs:element ref="ask"/>
+          <xs:element ref="instruct"/>
+          <xs:element ref="shell"/>
+          <xs:element ref="error"/>
+          <xs:element ref="answer"/>
+        </xs:choice>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- INTERACTION ELEMENTS -->
+  
+  <xs:element name="ask">
+    <xs:complexType mixed="true">
+      <xs:sequence>
+        <xs:element ref="selection" minOccurs="0"/>
+        <xs:element ref="choice" minOccurs="0"/>
+        <xs:element ref="summary" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="instruct">
+    <xs:complexType mixed="true">
+      <xs:sequence>
+        <xs:element ref="selection" minOccurs="0"/>
+        <xs:element ref="choice" minOccurs="0"/>
+        <xs:element ref="summary" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="shell">
+    <xs:complexType mixed="true">
+      <xs:sequence>
+        <xs:element ref="selection"/>
+        <xs:element ref="choice" minOccurs="0"/>
+        <xs:element ref="summary" minOccurs="0"/>
+      </xs:sequence>
+      <xs:attribute name="command" type="xs:string" use="required"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="error">
+    <xs:complexType mixed="true">
+      <xs:sequence>
+        <xs:element ref="selection"/>
+        <xs:element ref="choice" minOccurs="0"/>
+        <xs:element ref="summary" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="answer">
+    <xs:complexType mixed="true">
+      <xs:sequence>
+        <xs:element ref="choice" minOccurs="0"/>
+        <xs:element ref="summary" minOccurs="0"/>
       </xs:sequence>
     </xs:complexType>
   </xs:element>
@@ -54,7 +112,7 @@
       <xs:sequence>
         <xs:element ref="summary" minOccurs="0"/>
         <xs:element ref="reasoning" minOccurs="0"/>
-        <xs:element ref="content" minOccurs="0"/>
+        <xs:element ref="response" minOccurs="0"/>
         <xs:choice minOccurs="0" maxOccurs="unbounded">
           <xs:element ref="edit"/>
           <xs:element ref="create"/>
@@ -73,18 +131,15 @@
   <!-- CORE DATA ELEMENTS -->
   
   <xs:element name="system" type="xs:string"/>
-  <xs:element name="user">
+  <xs:element name="reasoning" type="xs:string"/>
+  <xs:element name="response">
     <xs:complexType mixed="true">
-      <xs:sequence>
-        <xs:element ref="selection" minOccurs="0"/>
-        <xs:element ref="choice" minOccurs="0"/>
-        <xs:element ref="summary" minOccurs="0"/>
-      </xs:sequence>
+      <xs:choice>
+        <xs:element ref="choice"/>
+        <xs:element ref="summary"/>
+      </xs:choice>
     </xs:complexType>
   </xs:element>
-  <xs:element name="content" type="xs:string"/>
-  <xs:element name="reasoning" type="xs:string"/>
-  
   <xs:element name="summary">
     <xs:simpleType>
       <xs:restriction base="xs:string">
@@ -149,10 +204,10 @@
       <xs:simpleContent>
         <xs:extension base="xs:string">
           <xs:attribute name="file" type="xs:string" use="required"/>
-          <xs:attribute name="first_row" type="xs:integer" use="required"/>
-          <xs:attribute name="first_col" type="xs:integer" use="required"/>
-          <xs:attribute name="final_row" type="xs:integer" use="required"/>
-          <xs:attribute name="final_col" type="xs:integer" use="required"/>
+          <xs:attribute name="first_row" type="xs:integer"/>
+          <xs:attribute name="first_col" type="xs:integer"/>
+          <xs:attribute name="final_row" type="xs:integer"/>
+          <xs:attribute name="final_col" type="xs:integer"/>
         </xs:extension>
       </xs:simpleContent>
     </xs:complexType>
