@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session alias="test-session">
+  <turn id="0">
+    <system>You are NZI, a Neovim-based AI assistant.</system>
+    <user>
+      <instruct>Initialize the project.</instruct>
+    </user>
+    <assistant>
+      <summary>Project initialized.</summary>
+      <response>
+        <summary>Ready to assist.</summary>
+      </response>
+    </assistant>
+  </turn>
+  <turn id="1">
+    <user>
+      <ask>What is the current status?</ask>
+    </user>
+    <assistant>
+      <summary>Checking status...</summary>
+      <response>
+        <summary>System is idle.</summary>
+      </response>
+      <read file="README.md" />
+    </assistant>
+  </turn>
+</session>
