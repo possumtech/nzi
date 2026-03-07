@@ -8,13 +8,13 @@ def run_test(test_path):
     try:
         # Run test in a subprocess for isolation
         env = os.environ.copy()
-        # Ensure project's python path is available
+        # Ensure project's python path and project root (for test.helpers) are available
         project_root = os.getcwd()
         python_dir = os.path.join(project_root, "python")
         if 'PYTHONPATH' in env:
-            env['PYTHONPATH'] = f"{python_dir}:{env['PYTHONPATH']}"
+            env['PYTHONPATH'] = f"{python_dir}:{project_root}:{env['PYTHONPATH']}"
         else:
-            env['PYTHONPATH'] = python_dir
+            env['PYTHONPATH'] = f"{python_dir}:{project_root}"
 
         result = subprocess.run([sys.executable, test_path], 
                                 env=env, 

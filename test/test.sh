@@ -13,7 +13,11 @@ echo "--- 2. RUNNING PYTHON UNIT TESTS ---"
 ./test/units.sh
 
 echo ""
-echo "--- 3. RUNNING NEOVIM E2E TESTS ---"
+echo "--- 3. RUNNING FILESYSTEM & UNIVERSE TESTS ---"
+./test/fs.sh
+
+echo ""
+echo "--- 4. RUNNING NEOVIM E2E TESTS ---"
 ./test/e2e.sh
 
 echo ""

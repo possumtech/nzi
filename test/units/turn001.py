@@ -2,19 +2,22 @@
 import sys
 import os
 from lxml import etree
+# Add test directory to path for helpers
+sys.path.insert(0, os.path.join(os.getcwd(), "test"))
+from test_helpers import get_effective_xml
 
 def test_turn001_content():
     xml_path = "test/turns/turn001.xml"
-    with open(xml_path, 'rb') as f:
-        xml_doc = etree.XML(f.read())
+    # Load with injection
+    xml_doc = get_effective_xml(xml_path)
 
     # Check session alias
     assert xml_doc.get("alias") == "test-session", "Session alias mismatch"
 
-    # Check Turn 0 system message
+    # Check Turn 0 system message (now from nzi.prompt)
     turn0 = xml_doc.xpath("//turn[@id='0']")[0]
     system_msg = turn0.find("system").text
-    assert "NZI" in system_msg, "Turn 0 system message missing 'NZI'"
+    assert "USER INTERACTION PROTOCOL" in system_msg, "Turn 0 system message missing prompt content"
 
     # Check Turn 1 interaction
     turn1 = xml_doc.xpath("//turn[@id='1']")[0]

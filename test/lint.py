@@ -2,14 +2,16 @@
 import sys
 import os
 from lxml import etree, isoschematron
+# Add test directory to path for helpers
+sys.path.insert(0, os.path.dirname(__file__))
+from test_helpers import get_effective_xml
 
 def lint_file(xml_path, xsd_path, sch_path):
     print(f"Linting {xml_path}...")
     
     try:
-        # Load XML
-        with open(xml_path, 'rb') as f:
-            xml_doc = etree.XML(f.read())
+        # Load XML with prompt injection
+        xml_doc = get_effective_xml(xml_path)
             
         # 1. XSD Validation
         with open(xsd_path, 'rb') as f:
