@@ -133,7 +133,8 @@ end
 --- @param is_rewind boolean: If true, delete everything after the turn as well
 function M.handle_delete(is_rewind)
   local turn_id = get_turn_id_at_cursor();
-  if not turn_id or type(turn_id) ~= "number" or turn_id == 0 then
+  -- FIX: Use global type() correctly
+  if not turn_id or _G.type(turn_id) ~= "number" or turn_id == 0 then
     vim.notify("No turn selected for rewind.", vim.log.levels.WARN);
     return;
   end
@@ -161,7 +162,6 @@ function M.render_history()
       M.write(user_clean, "user", false, turn.id, turn.metadata);
     end
     if assistant_clean ~= "" then
-      -- Parser for assistant actions inside history re-rendering
       -- For history, we just write the assistant block as a whole
       M.write(assistant_clean, "assistant", false, turn.id, turn.metadata);
     end
@@ -355,7 +355,6 @@ function M.write(text, msg_type, append, turn_id, metadata)
   end
 
   -- 2. Sub-tag management
-  -- We don't use 'append' for turn-wrapped sub-tags; each write is a complete tag block
   local tag = get_tag_name(msg_type);
   local telemetry = get_telemetry_line(msg_type);
   local sub_header = { telemetry, "<" .. tag .. ">" };

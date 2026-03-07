@@ -8,11 +8,16 @@ function M.validate(xml_str)
   local xsd_path = vim.fn.getcwd() .. "/nzi.xsd";
   local sch_path = vim.fn.getcwd() .. "/nzi.sch";
   
+  -- Strip telemetry lines before validation (e.g. "[ TURN 1 | ... ]")
+  local clean_xml = xml_str:gsub("%[ TURN %d+.- %]\n", "");
+  clean_xml = clean_xml:gsub("%[ .- %]\n", "");
+  clean_xml = clean_xml:gsub("^%s*", ""):gsub("%s*$", "");
+  
   local python_cmd = config.options.python_cmd[1] or "python3";
   local validator_script = vim.fn.getcwd() .. "/lua/nzi/protocol/validator.py";
   
   local cmd = string.format("%s %s %s %s", python_cmd, validator_script, xsd_path, sch_path);
-  local res = vim.fn.system(cmd, xml_str);
+  local res = vim.fn.system(cmd, clean_xml);
   
   local ok, data = pcall(vim.fn.json_decode, res);
   if not ok then

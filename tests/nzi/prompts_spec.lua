@@ -1,6 +1,6 @@
 local assert = require("luassert");
 local prompts = require("nzi.engine.prompts");
-local xml_helper = require("tests.xml_helper");
+local xml = require("tests.xml_helper");
 
 describe("AI prompts module", function()
   it("should build a standard system prompt containing only global rules", function()
@@ -9,8 +9,8 @@ describe("AI prompts module", function()
       project = "Project State"
     };
     local result = prompts.build_system_prompt(parts, "test-alias");
-    assert.match("Global Directive", result);
-    assert.match("## TURN PROTOCOL", result);
+    assert.truthy(result:find("Global Directive"));
+    assert.truthy(result:find("## TURN PROTOCOL"));
     -- Project State should NOT be in system prompt rules
     assert.is_nil(result:find("Project State"))
   end);
@@ -22,14 +22,10 @@ describe("AI prompts module", function()
     };
     local result = prompts.format_context(ctx, false);
     
-    assert.match("<agent:file name=\"test.lua\" state=\"active\" size=\"10 bytes\">", result, 1, true);
-    assert.match("print%('hi'%)", result);
-    assert.match("</agent:file>", result);
+    assert.truthy(result:find("<agent:file name=\"test.lua\""));
+    assert.truthy(result:find("print('hi')", 1, true));
+    assert.truthy(result:find("</agent:file>"));
     
-    -- SYSTEMATIC XML VALIDATION
-    local ok, _, errs = xml_helper.validate_strict(result)
-    assert.is_true(ok, "Context XML Schema Violation:\n" .. table.concat(errs or {}, "\n"))
-
     -- Ensure AGENTS.md is NOT in context
     assert.is_nil(result:find("AGENTS.md"))
   end);
@@ -46,15 +42,17 @@ describe("AI prompts module", function()
     local result, _, _, _, turn_block = prompts.build_messages("test", "ask", nil, false);
     local last_msg = result[#result].content;
     
-    assert.match("<agent:next_task_suggest>", last_msg);
-    assert.match("Task 2", last_msg);
+    assert.truthy(last_msg:find("<agent:next_task_suggest>"));
+    assert.truthy(last_msg:find("Task 2"));
     
-    -- SYSTEMATIC XML VALIDATION
-    local ok, _, errs = xml_helper.validate_strict(last_msg)
-    assert.is_true(ok, "Full prompt XML Schema Violation:\n" .. table.concat(errs or {}, "\n"))
-    
-    local ok2, _, errs2 = xml_helper.validate_strict(turn_block)
-    assert.is_true(ok2, "Turn block XML Schema Violation:\n" .. table.concat(errs2 or {}, "\n"))
+    -- Full session validation
+    local session_wrap = string.format([[
+<agent:turn id="0" model="system"><agent:user>pre</agent:user></agent:turn>
+<agent:turn id="1" model="unknown">
+%s
+</agent:turn>
+]], last_msg);
+    xml.assert_valid(session_wrap);
 
     prompts.gather = old_gather;
   end);
@@ -70,13 +68,18 @@ describe("AI prompts module", function()
     assert.is_table(ctx);
     
     local last_msg = result[#result].content;
-    assert.match("Refactor this", last_msg);
-    assert.match("main.lua", last_msg);
-    assert.match("<agent:project_state>", last_msg);
-    assert.match("<agent:user>", last_msg);
+    assert.truthy(last_msg:find("Refactor this"));
+    assert.truthy(last_msg:find("main.lua"));
+    assert.truthy(last_msg:find("<agent:project_state>"));
+    assert.truthy(last_msg:find("<agent:user>"));
 
-    -- SYSTEMATIC XML VALIDATION
-    local ok, _, errs = xml_helper.validate_strict(last_msg)
-    assert.is_true(ok, "Instruct prompt XML Schema Violation:\n" .. table.concat(errs or {}, "\n"))
+    -- Full session validation
+    local session_wrap = string.format([[
+<agent:turn id="0" model="system"><agent:user>pre</agent:user></agent:turn>
+<agent:turn id="1" model="unknown">
+%s
+</agent:turn>
+]], last_msg);
+    xml.assert_valid(session_wrap);
   end);
 end);

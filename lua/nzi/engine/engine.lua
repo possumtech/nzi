@@ -16,16 +16,16 @@ M.is_busy = false; -- Reliable state for testing and UI
 
 --- Handle an ai? ask or an AI: instruct in a multi-turn loop
 --- @param content string: The initial ask or instruct text
---- @param msg_type string: 'ask' or 'instruct'
+--- @param mode string: 'ask' or 'instruct'
 --- @param include_lsp boolean: Whether to include LSP symbol info
 --- @param target_file string | nil: The target file for instruct
 --- @param selection table | nil: Visual selection metadata
-function M.run_loop(content, msg_type, include_lsp, target_file, selection)
+function M.run_loop(content, mode, include_lsp, target_file, selection)
   local queue = require("nzi.core.queue");
 
   -- If we are busy or blocked by actions, enqueue this as a pending instruction
   if M.is_busy or queue.is_blocked() then
-    queue.enqueue_instruction(content, msg_type, target_file, selection);
+    queue.enqueue_instruction(content, mode, target_file, selection);
     local reason = M.is_busy and "Model is busy" or "Pending diffs require resolution"
     config.notify("Instruction enqueued (" .. reason .. ")", vim.log.levels.INFO);
     return;
@@ -57,7 +57,7 @@ function M.run_loop(content, msg_type, include_lsp, target_file, selection)
       return;
     end
 
-    local messages, system_prompt, context_str, ctx_list, turn_block = prompts.build_messages(current_prompt, msg_type, target_file, include_lsp, selection);
+    local messages, system_prompt, context_str, ctx_list, turn_block = prompts.build_messages(current_prompt, mode, target_file, include_lsp, selection);
     local user_message_content = messages[#messages].content;
 
     if turn_count == 1 then
@@ -135,7 +135,7 @@ function M.run_loop(content, msg_type, include_lsp, target_file, selection)
 
         if #actions > 0 then
           -- 1. Discovery/Action Phase
-          agent.dispatch_actions(actions, msg_type, current_turn_id, function(combined_agent_response, signal, was_blocked)
+          agent.dispatch_actions(actions, mode, current_turn_id, function(combined_agent_response, signal, was_blocked)
             vim.schedule(function()
               if signal == "ABORTED" then
                 modal.write("User aborted turn. Agent momentum halted.", "system", false, current_turn_id);
@@ -151,7 +151,7 @@ function M.run_loop(content, msg_type, include_lsp, target_file, selection)
               if combined_agent_response and combined_agent_response ~= "" then
                 -- At least one tool produced an ACTIVE response (grep, read, etc.)
                 -- We must force a new turn to deliver this data.
-                history.add(msg_type, turn_block, result, metadata);
+                history.add(mode, turn_block, result, metadata);
                 modal.write(combined_agent_response, "user", false, history.get_next_id());
                 modal.close_tag(); -- Close the turn block immediately for sequential clarity
                 current_prompt = combined_agent_response;
@@ -177,7 +177,7 @@ function M.run_loop(content, msg_type, include_lsp, target_file, selection)
                 -- Tools ran but were all PASSIVE (acks) or produced no context.
                 -- We terminate the turn here and return control to the user.
                 -- The passive buffer will be flushed and piggybacked on the NEXT turn.
-                history.add(msg_type, turn_block, result, metadata);
+                history.add(mode, turn_block, result, metadata);
                 modal.set_thinking(false);
                 modal.close_tag(); -- Final closure
 
@@ -192,14 +192,14 @@ function M.run_loop(content, msg_type, include_lsp, target_file, selection)
                   end
                 end);
               end
-              end);
-              end);
-              else
-              -- 2. Final Response & Verification Phase
-              agent.verify_state(current_turn_id, function(failure_response)
-              vim.schedule(function()
+            end);
+          end);
+        else
+          -- 2. Final Response & Verification Phase
+          agent.verify_state(current_turn_id, function(failure_response)
+            vim.schedule(function()
               if failure_response then
-                history.add(msg_type, turn_block, result, metadata);
+                history.add(mode, turn_block, result, metadata);
                 modal.write(failure_response, "user", false, history.get_next_id());
                 modal.close_tag();
                 current_prompt = failure_response;
@@ -207,9 +207,7 @@ function M.run_loop(content, msg_type, include_lsp, target_file, selection)
               else
                 -- Final response, all good
                 -- CRITICAL: Ensure history is updated so tests/UI see the completion
-                history.add(msg_type, turn_block, result, metadata);
-
-                -- DELETED: modal.open() call here. User sees summary in notify/status.
+                history.add(mode, turn_block, result, metadata);
 
                 modal.set_thinking(false);
                 modal.close_tag();
@@ -224,9 +222,10 @@ function M.run_loop(content, msg_type, include_lsp, target_file, selection)
                   end
                 end);
               end
-              end);
-              end);
-              end
+            end);
+          end);
+        end
+
       end);
     end, function(chunk, msg_type)
       vim.schedule(function()
@@ -248,13 +247,14 @@ end
 function M.handle_ask(content, include_lsp)
   M.run_loop(content, "ask", include_lsp, nil);
 end
+
 --- Parse and execute the current line as a instruct
 function M.execute_current_line()
   local line = vim.api.nvim_get_current_line();
   local bufnr = vim.api.nvim_get_current_buf();
-  local type, content = parser.parse_line(line);
+  local parsed_type, content = parser.parse_line(line);
   
-  if not type then
+  if not parsed_type then
     print("No AI instruct found on current line.");
     return;
   end
@@ -279,13 +279,13 @@ function M.execute_current_line()
     mode = "V"
   };
 
-  if type == "ask" then
+  if parsed_type == "ask" then
     M.run_loop(formatted, "ask", false, nil, selection);
-  elseif type == "run" then
+  elseif parsed_type == "run" then
     shell.run(content);
-  elseif type == "instruct" then
+  elseif parsed_type == "instruct" then
     M.run_loop(formatted, "instruct", false, file_name, selection);
-  elseif type == "internal" then
+  elseif parsed_type == "internal" then
     require("nzi.core.commands").run(content);
   end
 end
@@ -295,13 +295,12 @@ function M.execute_range(start_line, end_line)
   local bufnr = vim.api.nvim_get_current_buf();
   local lines = vim.api.nvim_buf_get_lines(bufnr, start_line - 1, end_line, false);
   local file_name = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":.");
-  local ft = vim.bo[bufnr].filetype;
   local found_instruct = false;
   
   -- Scan for the FIRST instruct in the range (visual mode idiomatic)
   for i, line in ipairs(lines) do
-    local type, content = parser.parse_line(line);
-    if type then
+    local parsed_type, content = parser.parse_line(line);
+    if parsed_type then
       -- Remove only the instruct line itself
       local actual_row = start_line + i - 1;
       vim.api.nvim_buf_set_lines(bufnr, actual_row - 1, actual_row, false, {});
@@ -321,13 +320,13 @@ function M.execute_range(start_line, end_line)
         mode = "V"
       };
 
-      if type == "ask" then
+      if parsed_type == "ask" then
         M.run_loop(instruction, "ask", false, nil, selection);
-      elseif type == "run" then
+      elseif parsed_type == "run" then
         shell.run(content);
-      elseif type == "instruct" then
+      elseif parsed_type == "instruct" then
         M.run_loop(instruction, "instruct", false, file_name, selection);
-      elseif type == "internal" then
+      elseif parsed_type == "internal" then
         require("nzi.core.commands").run(content);
       end
       
@@ -389,27 +388,22 @@ function M.get_visual_selection()
   local s_start = vim.fn.getpos("'<");
   local s_end = vim.fn.getpos("'>");
   
-  -- getpos: [bufnr, lnum, col, off] (1-indexed)
-  -- nvim_buf_get_text: (bufnr, start_line, start_col, end_line, end_col, opts) (0-indexed, end-exclusive)
   local start_line = s_start[2] - 1;
   local start_col = s_start[3] - 1;
   local end_line = s_end[2] - 1;
   local end_col = s_end[3];
 
-  -- Neovim internal: If end_col is very large (e.g. from visual line mode), clamp it
   local line_count = vim.api.nvim_buf_line_count(bufnr);
   if end_line >= line_count then end_line = line_count - 1 end
   local last_line_content = vim.api.nvim_buf_get_lines(bufnr, end_line, end_line + 1, false)[1] or "";
   if end_col > #last_line_content then end_col = #last_line_content end
 
-  -- Safety: Ensure start is before end if on the same line
   if start_line == end_line and start_col > end_col then
     start_col, end_col = end_col, start_col;
   end
 
-  -- Handle visual line mode ('V') where col is effectively infinite
-  local mode = vim.fn.visualmode();
-  if mode == "V" then
+  local visual_mode = vim.fn.visualmode();
+  if visual_mode == "V" then
     start_col = 0;
     end_col = #last_line_content;
   end
@@ -425,19 +419,16 @@ function M.get_visual_selection()
     start_col = start_col + 1,
     end_line = end_line + 1,
     end_col = end_col,
-    mode = mode
+    mode = visual_mode
   };
 end
 
 --- Handle Execute selection (Visual mode shortcut)
 function M.handle_visual()
   local selection = M.get_visual_selection();
-  local ft = vim.bo.filetype;
 
   vim.ui.input({ prompt = "AI Ask on selection: " }, function(input)
     if input and input ~= "" then
-      -- Pass the selection metadata to run_loop or a new handler
-      -- We'll modify engine.run_loop to accept selection metadata
       M.run_loop(input, "ask", false, nil, selection);
     end
   end);

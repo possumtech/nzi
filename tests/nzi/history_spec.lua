@@ -8,14 +8,24 @@ describe("AI history module", function()
   end);
 
   it("should add and format turns correctly (clean XML for model)", function()
+    -- 1. Add Preamble (ID 0)
+    history.add("ask", "System Preamble", nil, { model = "system" });
+    -- 2. Add real turn (ID 1)
     history.add("ask", "What is 1+1?", "<model:summary>It is 2.</model:summary>");
+    
     local formatted = history.format();
     
     xml.assert_valid(formatted);
-    assert.match("<agent:user>", formatted);
-    assert.match("What is 1%+1%?", formatted);
-    assert.match("<model:summary>", formatted);
-    assert.match("It is 2%.", formatted);
+    
+    -- Verify the structure via XPath
+    local ids = xml.xpath(formatted, "//nzi:turn/@id");
+    assert.equals("0", ids[1]);
+    assert.equals("1", ids[2]);
+
+    assert.truthy(formatted:find("<agent:user>"));
+    assert.truthy(formatted:find("What is 1+1?"));
+    assert.truthy(formatted:find("<model:summary>"));
+    assert.truthy(formatted:find("It is 2."));
     
     -- Ensure NO line numbers in the model-facing format
     assert.is_nil(formatted:find("1: "))
