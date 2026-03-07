@@ -4,36 +4,44 @@
            xmlns:nzi="nzi"
            elementFormDefault="qualified">
 
-  <!-- Shared Attribute groups -->
-  <xs:attributeGroup name="fileAttr">
-    <xs:attribute name="file" type="xs:string" use="required"/>
-  </xs:attributeGroup>
-
-  <!-- The Root Element for validation -->
-  <xs:element name="root">
+  <!-- Root Element -->
+  <xs:element name="session">
     <xs:complexType>
-      <xs:choice minOccurs="0" maxOccurs="unbounded">
-        <xs:element ref="nzi:user"/>
-        <xs:element ref="nzi:context"/>
-        <xs:element ref="nzi:match"/>
-        <xs:element ref="nzi:ack"/>
-        <xs:element ref="nzi:status"/>
-        <xs:element ref="nzi:telemetry"/>
-        <xs:element ref="nzi:summary"/>
-        <xs:element ref="nzi:edit"/>
-        <xs:element ref="nzi:shell"/>
-        <xs:element ref="nzi:env"/>
-        <xs:element ref="nzi:read"/>
-        <xs:element ref="nzi:grep"/>
-        <xs:element ref="nzi:definition"/>
-        <xs:element ref="nzi:choice"/>
-        <xs:element ref="nzi:reset"/>
-        <xs:element ref="nzi:file"/>
-        <xs:element ref="nzi:project_state"/>
-        <xs:element ref="nzi:next_task_suggest"/>
-        <xs:element ref="nzi:selection"/>
-        <xs:element ref="nzi:lsp_definition"/>
-      </xs:choice>
+      <xs:sequence>
+        <xs:element ref="nzi:turn" minOccurs="1" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- TURN Elements -->
+  <xs:element name="turn">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:choice minOccurs="0" maxOccurs="unbounded">
+          <xs:element ref="nzi:user"/>
+          <xs:element name="system" type="xs:string"/>
+          <xs:element name="error" type="xs:string"/>
+          <xs:element ref="nzi:summary"/>
+          <xs:element ref="nzi:content"/>
+          <xs:element ref="nzi:reasoning"/>
+          <xs:element ref="nzi:edit"/>
+          <xs:element ref="nzi:create"/>
+          <xs:element ref="nzi:read"/>
+          <xs:element ref="nzi:grep"/>
+          <xs:element ref="nzi:shell"/>
+          <xs:element ref="nzi:env"/>
+          <xs:element ref="nzi:choice"/>
+          <xs:element ref="nzi:reset"/>
+          <xs:element ref="nzi:status"/>
+          <xs:element ref="nzi:ack"/>
+          <xs:element ref="nzi:match"/>
+          <xs:element ref="nzi:context"/>
+        </xs:choice>
+      </xs:sequence>
+      <xs:attribute name="id" type="xs:integer" use="required"/>
+      <xs:attribute name="model" type="xs:string"/>
+      <xs:attribute name="duration" type="xs:decimal"/>
+      <xs:attribute name="acts" type="xs:integer"/>
     </xs:complexType>
   </xs:element>
 
@@ -46,35 +54,10 @@
         <xs:element ref="nzi:next_task_suggest"/>
       </xs:choice>
       <xs:attribute name="type" type="xs:string"/>
-      <xs:attribute name="id" type="xs:integer"/>
-      <xs:attribute name="model" type="xs:string"/>
-      <xs:attribute name="duration" type="xs:decimal"/>
-      <xs:attribute name="acts" type="xs:integer"/>
-    </xs:complexType>
-  </xs:element>
-
-  <xs:element name="history_user">
-    <xs:complexType mixed="true">
-      <xs:attribute name="id" type="xs:integer"/>
-      <xs:attribute name="model" type="xs:string"/>
-      <xs:attribute name="duration" type="xs:decimal"/>
-      <xs:attribute name="acts" type="xs:integer"/>
     </xs:complexType>
   </xs:element>
 
   <!-- AGENT Elements -->
-  <xs:element name="file">
-    <xs:complexType>
-      <xs:simpleContent>
-        <xs:extension base="xs:string">
-          <xs:attribute name="name" type="xs:string" use="required"/>
-          <xs:attribute name="state" type="xs:string"/>
-          <xs:attribute name="size" type="xs:string"/>
-        </xs:extension>
-      </xs:simpleContent>
-    </xs:complexType>
-  </xs:element>
-
   <xs:element name="project_state" type="xs:string"/>
   <xs:element name="next_task_suggest" type="xs:string"/>
 
@@ -85,17 +68,6 @@
           <xs:attribute name="file" type="xs:string" use="required"/>
           <xs:attribute name="start" type="xs:string"/>
           <xs:attribute name="end" type="xs:string"/>
-        </xs:extension>
-      </xs:simpleContent>
-    </xs:complexType>
-  </xs:element>
-
-  <xs:element name="lsp_definition">
-    <xs:complexType>
-      <xs:simpleContent>
-        <xs:extension base="xs:string">
-          <xs:attribute name="uri" type="xs:string" use="required"/>
-          <xs:attribute name="line" type="xs:integer" use="required"/>
         </xs:extension>
       </xs:simpleContent>
     </xs:complexType>
@@ -148,14 +120,6 @@
     </xs:complexType>
   </xs:element>
 
-  <xs:element name="telemetry">
-    <xs:complexType>
-      <xs:attribute name="model" type="xs:string"/>
-      <xs:attribute name="temp" type="xs:decimal"/>
-      <xs:attribute name="tokens" type="xs:integer"/>
-    </xs:complexType>
-  </xs:element>
-
   <!-- MODEL Elements -->
   <xs:element name="summary">
     <xs:simpleType>
@@ -165,7 +129,20 @@
     </xs:simpleType>
   </xs:element>
 
+  <xs:element name="content" type="xs:string"/>
+  <xs:element name="reasoning" type="xs:string"/>
+
   <xs:element name="edit">
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base="xs:string">
+          <xs:attribute name="file" type="xs:string" use="required"/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="create">
     <xs:complexType>
       <xs:simpleContent>
         <xs:extension base="xs:string">
@@ -183,7 +160,6 @@
     </xs:complexType>
   </xs:element>
   <xs:element name="grep" type="xs:string"/>
-  <xs:element name="definition" type="xs:string"/>
   <xs:element name="choice" type="xs:string"/>
   <xs:element name="reset">
     <xs:complexType/>

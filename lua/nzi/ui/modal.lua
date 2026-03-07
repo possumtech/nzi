@@ -23,41 +23,26 @@ local function setup_highlights()
 end
 
 --- Folding expression for nzi modal
---- Folds everything except user and content tags
+--- Folds completed turn blocks
 _G.nzi_modal_foldexpr = function(lnum)
   local line = vim.api.nvim_buf_get_lines(0, lnum - 1, lnum, false)[1] or ""
   
-  if line:match("^<agent:[%w_]+>") then
-    -- Fold all tags that represent a completed turn (have an ID)
-    -- or tags that are not the primary interactive ones
-    if line:match(" id=\"%d+\"") then
-      return ">1"
-    end
-    
-    -- Expand current user and content tags
-    if line:match("^<agent:user>") or line:match("^<agent:content>") then
-      return "0"
-    end
-    -- Fold other tags (reasoning, summary, context, etc.)
+  if line:match("^<agent:turn id=\"%d+\".*>") then
+    -- History turn: Fold by default
     return ">1"
   end
 
-  if line:match("^</agent:[%w_]+>") then
-    -- Match closing logic
-    local tag = line:match("^</agent:([%w_]+)>")
-    if tag == "user" or tag == "content" then
-      -- Search up for opening tag to see if it had an ID
-      local search_line = lnum - 1
-      while search_line > 0 do
-        local prev_line = vim.api.nvim_buf_get_lines(0, search_line - 1, search_line, false)[1] or ""
-        if prev_line:match("^<agent:" .. tag .. ">") then return "0" end
-        if prev_line:match("^<agent:" .. tag .. " id=\"%d+\"") then return "<1" end
-        if prev_line:match("^<agent:") then break end
-        search_line = search_line - 1
-      end
-      return "0"
-    end
+  if line:match("^</agent:turn>") then
     return "<1"
+  end
+
+  -- Expand reasoning blocks specifically if they are part of the active turn
+  -- (Reasoning blocks inside a folded turn won't be seen anyway)
+  if line:match("^<agent:reasoning>") then
+    return "0"
+  end
+  if line:match("^</agent:reasoning>") then
+    return "0"
   end
 
   -- Keep current level
@@ -176,6 +161,8 @@ function M.render_history()
       M.write(user_clean, "user", false, turn.id, turn.metadata);
     end
     if assistant_clean ~= "" then
+      -- Parser for assistant actions inside history re-rendering
+      -- For history, we just write the assistant block as a whole
       M.write(assistant_clean, "assistant", false, turn.id, turn.metadata);
     end
   end
@@ -237,7 +224,7 @@ local function get_tag_name(msg_type)
   local map = {
     reasoning_content = "agent:reasoning",
     content = "agent:content",
-    assistant = "agent:summary", -- Maps 'assistant' (from agent.lua) to 'agent:summary'
+    assistant = "agent:summary",
     system = "agent:system",
     user = "agent:user",
     context = "agent:context",
@@ -245,6 +232,7 @@ local function get_tag_name(msg_type)
     shell = "agent:shell_output",
     shell_output = "agent:shell_output",
     error = "agent:error",
+    turn = "agent:turn",
   };
   return map[msg_type] or msg_type;
 end
@@ -261,6 +249,7 @@ local function get_hl_group(msg_type)
     shell_output = "NziAssistant",
     shell = "NziAssistant",
     error = "NziError",
+    turn = "NziTelemetry",
   };
   return map[msg_type] or "Normal";
 end
@@ -268,9 +257,8 @@ end
 local function get_telemetry_line(msg_type, id, metadata)
   local config = require("nzi.core.config");
   local model_alias = config.options.active_model or "unknown";
-  local opts = config.options.model_options or {};
   
-  if id and type(id) == "number" and id > 0 then
+  if msg_type == "turn" then
     local meta_str = "";
     if metadata and metadata.model then
       meta_str = string.format(" | %s | %.2fs | %d acts", metadata.model, metadata.duration or 0, metadata.changes or 0);
@@ -281,17 +269,17 @@ local function get_telemetry_line(msg_type, id, metadata)
   end
 
   if msg_type == "user" or msg_type == "ask" or msg_type == "instruct" then
-    return string.format("[ USER | model: %s | temp: %.1f | top_p: %.1f ]", model_alias, opts.temperature or 0, opts.top_p or 0);
+    return "[ USER ]";
   elseif msg_type == "reasoning_content" then
-    return "[ ASSISTANT | reasoning | stream: active ]";
+    return "[ ASSISTANT | reasoning ]";
   elseif msg_type == "content" then
-    return "[ ASSISTANT | content | stream: active ]";
+    return "[ ASSISTANT | content ]";
   elseif msg_type == "shell" or msg_type == "shell_output" then
-    return "[ SYSTEM | shell_output | execution: complete ]";
+    return "[ SYSTEM | shell_output ]";
   elseif msg_type == "error" then
-    return "[ SYSTEM | error | state: failure ]";
+    return "[ SYSTEM | error ]";
   else
-    return string.format("[ %s | context: %s ]", msg_type:upper(), model_alias);
+    return string.format("[ %s ]", msg_type:upper());
   end
 end
 
@@ -305,35 +293,21 @@ local function _close_current_tag(bufnr)
   vim.api.nvim_buf_set_lines(bufnr, lc, lc, false, { tag_line });
   highlight_lines(bufnr, lc, lc, "NziTelemetry");
   
-  -- AUTO-FOLD Reasoning or completed history turns
-  if M.winid and vim.api.nvim_win_is_valid(M.winid) then
-    local cursor = vim.api.nvim_win_get_cursor(M.winid);
-    local line = cursor[1] - 1;
-    local marks = vim.api.nvim_buf_get_extmarks(bufnr, M.turn_ns_id, { 0, 0 }, { line, -1 }, {});
-    
-    local turn_id = nil;
-    if #marks > 0 then
-      local mark_id = marks[#marks][1];
-      turn_id = M.mark_to_turn[mark_id];
+  -- Special handling for turn closure
+  if msg_type == "turn" and M.winid and vim.api.nvim_win_is_valid(M.winid) then
+    local start_line = -1;
+    local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false);
+    for i = #lines, 1, -1 do
+      if lines[i]:match("^<agent:turn id=\"%d+\".*>") then
+        start_line = i;
+        break;
+      end
     end
-
-    if msg_type == "reasoning_content" or (turn_id and turn_id > 0) then
-      -- Find the opening tag for this block
-      local start_line = -1;
-      local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false);
-      local pattern = "^<" .. tag .. ".*>";
-      for i = #lines, 1, -1 do
-        if lines[i]:match(pattern) then
-          start_line = i;
-          break;
-        end
-      end
-      
-      if start_line ~= -1 then
-        vim.api.nvim_win_call(M.winid, function()
-          pcall(vim.cmd, tostring(start_line) .. "foldclose");
-        end);
-      end
+    
+    if start_line ~= -1 then
+      vim.api.nvim_win_call(M.winid, function()
+        pcall(vim.cmd, tostring(start_line + 1) .. "foldclose");
+      end);
     end
   end
 
@@ -352,85 +326,62 @@ function M.write(text, msg_type, append, turn_id, metadata)
   local bufnr = get_or_create_buffer();
   vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr });
 
-  -- 1. Structural Transitions
-  if (M.current_open_tag and M.current_open_tag ~= msg_type) or (not append and M.current_open_tag) then
-    _close_current_tag(bufnr);
-  end
-
-  if not M.current_open_tag then
-    local lc = vim.api.nvim_buf_line_count(bufnr);
-    local is_empty = (lc == 1 and vim.api.nvim_buf_get_lines(bufnr, 0, 1, false)[1] == "");
+  -- TURN WRAPPING: Mandatory for all writes. Default to 0 (Preamble/System)
+  local current_tid = turn_id or 0;
+  if M.current_open_tag ~= "turn" then
+    if M.current_open_tag then _close_current_tag(bufnr); end
     
-    local telemetry = get_telemetry_line(msg_type, turn_id, metadata);
-    local tag = get_tag_name(msg_type);
-    local meta_attrs = "";
-    if turn_id and type(turn_id) == "number" and turn_id > 0 and metadata and metadata.model then
-      meta_attrs = string.format(" id=\"%d\" model=\"%s\" duration=\"%.2f\" acts=\"%d\"", 
-        turn_id, metadata.model, metadata.duration or 0, metadata.changes or 0);
-    elseif turn_id and type(turn_id) == "number" and turn_id > 0 then
-      meta_attrs = string.format(" id=\"%d\"", turn_id);
+    local telemetry = get_telemetry_line("turn", current_tid, metadata);
+    local model_name = metadata and metadata.model or (current_tid == 0 and "system" or "unknown");
+    local meta_attrs = string.format(" id=\"%d\" model=\"%s\"", current_tid, model_name);
+    
+    if metadata and metadata.duration then
+      meta_attrs = meta_attrs .. string.format(" duration=\"%.2f\" acts=\"%d\"", metadata.duration, metadata.changes or 0);
     end
     
-    local open_tag = "<" .. tag .. meta_attrs .. ">";
-    local header = is_empty and { telemetry, open_tag } or { "", telemetry, open_tag };
+    local open_tag = "<agent:turn" .. meta_attrs .. ">";
+    local lc = vim.api.nvim_buf_line_count(bufnr);
+    local is_empty = (lc == 1 and vim.api.nvim_buf_get_lines(bufnr, 0, 1, false)[1] == "");
     local start_idx = is_empty and 0 or lc;
+    local header = is_empty and { telemetry, open_tag } or { "", telemetry, open_tag };
     
     vim.api.nvim_buf_set_lines(bufnr, start_idx, -1, false, header);
     highlight_lines(bufnr, start_idx, start_idx + #header - 1, "NziTelemetry");
-
-    -- MARK THE TURN ID with an extmark in turn_ns_id
-    if turn_id and type(turn_id) == "number" then
-      local mid = vim.api.nvim_buf_set_extmark(bufnr, M.turn_ns_id, start_idx, 0, {});
-      M.mark_to_turn[mid] = turn_id;
-    end
-
-    M.current_open_tag = msg_type;
-    append = false; -- First write in a section is never an "append" to existing text
-
-    -- Ensure reasoning is EXPANDED when starting
-    if msg_type == "reasoning_content" and M.winid and vim.api.nvim_win_is_valid(M.winid) then
-      vim.api.nvim_win_call(M.winid, function()
-        pcall(vim.cmd, "normal! zR"); -- Expand all just in case
-      end);
-    end
+    
+    local mid = vim.api.nvim_buf_set_extmark(bufnr, M.turn_ns_id, start_idx, 0, {});
+    M.mark_to_turn[mid] = current_tid;
+    
+    M.current_open_tag = "turn";
   end
 
-  -- 2. Content Injection
+  -- 2. Sub-tag management
+  -- We don't use 'append' for turn-wrapped sub-tags; each write is a complete tag block
+  local tag = get_tag_name(msg_type);
+  local telemetry = get_telemetry_line(msg_type);
+  local sub_header = { telemetry, "<" .. tag .. ">" };
+  
+  local lc = vim.api.nvim_buf_line_count(bufnr);
+  vim.api.nvim_buf_set_lines(bufnr, lc, lc, false, sub_header);
+  highlight_lines(bufnr, lc, lc + 1, "NziTelemetry");
+
+  -- 3. Content Injection
   local content_lines = vim.split(text, "\n");
   local hl_group = get_hl_group(msg_type);
-  local lc = vim.api.nvim_buf_line_count(bufnr);
-  
-  if append and lc > 0 then
-    -- Merge with last line
-    local last_idx = lc - 1;
-    local last_line = vim.api.nvim_buf_get_lines(bufnr, last_idx, lc, false)[1] or "";
-    vim.api.nvim_buf_set_lines(bufnr, last_idx, lc, false, { last_line .. content_lines[1] });
-    highlight_lines(bufnr, last_idx, last_idx, hl_group);
-    
-    if #content_lines > 1 then
-      local remaining = {};
-      for i = 2, #content_lines do table.insert(remaining, content_lines[i]); end
-      local new_lc = vim.api.nvim_buf_line_count(bufnr);
-      vim.api.nvim_buf_set_lines(bufnr, new_lc, new_lc, false, remaining);
-      highlight_lines(bufnr, new_lc, new_lc + #remaining - 1, hl_group);
-    end
-  else
-    -- Append as new lines
-    local start_lc = vim.api.nvim_buf_line_count(bufnr);
-    vim.api.nvim_buf_set_lines(bufnr, start_lc, start_lc, false, content_lines);
-    highlight_lines(bufnr, start_lc, start_lc + #content_lines - 1, hl_group);
-  end
+  local start_lc = vim.api.nvim_buf_line_count(bufnr);
+  vim.api.nvim_buf_set_lines(bufnr, start_lc, start_lc, false, content_lines);
+  highlight_lines(bufnr, start_lc, start_lc + #content_lines - 1, hl_group);
+
+  -- 4. Immediate Sub-tag Closure
+  local final_lc = vim.api.nvim_buf_line_count(bufnr);
+  vim.api.nvim_buf_set_lines(bufnr, final_lc, final_lc, false, { "</" .. tag .. ">" });
+  highlight_lines(bufnr, final_lc, final_lc, "NziTelemetry");
 
   vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr });
   
   if M.winid and vim.api.nvim_win_is_valid(M.winid) then
-    local lc = vim.api.nvim_buf_line_count(bufnr);
-    if lc > 0 then
-      -- Ensure the window is still showing our buffer before moving cursor
-      local win_buf = vim.api.nvim_win_get_buf(M.winid);
-      if win_buf == bufnr then
-        pcall(vim.api.nvim_win_set_cursor, M.winid, { lc, 0 });
-      end
+    local new_lc = vim.api.nvim_buf_line_count(bufnr);
+    if new_lc > 0 then
+      pcall(vim.api.nvim_win_set_cursor, M.winid, { new_lc, 0 });
     end
   end
 end

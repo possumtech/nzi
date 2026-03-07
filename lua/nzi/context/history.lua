@@ -87,20 +87,22 @@ function M.format()
     local user_clean = M.strip_line_numbers(turn.user);
     local assistant_clean = M.strip_line_numbers(turn.assistant);
     
-    local meta = "";
-    if turn.metadata and turn.metadata.model then
-      meta = string.format(" id=\"%d\" model=\"%s\" duration=\"%.2f\" acts=\"%d\"", 
-        turn.id, turn.metadata.model, turn.metadata.duration or 0, turn.metadata.changes or 0);
-    end
+    local meta = string.format(" id=\"%d\" model=\"%s\" duration=\"%.2f\" acts=\"%d\"", 
+      turn.id, turn.metadata.model or "unknown", turn.metadata.duration or 0, turn.metadata.changes or 0);
 
-    -- Format history as a sequence of XML-wrapped turns
+    local turn_xml = string.format("<agent:turn%s>", meta);
+    
     if user_clean ~= "" then
-      table.insert(parts, string.format("<agent:user%s>\n%s\n</agent:user>", meta, M.xml_escape(user_clean)));
+      turn_xml = turn_xml .. string.format("\n<agent:user>\n%s\n</agent:user>", M.xml_escape(user_clean));
     end
+    
     if assistant_clean ~= "" then
-      -- assistant_clean is usually the <model:summary> and other actions
-      table.insert(parts, assistant_clean);
+      -- assistant_clean is usually a sequence of <model:*> tags
+      turn_xml = turn_xml .. "\n" .. assistant_clean;
     end
+    
+    turn_xml = turn_xml .. "\n</agent:turn>";
+    table.insert(parts, turn_xml);
   end
   
   return table.concat(parts, "\n\n");
@@ -114,17 +116,14 @@ function M.get_as_messages()
     local user_clean = M.strip_line_numbers(turn.user);
     local assistant_clean = M.strip_line_numbers(turn.assistant);
 
-    local meta = "";
-    if turn.metadata and turn.metadata.model then
-      meta = string.format(" id=\"%d\" model=\"%s\" duration=\"%.2f\" acts=\"%d\"", 
-        turn.id, turn.metadata.model, turn.metadata.duration or 0, turn.metadata.changes or 0);
-    end
+    local meta = string.format(" id=\"%d\" model=\"%s\" duration=\"%.2f\" acts=\"%d\"", 
+      turn.id, turn.metadata.model or "unknown", turn.metadata.duration or 0, turn.metadata.changes or 0);
 
-    -- Order MUST be User then Assistant
+    -- Wrap the entire turn context for the model's awareness
     if user_clean ~= "" then
       table.insert(messages, { 
         role = "user", 
-        content = string.format("<agent:history_user%s>\n%s\n</agent:history_user>", meta, user_clean)
+        content = string.format("<agent:turn%s>\n<agent:user>\n%s\n</agent:user>\n</agent:turn>", meta, user_clean)
       });
     end
     if assistant_clean ~= "" then

@@ -71,6 +71,7 @@ function M.run_loop(content, msg_type, include_lsp, target_file, selection)
           modal.write(msg.content, msg.role, false, tid); 
         end
         modal.write(context_str, "context", false, 0);
+        modal.close_tag(); -- Close Turn 0 (Preamble)
       end
       modal.write(user_message_content, "user", false, current_turn_id);
     end
@@ -152,6 +153,7 @@ function M.run_loop(content, msg_type, include_lsp, target_file, selection)
                 -- We must force a new turn to deliver this data.
                 history.add(msg_type, turn_block, result, metadata);
                 modal.write(combined_agent_response, "user", false, history.get_next_id());
+                modal.close_tag(); -- Close the turn block immediately for sequential clarity
                 current_prompt = combined_agent_response;
 
                 -- Resumption logic:
@@ -166,7 +168,6 @@ function M.run_loop(content, msg_type, include_lsp, target_file, selection)
                   vim.schedule(function() start_turn(); end);
                 else
                   modal.set_thinking(false);
-                  modal.close_tag();
                   M.is_busy = false;
                   require("nzi.ui.visuals").stop_thinking();
                   config.log("Turn sequence suspended for user review/choice.", "ENGINE");
@@ -178,7 +179,7 @@ function M.run_loop(content, msg_type, include_lsp, target_file, selection)
                 -- The passive buffer will be flushed and piggybacked on the NEXT turn.
                 history.add(msg_type, turn_block, result, metadata);
                 modal.set_thinking(false);
-                modal.close_tag();
+                modal.close_tag(); -- Final closure
 
                 -- COMPLETELY FINISHED
                 vim.schedule(function() 
@@ -191,15 +192,16 @@ function M.run_loop(content, msg_type, include_lsp, target_file, selection)
                   end
                 end);
               end
-            end);
-          end);
-        else
-          -- 2. Final Response & Verification Phase
-          agent.verify_state(current_turn_id, function(failure_response)
-            vim.schedule(function()
+              end);
+              end);
+              else
+              -- 2. Final Response & Verification Phase
+              agent.verify_state(current_turn_id, function(failure_response)
+              vim.schedule(function()
               if failure_response then
                 history.add(msg_type, turn_block, result, metadata);
                 modal.write(failure_response, "user", false, history.get_next_id());
+                modal.close_tag();
                 current_prompt = failure_response;
                 vim.schedule(function() start_turn(); end);
               else
@@ -222,10 +224,9 @@ function M.run_loop(content, msg_type, include_lsp, target_file, selection)
                   end
                 end);
               end
-            end);
-          end);
-        end
-
+              end);
+              end);
+              end
       end);
     end, function(chunk, msg_type)
       vim.schedule(function()

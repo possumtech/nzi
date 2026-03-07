@@ -1,38 +1,77 @@
-local M = {}
+local M = {};
 
---- Validate XML string against the formal nzi.xsd schema and attempt healing
+--- Call the Python validator to validate XML against XSD and Schematron
 --- @param xml_str string
---- @return boolean success
---- @return string healed_xml
---- @return table errors
-function M.validate_strict(xml_str)
-  local script_path = vim.fn.fnamemodify(debug.getinfo(1).source:sub(2), ":h:h") .. "/lua/nzi/protocol/validator.py"
-  local xsd_path = vim.fn.fnamemodify(debug.getinfo(1).source:sub(2), ":h:h") .. "/nzi.xsd"
+--- @return table: { success = bool, healed_xml = string, errors = table }
+function M.validate(xml_str)
+  local config = require("nzi.core.config");
+  local xsd_path = vim.fn.getcwd() .. "/nzi.xsd";
+  local sch_path = vim.fn.getcwd() .. "/nzi.sch";
   
-  -- Use the project's python environment
-  local python_cmd = vim.env.NZI_PYTHON_CMD or ".venv/bin/python"
+  local python_cmd = config.options.python_cmd[1] or "python3";
+  local validator_script = vim.fn.getcwd() .. "/lua/nzi/protocol/validator.py";
   
-  local result = vim.system({ python_cmd, script_path, xsd_path }, { stdin = xml_str }):wait()
+  local cmd = string.format("%s %s %s %s", python_cmd, validator_script, xsd_path, sch_path);
+  local res = vim.fn.system(cmd, xml_str);
   
-  if result.code ~= 0 then
-    return false, xml_str, { "Validator process failed: " .. (result.stderr or "Unknown error") }
-  end
-  
-  local ok, decoded = pcall(vim.json.decode, result.stdout)
+  local ok, data = pcall(vim.fn.json_decode, res);
   if not ok then
-    return false, xml_str, { "Failed to decode validator output: " .. tostring(decoded) }
+    return { success = false, errors = { "Validator JSON Parse Error: " .. tostring(res) }, healed_xml = xml_str };
   end
-  
-  return decoded.success, decoded.healed_xml, decoded.errors or {}
+  return data;
 end
 
---- Simple wrapper for boolean assertion in tests
+--- Assert that XML is valid according to schema and rules
+--- @param xml_str string
 function M.assert_valid(xml_str)
-  local success, _, errors = M.validate_strict(xml_str)
-  if not success then
-    error("XML Schema Violation:\n" .. table.concat(errors, "\n"))
+  local res = M.validate(xml_str);
+  if not res.success then
+    error("XML Validation Failed:\n" .. table.concat(res.errors, "\n") .. "\n\nXML:\n" .. xml_str);
   end
-  return true
 end
 
-return M
+--- Run an XPath query against an XML string and return results
+--- (Uses a simplified python one-liner for now)
+--- @param xml_str string
+--- @param xpath string
+--- @return table: List of results
+function M.xpath(xml_str, xpath)
+  local config = require("nzi.core.config");
+  local python_cmd = config.options.python_cmd[1] or "python3";
+  
+  -- Wrap in dummy root if needed for simple fragments
+  local wrapped = xml_str;
+  if not xml_str:match("^<session") then
+    wrapped = string.format("<session xmlns='nzi' xmlns:agent='nzi' xmlns:model='nzi'>%s</session>", xml_str);
+  end
+
+  local script = [[
+import sys
+from lxml import etree
+xml_str = sys.stdin.read()
+root = etree.fromstring(xml_str)
+ns = {"nzi": "nzi", "agent": "nzi", "model": "nzi"}
+results = root.xpath("]] .. xpath .. [[", namespaces=ns)
+print("---XPATH_RESULTS_START---")
+for r in results:
+    if isinstance(r, etree._Element):
+        print(etree.tostring(r, encoding='unicode').strip())
+    else:
+        print(str(r).strip())
+]];
+
+  local res = vim.fn.system(python_cmd .. " -", script .. "\n" .. wrapped);
+  local lines = vim.split(res, "\n", { trimempty = true });
+  local final_results = {};
+  local in_results = false;
+  for _, line in ipairs(lines) do
+    if line == "---XPATH_RESULTS_START---" then
+      in_results = true;
+    elseif in_results then
+      table.insert(final_results, line);
+    end
+  end
+  return final_results;
+end
+
+return M;
