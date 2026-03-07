@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="nzi"
+           xmlns:nzi="nzi"
+           elementFormDefault="qualified">
+
+  <!-- Shared Attribute groups -->
+  <xs:attributeGroup name="fileAttr">
+    <xs:attribute name="file" type="xs:string" use="required"/>
+  </xs:attributeGroup>
+
+  <!-- The Root Element for validation -->
+  <xs:element name="root">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element ref="nzi:user"/>
+        <xs:element ref="nzi:context"/>
+        <xs:element ref="nzi:match"/>
+        <xs:element ref="nzi:ack"/>
+        <xs:element ref="nzi:status"/>
+        <xs:element ref="nzi:telemetry"/>
+        <xs:element ref="nzi:summary"/>
+        <xs:element ref="nzi:edit"/>
+        <xs:element ref="nzi:shell"/>
+        <xs:element ref="nzi:env"/>
+        <xs:element ref="nzi:read"/>
+        <xs:element ref="nzi:grep"/>
+        <xs:element ref="nzi:definition"/>
+        <xs:element ref="nzi:choice"/>
+        <xs:element ref="nzi:reset"/>
+      </xs:choice>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- USER Elements -->
+  <xs:element name="user">
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base="xs:string">
+          <xs:attribute name="type" type="xs:string"/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- AGENT Elements -->
+  <xs:element name="context">
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base="xs:string">
+          <xs:attribute name="file" type="xs:string"/>
+          <xs:attribute name="type" type="xs:string"/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="match">
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base="xs:string">
+          <xs:attribute name="file" type="xs:string" use="required"/>
+          <xs:attribute name="line" type="xs:integer"/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="ack">
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base="xs:string">
+          <xs:attribute name="status" type="xs:string"/>
+          <xs:attribute name="tool" type="xs:string"/>
+          <xs:attribute name="file" type="xs:string"/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="status">
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base="xs:string">
+          <xs:attribute name="level" type="xs:string"/>
+          <xs:attribute name="tool" type="xs:string"/>
+          <xs:attribute name="file" type="xs:string"/>
+          <xs:attribute name="status" type="xs:string"/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="telemetry">
+    <xs:complexType>
+      <xs:attribute name="model" type="xs:string"/>
+      <xs:attribute name="temp" type="xs:decimal"/>
+      <xs:attribute name="tokens" type="xs:integer"/>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- MODEL Elements -->
+  <xs:element name="summary">
+    <xs:simpleType>
+      <xs:restriction base="xs:string">
+        <xs:maxLength value="120"/>
+      </xs:restriction>
+    </xs:simpleType>
+  </xs:element>
+
+  <xs:element name="edit">
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base="xs:string">
+          <xs:attribute name="file" type="xs:string" use="required"/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="shell" type="xs:string"/>
+  <xs:element name="env" type="xs:string"/>
+  <xs:element name="read">
+    <xs:complexType>
+      <xs:attribute name="file" type="xs:string" use="required"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="grep" type="xs:string"/>
+  <xs:element name="definition" type="xs:string"/>
+  <xs:element name="choice" type="xs:string"/>
+  <xs:element name="reset">
+    <xs:complexType/>
+  </xs:element>
+
+</xs:schema>

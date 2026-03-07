@@ -168,7 +168,7 @@ function M.dispatch_actions(actions, mode, callback)
     if action.name == "grep" then
       modal.write("Searching universe: " .. action.content, "system", false);
       local grep_res = tools.grep(action.content);
-      table.insert(accumulated_responses, string.format("<agent:grep>\n%s\n</agent:grep>", grep_res));
+      table.insert(accumulated_responses, string.format("<agent:match>\n%s\n</agent:match>", grep_res));
       run_others(idx + 1);
 
     elseif action.name == "definition" then
@@ -181,12 +181,12 @@ function M.dispatch_actions(actions, mode, callback)
       modal.write("Executing " .. action.name .. ": " .. action.content, "system", false);
       local output = tools.shell(action.content, config.options.yolo);
       local resp = "";
-      if output then
-        resp = string.format("<agent:%s>\n%s\n</agent:%s>", action.name, output, action.name);
+      if output and output ~= "" then
+        resp = string.format("<agent:ack tool='%s' status='success'>\n%s\n</agent:ack>", action.name, output);
+        table.insert(accumulated_responses, resp);
       else
-        resp = string.format("<agent:%s>Command executed. No output returned to context.</agent:%s>", action.name, action.name);
+        queue.add_passive(string.format("<agent:ack tool='%s' status='success'/>", action.name));
       end
-      table.insert(accumulated_responses, resp);
       run_others(idx + 1);
 
     elseif action.name == "read" then
@@ -196,9 +196,11 @@ function M.dispatch_actions(actions, mode, callback)
         if file then
           modal.write("Reading file: " .. file, "system", false);
           context.set_state(file, "active");
-          table.insert(accumulated_responses, "<agent:status>File read and added to active context.</agent:status>");
+          -- Read content is ACTIVE, so we add to prompt
+          local content_text = context.get_content(file);
+          table.insert(accumulated_responses, string.format("<agent:context file='%s'>\n%s\n</agent:context>", raw_file, content_text));
         else
-          table.insert(accumulated_responses, string.format("<agent:status>Error: %s</agent:status>", err));
+          table.insert(accumulated_responses, string.format("<agent:status level='error'>%s</agent:status>", err));
         end
       end
       run_others(idx + 1);
@@ -210,7 +212,7 @@ function M.dispatch_actions(actions, mode, callback)
         if file then
           modal.write("Dropping file: " .. file, "system", false);
           context.set_state(file, "map");
-          table.insert(accumulated_responses, "<agent:status>File dropped to project map.</agent:status>");
+          queue.add_passive(string.format("<agent:ack tool='drop' file='%s' status='success'/>", raw_file));
         end
       end
       run_others(idx + 1);
@@ -218,7 +220,7 @@ function M.dispatch_actions(actions, mode, callback)
     elseif action.name == "reset" then
       modal.write("Agent requested session reset.", "system", false);
       require("nzi.core.commands").run("reset");
-      table.insert(accumulated_responses, "<agent:status>Session history and context have been reset.</agent:status>");
+      queue.add_passive("<agent:ack tool='reset' status='success'>Session history and context have been reset.</agent:ack>");
       run_others(idx + 1);
 
     elseif action.name == "create" then
@@ -227,7 +229,7 @@ function M.dispatch_actions(actions, mode, callback)
       if raw_file then
         local file_path = vim.fn.getcwd() .. "/" .. raw_file;
         if vim.fn.filereadable(file_path) == 1 then
-          table.insert(accumulated_responses, string.format("<agent:status>Error: File '%s' already exists. Use <model:edit> or <model:replace_all> to modify existing files.</agent:status>", raw_file));
+          table.insert(accumulated_responses, string.format("<agent:status level='error'>File '%s' already exists.</agent:status>", raw_file));
         else
           modal.write("Creating file: " .. raw_file, "system", false);
           local confirmed = config.options.yolo or vim.fn.confirm("AI requests to CREATE file: " .. raw_file, "&Yes\n&No", 1) == 1;
@@ -237,13 +239,14 @@ function M.dispatch_actions(actions, mode, callback)
             local lines = vim.split(action.content or "", "\n");
             if config.options.yolo then
               diff.apply_immediately(bufnr, lines);
-              table.insert(accumulated_responses, "<agent:status>File created and content applied (YOLO).</agent:status>");
+              queue.add_passive(string.format("<agent:ack tool='create' file='%s' status='success'/>", raw_file));
             else
               diff.propose_edit(bufnr, lines);
-              table.insert(accumulated_responses, "<agent:status>Proposed new file content. Awaiting diff.</agent:status>");
+              -- This is ACTIVE because it blocks until the diff is accepted
+              table.insert(accumulated_responses, string.format("<agent:status>Proposed new file content for %s. Awaiting diff.</agent:status>", raw_file));
             end
           else
-            table.insert(accumulated_responses, "<agent:status>File creation denied by user.</agent:status>");
+            table.insert(accumulated_responses, string.format("<agent:status tool='create' file='%s' status='denied'/>", raw_file));
           end
         end
       end
@@ -269,8 +272,10 @@ function M.dispatch_actions(actions, mode, callback)
       run_others(idx + 1);
 
     elseif action.name == "summary" then
-      modal.write(action.content, "assistant", false);
-      config.notify(action.content, vim.log.levels.INFO);
+      local clean_summary = action.content:gsub("\n", " "):gsub("%s+", " "):gsub("^%s*", ""):gsub("%s*$", "")
+      if #clean_summary > 120 then clean_summary = clean_summary:sub(1, 117) .. "..." end
+      modal.write(clean_summary, "assistant", false);
+      config.notify(clean_summary, vim.log.levels.INFO);
       run_others(idx + 1);
 
     elseif action.name == "choice" then

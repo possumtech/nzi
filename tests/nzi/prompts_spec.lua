@@ -27,8 +27,8 @@ describe("AI prompts module", function()
     assert.match("</agent:file>", result);
     
     -- SYSTEMATIC XML VALIDATION
-    local ok, err = xml_helper.validate_xml(result)
-    assert.is_true(ok, "Context XML is invalid: " .. (err or ""))
+    local ok, _, errs = xml_helper.validate_strict(result)
+    assert.is_true(ok, "Context XML Schema Violation:\n" .. table.concat(errs or {}, "\n"))
 
     -- Ensure AGENTS.md is NOT in context
     assert.is_nil(result:find("AGENTS.md"))

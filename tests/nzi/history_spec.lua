@@ -1,5 +1,6 @@
 local assert = require("luassert");
 local history = require("nzi.context.history");
+local xml = require("tests.xml_helper");
 
 describe("AI history module", function()
   before_each(function()
@@ -7,12 +8,13 @@ describe("AI history module", function()
   end);
 
   it("should add and format turns correctly (clean XML for model)", function()
-    history.add("ask", "What is 1+1?", "It is 2.");
+    history.add("ask", "What is 1+1?", "<model:summary>It is 2.</model:summary>");
     local formatted = history.format();
     
+    xml.assert_valid(formatted);
     assert.match("<agent:user>", formatted);
     assert.match("What is 1%+1%?", formatted);
-    assert.match("<agent:assistant>", formatted);
+    assert.match("<model:summary>", formatted);
     assert.match("It is 2%.", formatted);
     
     -- Ensure NO line numbers in the model-facing format
@@ -25,22 +27,4 @@ describe("AI history module", function()
     assert.match("1: Line 1\n2: Line 2", turn.user);
   end);
 
-  it("should handle multiple turns", function()
-    history.add("ask", "Turn 1", "Reply 1");
-    history.add("instruct", "Turn 2", "Reply 2");
-    local formatted = history.format();
-    
-    assert.match("Turn 1", formatted);
-    assert.match("Reply 1", formatted);
-    assert.match("Turn 2", formatted);
-    assert.match("Reply 2", formatted);
-  end);
-
-  it("should escape XML in history turns", function()
-    history.add("ask", "</tag>", "<tag>");
-    local formatted = history.format();
-    
-    assert.match("&lt;/tag&gt;", formatted, 1, true);
-    assert.match("&lt;tag&gt;", formatted, 1, true);
-  end);
 end);

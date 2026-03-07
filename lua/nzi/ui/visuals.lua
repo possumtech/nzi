@@ -2,6 +2,11 @@
 local config = require("nzi.core.config");
 local M = {};
 
+M.anim_frame = 0;
+M.anim_timer = nil;
+
+local frames = { "   ", ".  ", ".. ", "...", " ..", "  ." };
+
 --- Setup visual context highlight groups
 function M.setup()
   local function define_hls()
@@ -16,6 +21,8 @@ function M.setup()
     vim.api.nvim_set_hl(0, "NziStatusIgnore", { fg = "#ffffff", bg = "#b71c1c", ctermfg = 15, ctermbg = 1, bold = true });
     -- Diff: Deep Royal Blue
     vim.api.nvim_set_hl(0, "NziStatusDiff",   { fg = "#ffffff", bg = "#0d47a1", ctermfg = 15, ctermbg = 4, bold = true });
+    -- Thinking: Vibrant Orange
+    vim.api.nvim_set_hl(0, "NziStatusThinking", { fg = "#ffffff", bg = "#fe8019", ctermfg = 15, ctermbg = 214, bold = true });
   end
 
   define_hls();
@@ -27,14 +34,42 @@ function M.setup()
   });
 end
 
+--- Start the thinking animation
+function M.start_thinking()
+  if M.anim_timer then return end
+  M.anim_timer = vim.loop.new_timer();
+  M.anim_timer:start(0, 250, vim.schedule_wrap(function()
+    M.anim_frame = (M.anim_frame % #frames) + 1;
+    M.refresh();
+  end));
+end
+
+--- Stop the thinking animation
+function M.stop_thinking()
+  if M.anim_timer then
+    M.anim_timer:stop();
+    M.anim_timer:close();
+    M.anim_timer = nil;
+  end
+  M.anim_frame = 0;
+  M.refresh();
+end
+
 --- Get the raw status data for plugin integration
 --- @return table: { text = string, hl = string }
 function M.get_status_data()
   local context = require("nzi.context.context");
   local config = require("nzi.core.config");
+  local engine = require("nzi.engine.engine");
   local alias = config.options.active_model or "AI";
   local bufnr = vim.api.nvim_get_current_buf();
   
+  -- 0. Thinking state (Highest Priority)
+  if engine.is_busy then
+    local dots = frames[M.anim_frame] or "...";
+    return { text = string.format("[%s %s]", alias, dots), hl = "NziStatusThinking" };
+  end
+
   if not context.is_real_buffer(bufnr) then 
     return { text = "", hl = "" }; 
   end

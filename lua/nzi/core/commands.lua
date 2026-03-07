@@ -71,6 +71,7 @@ function M.run(cmd)
       engine.current_job:kill(15);
       engine.current_job = nil;
       engine.is_busy = false;
+      require("nzi.ui.visuals").stop_thinking();
       modal.set_thinking(false);
       modal.write("\n[STOPPED BY USER]\n", "error", true);
 
@@ -90,6 +91,7 @@ function M.run(cmd)
     else
       -- Force reset state even if no job handle exists
       engine.is_busy = false;
+      require("nzi.ui.visuals").stop_thinking();
       modal.set_thinking(false);
       config.notify("Reset idle state.", vim.log.levels.INFO);
     end

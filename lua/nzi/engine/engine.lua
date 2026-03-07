@@ -37,6 +37,7 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
   end
 
   M.is_busy = true;
+  require("nzi.ui.visuals").start_thinking();
   local turn_count = 0;
   local max_turns = config.options.max_turns or 5;
   local current_prompt = content;
@@ -47,7 +48,10 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
       modal.write("Max turns reached. Loop halted for safety.", "error", false);
       modal.set_thinking(false);
       modal.close_tag();
-      vim.schedule(function() M.is_busy = false; end);
+      vim.schedule(function() 
+        M.is_busy = false; 
+        require("nzi.ui.visuals").stop_thinking();
+      end);
       return;
     end
 
@@ -80,7 +84,10 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
             modal.write(result, "error", false);
             modal.close_tag();
           end
-          vim.schedule(function() M.is_busy = false; end);
+          vim.schedule(function() 
+            M.is_busy = false; 
+            require("nzi.ui.visuals").stop_thinking();
+          end);
           return;
         end
 
@@ -101,11 +108,16 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
                 modal.write("User aborted turn. Agent momentum halted.", "system", false);
                 modal.set_thinking(false);
                 modal.close_tag();
-                vim.schedule(function() M.is_busy = false; end);
+                vim.schedule(function() 
+                  M.is_busy = false; 
+                  require("nzi.ui.visuals").stop_thinking();
+                end);
                 return;
               end
 
-              if combined_agent_response then
+              if combined_agent_response and combined_agent_response ~= "" then
+                -- At least one tool produced an ACTIVE response (grep, read, etc.)
+                -- We must force a new turn to deliver this data.
                 history.add(type, turn_block, result);
                 modal.write(combined_agent_response, "user", false);
                 current_prompt = combined_agent_response;
@@ -113,23 +125,28 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
                 if not was_blocked then
                   vim.schedule(function() start_turn(); end);
                 else
-                  -- If it's blocked by a CHOICE, we actually want the loop to continue 
-                  -- after the user makes their selection. agent.lua handles the tool call, 
-                  -- but engine needs to know to resume.
-                  -- Fixed logic: combined_agent_response only exists AFTER all actions finish.
-                  -- If a choice was part of those actions, it already triggered its own run_next chain.
-                  
                   modal.set_thinking(false);
                   modal.close_tag();
                   M.is_busy = false;
+                  require("nzi.ui.visuals").stop_thinking();
                   config.log("Turn sequence suspended for user review/choice.", "ENGINE");
                 end
               else
-                -- Tools ran but no response for model (finalize)
+                -- Tools ran but were all PASSIVE (acks) or produced no context.
+                -- We terminate the turn here and return control to the user.
+                -- The passive buffer will be flushed and piggybacked on the NEXT turn.
                 history.add(type, turn_block, result);
                 modal.set_thinking(false);
                 modal.close_tag();
-                vim.schedule(function() M.is_busy = false; end);
+                vim.schedule(function() 
+                  M.is_busy = false; 
+                  require("nzi.ui.visuals").stop_thinking();
+                  -- AUTO-DRAIN: Check if there's more work in the queue
+                  local next_work = queue.pop_instruction();
+                  if next_work and not queue.is_blocked() then
+                    M.run_loop(next_work.instruction, next_work.type, false, next_work.target_file, next_work.selection);
+                  end
+                end);
               end
             end);
           end);
@@ -153,6 +170,7 @@ function M.run_loop(content, type, include_lsp, target_file, selection)
                 
                 vim.schedule(function() 
                   M.is_busy = false; 
+                  require("nzi.ui.visuals").stop_thinking();
                   -- AUTO-DRAIN: Check if there's more work in the queue
                   local next_work = queue.pop_instruction();
                   if next_work and not queue.is_blocked() then

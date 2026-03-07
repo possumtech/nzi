@@ -11,13 +11,10 @@ function M.smart_filter(text)
   local filtered = text:gsub("&", "&amp;");
   
   -- 2. Escape only our reserved namespaces (agent: and model:)
-  -- This prevents file content from closing our tags or issuing fake commands
-  -- Match both opening, closing, and self-closing tags: <agent:foo>, </agent:foo>, <agent:foo />
   filtered = filtered:gsub("<(/?%s*agent:[^>]*)>", "&lt;%1&gt;");
   filtered = filtered:gsub("<(/?%s*model:[^>]*)>", "&lt;%1&gt;");
   
-  -- 3. Escape lone angle brackets that aren't part of a tag (e.g. "if a < b")
-  -- Heuristic: if < is followed by a space or non-alphanumeric (except / or !), it's likely raw text
+  -- 3. Escape lone angle brackets that aren't part of a tag
   filtered = filtered:gsub("<([^%a/!])", "&lt;%1");
   
   return filtered;
@@ -34,7 +31,7 @@ function M.build_system_prompt(prompts, model_alias)
     "* instruct (AI:): ACTION-ORIENTED. You have full access to all tools to modify the codebase.",
     "\n## TURN PROTOCOL",
     "Finalize every turn with exactly one of the following tags:",
-    "* <model:summary>One sentence summary of actions, or the DIRECT ANSWER if it is concise.</model:summary>",
+    "* <model:summary>STRICTLY ONE LINE, UNDER 80 CHARS. The direct answer OR a summary of actions.</model:summary>",
     "* <model:choice>Text? - [ ] Option 1 - [ ] Option 2</model:choice>",
     "\n## MODEL ACTIONS",
     "Perform actions using these tags before the turn terminator:",
@@ -55,19 +52,13 @@ function M.build_system_prompt(prompts, model_alias)
     "[new lines]",
     ">>>>>>> REPLACE",
     "\n* Multiple blocks are allowed in one <model:edit> tag.",
-    "\n## AGENT METADATA (Input Only)",
-    "* <agent:shell>shell output</agent:shell>",
-    "* <agent:env>shell output</agent:env>",
-    "* <agent:choice>selected option</agent:choice>",
-    "* <agent:tool name=\"toolName\">tool output</agent:tool>",
-    "* <agent:context>current project structure and files</agent:context>",
-    "* <agent:file name=\"path/to/filename\">content of a specific file</agent:file>",
-    "* <agent:project_state>AGENTS.md file contents</agent:project_state>",
-    "* <agent:next_task_suggest>The first pending task in the plan</agent:next_task_suggest>",
-    "* <agent:user>The user's specific instruction</agent:user>",
-    "* <agent:selection file=\"path\" start=\"1:1\" end=\"1:5\">text</agent:selection>",
-    "* <agent:grep><agent:match file=\"path\" line=\"10\">text</agent:match></agent:grep>",
-    "* <agent:test>Output from a failing test or terminal execution</agent:test>",
+    "\n## AGENT NAMESPACE (Input Only)",
+    "* <agent:ack status=\"success\" tool=\"...\">Confirmation</agent:ack>",
+    "* <agent:status level=\"error\">Error details</agent:status>",
+    "* <agent:context>Project skeleton or file content</agent:context>",
+    "* <agent:match file=\"path\" line=\"10\">grep result</agent:match>",
+    "* <agent:user>The human's instruction</agent:user>",
+    "* <agent:selection file=\"path\" start=\"1:1\" end=\"1:5\">Visual selection text</agent:selection>",
     "\n* ALWAYS use relative paths from the project root for all file operations."
   };
   
@@ -84,12 +75,6 @@ function M.format_context(ctx_list, is_instruct)
   table.sort(ctx_list, function(a, b) return a.name < b.name end);
 
   local parts = {};
-  
-  -- 1. Bundled Environment Updates (Sync Sweep)
-  local acks = require("nzi.core.queue").pop_acks();
-  if acks ~= "" then
-    table.insert(parts, acks);
-  end
   
   -- 1. Universe Files (Open buffers and mapped project files)
   for _, item in ipairs(ctx_list) do
@@ -124,15 +109,18 @@ function M.format_context(ctx_list, is_instruct)
 end
 
 --- Build the full array of messages for the API
---- @param content string: The new user ask or instruct
---- @param type string: 'ask' or 'instruct'
---- @param target_file string | nil: Only for instruct
---- @param include_lsp boolean | nil
---- @param selection table | nil: Visual selection metadata
---- @return table, string, string, table, string
 function M.build_messages(content, type, target_file, include_lsp, selection)
   local config = require("nzi.core.config");
+  local queue = require("nzi.core.queue");
   local model_alias = config.options.active_model or "deepseek";
+  
+  -- Flush any passive acknowledgments (the "Piggyback")
+  local passive_acks = queue.flush_passive();
+  local augmented_content = content;
+  if passive_acks then
+    augmented_content = passive_acks .. "\n\n" .. content;
+  end
+
   local model_cfg = config.get_active_model();
   local role = model_cfg.role_preference or "system";
   
@@ -146,7 +134,6 @@ function M.build_messages(content, type, target_file, include_lsp, selection)
   table.insert(messages, { role = role, content = system_prompt });
   
   -- 2. CONTEXT (Project Facts/Buffers)
-  -- We send this as a separate message to allow providers to cache the system+context prefix
   local context_str = M.format_context(ctx_list, (type == "instruct"));
   table.insert(messages, { 
     role = role, 
@@ -177,43 +164,35 @@ function M.build_messages(content, type, target_file, include_lsp, selection)
   local turn_block = "";
   if type == "instruct" and target_file then
     if selection_block ~= "" then
-      turn_block = string.format("<agent:user>\n%s Instruction: %s\nEditing file: %s\n</agent:user>",
-        selection_block, M.smart_filter(content), M.smart_filter(target_file));
+      turn_block = string.format("<agent:user>\n%s\nInstruction: %s\nTarget File: %s\n</agent:user>",
+        selection_block, M.smart_filter(augmented_content), M.smart_filter(target_file));
     else
-      turn_block = string.format("<agent:user>\nEditing file: %s\nInstruction: %s\n</agent:user>",
-        M.smart_filter(target_file), M.smart_filter(content));
+      turn_block = string.format("<agent:user>\nTarget File: %s\nInstruction: %s\n</agent:user>",
+        M.smart_filter(target_file), M.smart_filter(augmented_content));
     end
   else
     if selection_block ~= "" then
-      turn_block = string.format("<agent:user>\n%s Instruction: %s\n</agent:user>", 
-        selection_block, M.smart_filter(content));
+      turn_block = string.format("<agent:user>\n%s\nInstruction: %s\n</agent:user>", 
+        selection_block, M.smart_filter(augmented_content));
     else
-      turn_block = string.format("<agent:user>\n%s\n</agent:user>", 
-        M.smart_filter(content));
+      turn_block = string.format("<agent:user>\n%s\n%s</agent:user>", 
+        M.smart_filter(augmented_content), next_task_block);
     end
   end
 
-  local final_user_content = string.format("%s%s\n\n%s", state_block, next_task_block, turn_block);
-  
+  local final_user_content = string.format("%s\n%s", state_block, turn_block);
   table.insert(messages, { role = "user", content = final_user_content });
   
   return messages, system_prompt, context_str, ctx_list, turn_block;
 end
 
 --- Gather prompt parts from AGENTS.md
---- @return table: { global = string, project = string, next_task_suggest = string }
 function M.gather()
   local parts = { global = nil, project = nil, next_task_suggest = nil };
-  
-  -- 1. Project level (./AGENTS.md)
-  -- This is the "Living Document" that guides the agent.
   local project_path = vim.fn.getcwd() .. "/AGENTS.md";
   if vim.fn.filereadable(project_path) == 1 then
     local content = table.concat(vim.fn.readfile(project_path), "\n");
     parts.project = content;
-    
-    -- Extract first unchecked task: - [ ] Task Name
-    -- Anchor to start of line for reliability
     for line in content:gmatch("[^\r\n]+") do
       local task = line:match("^%s*%- %[ %]%s*(.*)$")
       if task and task ~= "" then
@@ -222,13 +201,10 @@ function M.gather()
       end
     end
   end
-  
-  -- 2. Global level (optional ~/AGENTS.md)
   local global_path = vim.fn.expand("~/AGENTS.md");
   if vim.fn.filereadable(global_path) == 1 then
     parts.global = table.concat(vim.fn.readfile(global_path), "\n");
   end
-  
   return parts;
 end
 

@@ -79,13 +79,13 @@ function M.format()
     local user_clean = M.strip_line_numbers(turn.user);
     local assistant_clean = M.strip_line_numbers(turn.assistant);
     
-    if user_clean ~= "" and assistant_clean ~= "" then
-      table.insert(parts, string.format("<agent:user>\n%s\n</agent:user>\n\n<agent:assistant>\n%s\n</agent:assistant>",
-        M.xml_escape(user_clean), M.xml_escape(assistant_clean)));
-    elseif user_clean ~= "" then
+    -- Format history as a sequence of XML-wrapped turns
+    if user_clean ~= "" then
       table.insert(parts, string.format("<agent:user>\n%s\n</agent:user>", M.xml_escape(user_clean)));
-    elseif assistant_clean ~= "" then
-      table.insert(parts, string.format("<agent:assistant>\n%s\n</agent:assistant>", M.xml_escape(assistant_clean)));
+    end
+    if assistant_clean ~= "" then
+      -- assistant_clean is usually the <model:summary> and other actions
+      table.insert(parts, assistant_clean);
     end
   end
   
