@@ -25,10 +25,10 @@
       </sch:assert>
     </sch:rule>
 
-    <!-- The "Ask" Constraint: Inquiry-only turns cannot perform actions -->
+    <!-- The "Ask" Constraint: Inquiry-only turns cannot perform destructive actions -->
     <sch:rule context="turn[agent/ask]/assistant">
-      <sch:assert test="not(edit or create or delete or shell or env or grep or choice)">
-        An inquiry (ask) turn cannot be answered with model actions (edit, shell, choice, etc.).
+      <sch:assert test="not(edit or create or delete or shell or choice)">
+        An inquiry (ask) turn cannot be answered with state-changing model actions (edit, shell, choice, etc.), but may use discovery tools (read, search, env).
       </sch:assert>
     </sch:rule>
 
@@ -65,10 +65,15 @@
     </sch:rule>
 
     <!-- Context Ownership -->
-    <sch:rule context="edit | create | read | delete | shell | env | grep | choice | reset">
+    <sch:rule context="edit | create | read | delete | shell | env | search | choice">
       <sch:assert test="parent::assistant">
         Model actions are only valid within the assistant envelope.
       </sch:assert>
+    </sch:rule>
+
+    <!-- File-based Action Validation -->
+    <sch:rule context="assistant/edit | assistant/create | assistant/read | assistant/delete">
+      <sch:assert test="@file">This action must specify a target file via the 'file' attribute.</sch:assert>
     </sch:rule>
   </sch:pattern>
 

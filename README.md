@@ -158,7 +158,7 @@ The assistant communicates intentions via the `<response>` block and actions.
 | **`<edit>`** | `file="path"` | Surgical SEARCH/REPLACE code modification |
 | **`<create>`** | `file="path"` | Create a new file with full content |
 | **`<read>`** | `file="path"` | Pull a file into active buffer context |
-| **`<grep>`** | - | Search the project for a pattern |
+| **`<search>`** | - | Search the project for a pattern |
 | **`<shell>`** | `command` | Execute a destructive terminal command |
 | **`<env>`** | - | Execute a read-only terminal command |
 | **`<reset>`** | - | Reset history and context |
@@ -173,8 +173,10 @@ NZI provides structured environment data via `<history>` sub-tags.
 | **`<file>`** | `path, type, size` | File contents and metadata |
 | **`<project_roadmap>`** | `file` | Contents of current roadmap |
 | **`<suggest_next_task>`** | `file` | First pending task from checklist |
-| **`<match>`** | `file, line` | Single grep result |
-| **`<ack>`** | `tool, status` | Tool execution confirmation |
+| **`<search>`** | `pattern` | Results wrapper containing `<match>` tags |
+| **`<read>`** | `file, type, size` | On-demand file content requested by model |
+| **`<match>`** | `file, line` | Single search result |
+| **`<ack>`** | `tool, file, status` | Tool execution confirmation |
 | **`<status>`** | `level` | Operational status (info, error) |
 
 ---

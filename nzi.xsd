@@ -117,7 +117,7 @@
           <xs:element ref="edit"/>
           <xs:element ref="create"/>
           <xs:element ref="read"/>
-          <xs:element ref="grep"/>
+          <xs:element ref="search"/>
           <xs:element ref="delete"/>
           <xs:element ref="shell"/>
           <xs:element ref="env"/>
@@ -172,9 +172,9 @@
     <xs:complexType>
       <xs:sequence>
         <xs:element ref="files" minOccurs="0"/>
-        <xs:element ref="match" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element ref="search" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element ref="read" minOccurs="0" maxOccurs="unbounded"/>
         <xs:element ref="ack" minOccurs="0" maxOccurs="unbounded"/>
-        <xs:element ref="status" minOccurs="0" maxOccurs="unbounded"/>
       </xs:sequence>
     </xs:complexType>
   </xs:element>
@@ -237,11 +237,22 @@
 
   <xs:element name="shell" type="xs:string"/>
   <xs:element name="env" type="xs:string"/>
-  <xs:element name="grep" type="xs:string"/>
+  <xs:element name="search">
+    <xs:complexType mixed="true">
+      <xs:sequence>
+        <xs:element ref="match" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+      <xs:attribute name="pattern" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
   <xs:element name="choice" type="xs:string"/>
 
   <xs:element name="read">
-    <xs:complexType><xs:attribute name="file" type="xs:string" use="required"/></xs:complexType>
+    <xs:complexType mixed="true">
+      <xs:attribute name="file" type="xs:string" use="required"/>
+      <xs:attribute name="type" type="xs:string"/>
+      <xs:attribute name="size" type="xs:integer"/>
+    </xs:complexType>
   </xs:element>
 
   <xs:element name="delete">
@@ -264,17 +275,8 @@
       <xs:simpleContent>
         <xs:extension base="xs:string">
           <xs:attribute name="tool" type="xs:string" use="required"/>
+          <xs:attribute name="file" type="xs:string"/>
           <xs:attribute name="status" type="xs:string" use="required"/>
-        </xs:extension>
-      </xs:simpleContent>
-    </xs:complexType>
-  </xs:element>
-
-  <xs:element name="status">
-    <xs:complexType>
-      <xs:simpleContent>
-        <xs:extension base="xs:string">
-          <xs:attribute name="level" type="xs:string" use="required"/>
         </xs:extension>
       </xs:simpleContent>
     </xs:complexType>
