@@ -79,7 +79,7 @@ end
 
 --- Execute a shell command
 function M.run_shell(cmd, bufnr, line_idx, inject)
-  shell.run(cmd, bufnr, line_idx, inject);
+  shell.run_shell(cmd, bufnr, line_idx, inject);
 end
 
 return M;

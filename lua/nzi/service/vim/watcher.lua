@@ -2,27 +2,33 @@ local config = require("nzi.core.config");
 local M = {};
 
 --- Gather the raw state of all relevant buffers.
---- This is sent to Python, which decides what to do with it.
+--- This is sent to Python, which is responsible for metadata and DOM integration.
 function M.sync_list()
   local items = {};
   local bufs = vim.api.nvim_list_bufs();
+  local current_buf = vim.api.nvim_get_current_buf();
   
   for _, bufnr in ipairs(bufs) do
     if vim.api.nvim_buf_is_loaded(bufnr) then
-      local name = vim.api.nvim_buf_get_name(bufnr);
-      if name ~= "" then
-        local relative_name = vim.fn.fnamemodify(name, ":.");
+      local full_path = vim.api.nvim_buf_get_name(bufnr);
+      if full_path ~= "" then
+        local relative_name = vim.fn.fnamemodify(full_path, ":.");
         
-        -- Basic metadata
-        table.insert(items, {
+        -- Reporting state only. Business logic (size, schema) lives in Python.
+        local state = "map";
+        if bufnr == current_buf then state = "active" end
+
+        local item = {
           name = relative_name,
-          bufnr = bufnr,
-          changedtick = vim.api.nvim_buf_get_var(bufnr, "changedtick"),
-          is_modified = vim.api.nvim_get_option_value("modified", { buf = bufnr }),
-          -- Only send content for small/active buffers to keep RPC light
-          content = vim.api.nvim_get_option_value("modified", { buf = bufnr }) and 
-                    table.concat(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), "\n") or nil
-        });
+          state = state
+        };
+
+        -- Include content only for Active or modified buffers
+        if state == "active" or vim.api.nvim_get_option_value("modified", { buf = bufnr }) then
+          item.content = table.concat(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), "\n");
+        end
+
+        table.insert(items, item);
       end
     end
   end

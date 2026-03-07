@@ -2,11 +2,10 @@
 <sch:schema xmlns:sch="http://purl.oclc.org/dsdl/schematron">
 
   <!-- SESSION Rules -->
-  <!-- Structural Integrity -->
   <sch:pattern id="session-structure">
     <sch:rule context="session">
-      <sch:assert test="count(system) = 1">
-        A session must contain exactly one system prompt element at the root.
+      <sch:assert test="count(//turn[@id='0']/system) = 1">
+        Turn 0 must contain exactly one system prompt element.
       </sch:assert>
     </sch:rule>
   </sch:pattern>
@@ -17,6 +16,7 @@
       <sch:assert test="@id >= 0">Turn IDs must be non-negative.</sch:assert>
       <sch:assert test="count(user) &lt;= 1">A turn can have at most one user block.</sch:assert>
       <sch:assert test="count(summary) &lt;= 1">A turn can have at most one summary block.</sch:assert>
+      <sch:assert test="count(history) &lt;= 1">A turn can have at most one history block.</sch:assert>
     </sch:rule>
   </sch:pattern>
 

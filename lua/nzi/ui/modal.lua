@@ -3,9 +3,6 @@ local M = {};
 M.bufnr = nil;
 M.winid = nil;
 M.timer = nil;
-M.current_open_tag = nil; -- Tracks the turn level
-M.current_open_turn_id = nil;
-M.current_open_sub_tag = nil; -- Tracks blocks inside a turn
 
 M.ns_id = vim.api.nvim_create_namespace("nzi_modal");
 M.turn_ns_id = vim.api.nvim_create_namespace("nzi_turns");
@@ -48,89 +45,6 @@ function M.get_or_create_buffer()
     vim.api.nvim_set_option_value("modifiable", false, { buf = M.bufnr });
   end
   return M.bufnr;
-end
-
-function M.refresh_session_header()
-  local bufnr = M.get_or_create_buffer();
-  vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr });
-  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, 1, false);
-  if lines[1] and lines[1]:match("^<session") then
-    vim.api.nvim_buf_set_lines(bufnr, 0, 1, false, { get_session_header() });
-    highlight_lines(bufnr, 0, 0, "NziTelemetry");
-  end
-  vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr });
-end
-
-local function get_tag_name(msg_type)
-  local map = {
-    reasoning_content = "reasoning",
-    content = "content",
-    user = "user",
-    ask = "user",
-    instruct = "user",
-    system = "status",
-    error = "status level='error'",
-    shell = "shell_output",
-    shell_output = "shell_output",
-    run = "shell_output",
-    response = "content"
-  };
-  return map[msg_type] or "status";
-end
-
-local function get_hl_group(msg_type)
-  if msg_type == "reasoning_content" then return "Comment" end
-  if msg_type == "user" or msg_type == "ask" or msg_type == "instruct" then return "NziStatusActive" end
-  if msg_type == "error" then return "ErrorMsg" end
-  return "Normal";
-end
-
-local function get_telemetry_line(msg_type, id, metadata)
-  local config = require("nzi.core.config");
-  local model_alias = config.options.active_model or "unknown";
-  
-  if msg_type == "turn" then
-    local meta_str = "";
-    if metadata and metadata.model then
-      meta_str = string.format(" | %s | %.2fs | %d acts", metadata.model, metadata.duration or 0, metadata.changes or 0);
-    else
-      meta_str = string.format(" | %s", model_alias);
-    end
-    return string.format("[ TURN %d%s ]", id, meta_str);
-  end
-
-  if msg_type == "user" or msg_type == "ask" or msg_type == "instruct" then
-    return ""; -- Let the XML tags speak for themselves
-  elseif msg_type == "reasoning_content" then
-    return "[ SYSTEM | reasoning ]";
-  elseif msg_type == "content" then
-    return ""; -- No header for primary content blocks
-  elseif msg_type == "shell" or msg_type == "shell_output" then
-    return "[ SYSTEM | shell_output ]";
-  elseif msg_type == "error" then
-    return "[ SYSTEM | error ]";
-  else
-    return string.format("[ %s ]", msg_type:upper());
-  end
-end
-
-local function _close_sub_tag(bufnr)
-  if not M.current_open_sub_tag then return end
-  local tag = vim.split(get_tag_name(M.current_open_sub_tag), " ")[1];
-  local lc = vim.api.nvim_buf_line_count(bufnr);
-  vim.api.nvim_buf_set_lines(bufnr, lc - 1, lc - 1, false, { "</" .. tag .. ">" });
-  highlight_lines(bufnr, lc - 1, lc - 1, "NziTelemetry");
-  M.current_open_sub_tag = nil;
-end
-
-local function _close_current_tag(bufnr)
-  if not M.current_open_tag then return end
-  _close_sub_tag(bufnr);
-  local lc = vim.api.nvim_buf_line_count(bufnr);
-  vim.api.nvim_buf_set_lines(bufnr, lc - 1, lc - 1, false, { "</turn>", "" });
-  highlight_lines(bufnr, lc - 1, lc - 1, "NziTelemetry");
-  M.current_open_tag = nil;
-  M.current_open_turn_id = nil;
 end
 
 local function get_title()
@@ -189,6 +103,7 @@ function M.render_history()
   local bufnr = M.get_or_create_buffer();
   if not vim.api.nvim_buf_is_valid(bufnr) then return end
 
+  -- Use a scheduled block to avoid race conditions with modifiable state
   vim.schedule(function()
     if not vim.api.nvim_buf_is_valid(bufnr) then return end
     
@@ -196,10 +111,6 @@ function M.render_history()
     if not ok or not full_xml then return end
 
     vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr });
-    
-    M.current_open_tag = nil;
-    M.current_open_sub_tag = nil;
-    M.current_open_turn_id = nil;
     
     local lines = vim.split(full_xml, "\n");
     vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines);
@@ -223,6 +134,7 @@ function M.render_history()
     
     vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr });
     
+    -- Scroll to bottom if we are active
     if M.winid and vim.api.nvim_win_is_valid(M.winid) then
       local lc = vim.api.nvim_buf_line_count(bufnr);
       if lc > 0 then
@@ -233,26 +145,12 @@ function M.render_history()
 end
 
 function M.write(text, msg_type, append, turn_id, metadata)
-  if not append then
-    M.render_history();
-  end
+  -- Pure projection: Just refresh
+  M.render_history();
 end
 
 function M.clear()
-  local bufnr = M.get_or_create_buffer();
-  vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr });
-  M.current_open_tag = nil;
-  M.current_open_sub_tag = nil;
-  M.current_open_turn_id = nil;
-  
-  vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { get_session_header(), "</session>" });
-  vim.api.nvim_buf_clear_namespace(bufnr, M.ns_id, 0, -1);
-  vim.api.nvim_buf_clear_namespace(bufnr, M.turn_ns_id, 0, -1);
-  highlight_lines(bufnr, 0, 0, "NziTelemetry");
-  highlight_lines(bufnr, 1, 1, "NziTelemetry");
-  
-  M.mark_to_turn = {};
-  vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr });
+  M.render_history();
 end
 
 function M.set_thinking(active)

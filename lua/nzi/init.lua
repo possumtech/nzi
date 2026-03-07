@@ -78,7 +78,7 @@ function M.setup(opts)
       };
 
       -- If it's a known internal command OR no range is present, run as internal
-      if internal_commands[subcommand] or (line1 == line2 and opts.range <= 0) then
+      if internal_commands[subcommand] or (not args:match("!") and not args:match("?") and not args:match(":")) then
         commands.run(cmd);
         return;
       end

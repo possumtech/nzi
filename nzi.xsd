@@ -6,11 +6,6 @@
   <xs:element name="session">
     <xs:complexType>
       <xs:sequence>
-        <!-- Environment / Global Knowledge -->
-        <xs:element ref="system"/>
-        <xs:element ref="project_roadmap" minOccurs="0"/>
-        <xs:element ref="file" minOccurs="0" maxOccurs="unbounded"/>
-        <!-- Interaction History -->
         <xs:element ref="turn" minOccurs="0" maxOccurs="unbounded"/>
       </xs:sequence>
       <xs:attribute name="model" type="xs:string"/>
@@ -21,13 +16,14 @@
 
   <!-- TURN Elements -->
   <xs:element name="turn">
-    <xs:complexType>
+    <xs:complexType mixed="true">
       <xs:sequence>
         <xs:choice minOccurs="0" maxOccurs="unbounded">
           <xs:element ref="user"/>
+          <xs:element ref="system"/>
           <xs:element ref="project_roadmap"/>
+          <xs:element ref="history"/>
           <xs:element ref="next_task_suggest"/>
-          <xs:element name="system" type="xs:string"/>
           <xs:element name="error" type="xs:string"/>
           <xs:element ref="summary"/>
           <xs:element ref="content"/>
@@ -44,13 +40,21 @@
           <xs:element ref="status"/>
           <xs:element ref="ack"/>
           <xs:element ref="match"/>
-          <xs:element ref="file"/>
         </xs:choice>
       </xs:sequence>
       <xs:attribute name="id" type="xs:integer" use="required"/>
       <xs:attribute name="model" type="xs:string"/>
       <xs:attribute name="duration" type="xs:decimal"/>
       <xs:attribute name="acts" type="xs:integer"/>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- History Container -->
+  <xs:element name="history">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="file" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
     </xs:complexType>
   </xs:element>
 
@@ -72,81 +76,54 @@
   <xs:element name="system" type="xs:string"/>
 
   <xs:element name="project_roadmap">
-    <xs:complexType>
-      <xs:simpleContent>
-        <xs:extension base="xs:string">
-          <xs:attribute name="file" type="xs:string"/>
-        </xs:extension>
-      </xs:simpleContent>
+    <xs:complexType mixed="true">
+      <xs:attribute name="file" type="xs:string"/>
     </xs:complexType>
   </xs:element>
 
   <xs:element name="next_task_suggest">
-    <xs:complexType>
-      <xs:simpleContent>
-        <xs:extension base="xs:string">
-          <xs:attribute name="file" type="xs:string"/>
-        </xs:extension>
-      </xs:simpleContent>
+    <xs:complexType mixed="true">
+      <xs:attribute name="file" type="xs:string"/>
     </xs:complexType>
   </xs:element>
 
   <xs:element name="selection">
-    <xs:complexType>
-      <xs:simpleContent>
-        <xs:extension base="xs:string">
-          <xs:attribute name="file" type="xs:string" use="required"/>
-          <xs:attribute name="start" type="xs:string"/>
-          <xs:attribute name="end" type="xs:string"/>
-        </xs:extension>
-      </xs:simpleContent>
+    <xs:complexType mixed="true">
+      <xs:attribute name="file" type="xs:string" use="required"/>
+      <xs:attribute name="start" type="xs:string"/>
+      <xs:attribute name="end" type="xs:string"/>
     </xs:complexType>
   </xs:element>
 
   <xs:element name="file">
-    <xs:complexType>
-      <xs:simpleContent>
-        <xs:extension base="xs:string">
-          <xs:attribute name="name" type="xs:string" use="required"/>
-          <xs:attribute name="type" type="xs:string"/>
-        </xs:extension>
-      </xs:simpleContent>
+    <xs:complexType mixed="true">
+      <xs:attribute name="name" type="xs:string" use="required"/>
+      <xs:attribute name="type" type="xs:string"/>
+      <xs:attribute name="size" type="xs:string"/>
     </xs:complexType>
   </xs:element>
 
   <xs:element name="match">
-    <xs:complexType>
-      <xs:simpleContent>
-        <xs:extension base="xs:string">
-          <xs:attribute name="file" type="xs:string" use="required"/>
-          <xs:attribute name="line" type="xs:integer"/>
-        </xs:extension>
-      </xs:simpleContent>
+    <xs:complexType mixed="true">
+      <xs:attribute name="file" type="xs:string" use="required"/>
+      <xs:attribute name="line" type="xs:integer"/>
     </xs:complexType>
   </xs:element>
 
   <xs:element name="ack">
-    <xs:complexType>
-      <xs:simpleContent>
-        <xs:extension base="xs:string">
-          <xs:attribute name="status" type="xs:string"/>
-          <xs:attribute name="tool" type="xs:string"/>
-          <xs:attribute name="file" type="xs:string"/>
-        </xs:extension>
-      </xs:simpleContent>
+    <xs:complexType mixed="true">
+      <xs:attribute name="status" type="xs:string"/>
+      <xs:attribute name="tool" type="xs:string"/>
+      <xs:attribute name="file" type="xs:string"/>
     </xs:complexType>
   </xs:element>
 
   <xs:element name="status">
-    <xs:complexType>
-      <xs:simpleContent>
-        <xs:extension base="xs:string">
-          <xs:attribute name="level" type="xs:string"/>
-          <xs:attribute name="tool" type="xs:string"/>
-          <xs:attribute name="file" type="xs:string"/>
-          <xs:attribute name="status" type="xs:string"/>
-        </xs:extension>
-      </xs:simpleContent>
+    <xs:complexType mixed="true">
+      <xs:attribute name="level" type="xs:string"/>
+      <xs:attribute name="tool" type="xs:string"/>
+      <xs:attribute name="file" type="xs:string"/>
+      <xs:attribute name="status" type="xs:string"/>
     </xs:complexType>
   </xs:element>
 
@@ -163,22 +140,14 @@
   <xs:element name="reasoning" type="xs:string"/>
 
   <xs:element name="edit">
-    <xs:complexType>
-      <xs:simpleContent>
-        <xs:extension base="xs:string">
-          <xs:attribute name="file" type="xs:string" use="required"/>
-        </xs:extension>
-      </xs:simpleContent>
+    <xs:complexType mixed="true">
+      <xs:attribute name="file" type="xs:string" use="required"/>
     </xs:complexType>
   </xs:element>
 
   <xs:element name="create">
-    <xs:complexType>
-      <xs:simpleContent>
-        <xs:extension base="xs:string">
-          <xs:attribute name="file" type="xs:string" use="required"/>
-        </xs:extension>
-      </xs:simpleContent>
+    <xs:complexType mixed="true">
+      <xs:attribute name="file" type="xs:string" use="required"/>
     </xs:complexType>
   </xs:element>
 

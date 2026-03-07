@@ -33,6 +33,22 @@ Unlike competing agents, NZI maintains an especially lean system prompt. We don'
 *   **Python**: 3.9+ with `litellm` installed.
 *   **Optional**: `Treesitter` (for project-wide code skeletons).
 
+## Installation & Setup
+
+```lua
+{
+  "possumtech/nzi",
+  dependencies = { "nvim-lua/plenary.nvim" },
+  config = function()
+    require("nzi").setup({
+      python_cmd = { "python3" } -- Path to env with litellm
+    })
+  end,
+}
+```
+
+*For deep technical documentation, roadmaps, and architecture, see [AGENTS.md](./AGENTS.md).*
+
 ## Environment Variables
 
 NZI supports the following environment variables for configuration:
@@ -159,22 +175,3 @@ When executing a shell command with a visual selection:
 *   **Context**: Prompts to add output to AI conversation history (Passive).
 
 ---
-
-## Installation & Setup
-
-```lua
-{
-  "possumtech/nzi",
-  dependencies = { "nvim-lua/plenary.nvim" },
-  config = function()
-    require("nzi").setup({
-      python_cmd = { "python3" } -- Path to env with litellm
-    })
-  end,
-}
-```
-
-*For deep technical documentation, roadmaps, and architecture, see [AGENTS.md](./AGENTS.md).*
-
----
-*Sanitized. Structured. Agentic.*

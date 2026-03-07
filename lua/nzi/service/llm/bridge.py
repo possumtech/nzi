@@ -10,8 +10,13 @@ import signal
 # Suppress all library logging and warnings
 os.environ["LITELLM_LOG"] = "ERROR"
 os.environ["LITELLM_CHECK_FOR_UPDATES"] = "False"
+import logging
 logging.getLogger("litellm").setLevel(logging.ERROR)
+import warnings
 warnings.filterwarnings("ignore")
+import litellm
+litellm.set_verbose = False
+litellm.suppress_debug_info = True
 
 def signal_handler(sig, frame):
     os._exit(0)

@@ -10,7 +10,7 @@ You are an agent.
 * <grep>Pattern</grep>
 * <read file="path" />: Pull file into context
 * <create file="path">Full file content</create>
-* <edit file="path">SEARCH/REPLACE blocks (MUST match full lines)</edit>
+* <edit file="path">SEARCH/REPLACE blocks</edit>
 * <reset />: Clear history
 
 ## EDIT PROTOCOL
@@ -25,6 +25,7 @@ Modify files by wrapping SEARCH/REPLACE blocks inside <edit>.
 </edit>
 
 * Multiple blocks are allowed in one <edit> tag.
+* Every SEARCH block must be unique and match the destination file exactly.
 
 ## FEEDBACK TAGS (System/User provided)
 * <ack status="success" tool="...">Confirmation</ack>
