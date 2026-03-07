@@ -59,9 +59,11 @@ function M.setup(opts)
   
   -- Register the primary AI command with native completion
   vim.api.nvim_create_user_command("AI", function(opts)
-    local line1 = opts.line1;
-    local line2 = opts.line2;
+    opts = opts or {};
+    local line1 = opts.line1 or 1;
+    local line2 = opts.line2 or 1;
     local args = opts.args or "";
+    local range = opts.range or 0;
 
     -- 1. Handle subcommands (AI/model, AI/clear, AI/status)
     if args:match("^/") then

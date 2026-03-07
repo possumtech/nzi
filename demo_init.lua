@@ -56,7 +56,7 @@ vim.keymap.set("n", "<leader>ap", ":AI/prev<CR>",   { desc = "AI: Prev Pending D
 vim.keymap.set("n", "<leader>am", ":AI/model<CR>",  { desc = "AI: Model Menu" })
 
 -- Statusline setup for demo
-vim.opt.statusline = "%f %m %r %= %{%v:lua.require('nzi.ui.visuals').get_statusline()%} %y %p%% %l:%c"
+vim.opt.statusline = "%f %m %r %= %{%v:lua.nzi_statusline()%} %y %p%% %l:%c"
 
 print("AI (nzi) Loaded! Use <leader>aa to toggle the AI Modal.");
 print("Visual Context: Backgrounds reflect AI state (Green=Active, Orange=Read, Red=Ignore, Blue=Diff).");

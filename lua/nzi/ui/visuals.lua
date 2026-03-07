@@ -88,10 +88,17 @@ function M.get_status_data()
 end
 
 function M.get_statusline()
-  local data = M.get_status_data();
-  if data.text == "" then return ""; end
-  return string.format("%%#%s# %s %%*", data.hl, data.text);
+  local ok, res = pcall(function()
+    local data = M.get_status_data();
+    if not data or data.text == "" then return ""; end
+    return string.format("%%#%s# %s %%*", data.hl, data.text);
+  end)
+  if not ok then return ""; end
+  return res;
 end
+
+-- EXPOSE GLOBALLY for Vim statusline (prevents E117 if require is tricky)
+_G.nzi_statusline = M.get_statusline;
 
 function M.refresh()
   vim.cmd("redrawstatus");

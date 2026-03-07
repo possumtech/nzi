@@ -139,12 +139,16 @@ function M.render_history()
   for _, turn in ipairs(turns) do
     local user_clean = history.strip_line_numbers(turn.user);
     local assistant_clean = history.strip_line_numbers(turn.assistant);
+    
+    -- Ensure both blocks are written to the SAME open turn ID
     if user_clean ~= "" then
       M.write(user_clean, "user", false, turn.id, turn.metadata);
     end
     if assistant_clean ~= "" then
       M.write(assistant_clean, "assistant", false, turn.id, turn.metadata);
     end
+    
+    -- Close the turn ONLY after both blocks are handled
     M.close_tag();
   end
 end
@@ -315,8 +319,10 @@ function M.write(text, msg_type, append, turn_id, metadata)
 
   -- 2. Open Turn if needed
   if not M.current_open_tag then
+    local config = require("nzi.core.config");
+    local active_model = config.options.active_model or "AI";
     local telemetry = get_telemetry_line("turn", target_tid, metadata);
-    local model_name = metadata and metadata.model or (target_tid == 0 and "system" or "unknown");
+    local model_name = metadata and metadata.model or (target_tid == 0 and "system" or active_model);
     local open_tag = string.format("<agent:turn id=\"%d\" model=\"%s\">", target_tid, model_name);
     local lc = vim.api.nvim_buf_line_count(bufnr);
     local is_empty = (lc == 1 and vim.api.nvim_buf_get_lines(bufnr, 0, 1, false)[1] == "");

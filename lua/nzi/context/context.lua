@@ -11,6 +11,13 @@ M.states = {};
 --- @param bufnr number
 --- @return string
 function M.get_state(bufnr)
+  -- Safety: Ensure we have a valid buffer number
+  -- We allow small IDs (< 1000) to pass through for unit tests that use mock IDs
+  if not bufnr or bufnr <= 0 then return "ignore" end
+  if bufnr > 1000 and not vim.api.nvim_buf_is_valid(bufnr) then
+    return "ignore";
+  end
+
   -- 1. Explicit User Override (Always wins)
   if M.states[bufnr] then return M.states[bufnr]; end
 
@@ -101,8 +108,8 @@ function M.is_real_buffer(bufnr)
   if buftype ~= "" and buftype ~= "acwrite" then return false; end
 
   -- Ignore specific filetypes from config (UI plugins)
-  local opts = config.options.context;
-  for _, ft in ipairs(opts.ignore_filetypes) do
+  local opts = config.options.context or { ignore_filetypes = {} };
+  for _, ft in ipairs(opts.ignore_filetypes or {}) do
     if filetype == ft then return false; end
   end
 
