@@ -72,9 +72,9 @@ def main():
     
     # Metadata mapping: pass the UI alias to the provider
     if "X-Title" not in extra_headers:
-        extra_headers["X-Title"] = f"nzi: {alias}"
+        extra_headers["X-Title"] = f"NZI: {alias}"
     if "X-Description" not in extra_headers:
-        extra_headers["X-Description"] = f"Neovim-Native Agentic Interface (nzi) using alias: {alias}"
+        extra_headers["X-Description"] = f"Neovim-Native Agentic Interface (NZI) using alias: {alias}"
 
     # LiteLLM configuration - DISABLE ALL BACKGROUND THREADS
     litellm.drop_params = True 

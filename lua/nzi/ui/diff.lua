@@ -15,13 +15,13 @@ function M.get_pending_from_xml()
   if xml == "" then return { edits = {}, creations = {}, deletions = {} }; end
 
   -- 1. Find all proposed actions
-  local edits = protocol.xpath(xml, "//model:edit | //model:replace_all");
-  local creations = protocol.xpath(xml, "//model:create");
-  local deletions = protocol.xpath(xml, "//model:delete");
+  local edits = protocol.xpath(xml, "//edit | //replace_all");
+  local creations = protocol.xpath(xml, "//create");
+  local deletions = protocol.xpath(xml, "//delete");
   
   -- 2. Find all resolutions
-  local acks = protocol.xpath(xml, "//agent:ack");
-  local rejections = protocol.xpath(xml, "//agent:status[@status='denied']");
+  local acks = protocol.xpath(xml, "//ack");
+  local rejections = protocol.xpath(xml, "//status[@status='denied']");
   
   -- 3. Match resolutions to actions
   -- Strategy: Create a list of all potential actions and all resolutions.
@@ -161,7 +161,7 @@ end
 --- @param file_path string: The file to delete
 function M.propose_deletion(file_path)
   -- In XML-driven model, we don't need a local table. 
-  -- The presence of <model:delete> without <agent:ack> IS the proposal.
+  -- The presence of <delete> without <ack> IS the proposal.
   config.notify("Marked for deletion: " .. file_path .. ". Use AI/accept to confirm.", vim.log.levels.WARN);
 end
 
@@ -204,7 +204,7 @@ function M.accept(bufnr)
       vim.api.nvim_buf_delete(bufnr, { force = true });
       config.notify("File deleted: " .. relative_name, vim.log.levels.INFO);
       -- RESOLVE in XML via history
-      require("nzi.dom.session").add("ask", string.format("<agent:ack tool='delete' file='%s' status='success'>User confirmed deletion.</agent:ack>", relative_name), nil);
+      require("nzi.dom.session").add("ask", string.format("<ack tool='delete' file='%s' status='success'>User confirmed deletion.</ack>", relative_name), nil);
       return;
     end
     config.notify("No pending diff for this buffer.", vim.log.levels.WARN);
@@ -225,7 +225,7 @@ function M.accept(bufnr)
   config.notify("Edit diff finalized and saved.", vim.log.levels.INFO);
 
   -- RESOLVE in XML
-  require("nzi.dom.session").add("ask", string.format("<agent:ack status='success' tool='edit' file='%s'>User accepted and saved changes.</agent:ack>", relative_name), nil);
+  require("nzi.dom.session").add("ask", string.format("<ack status='success' tool='edit' file='%s'>User accepted and saved changes.</ack>", relative_name), nil);
 
   -- AUTO-DRAIN QUEUE: If turns were blocked by this diff, try to resume
   vim.schedule(function()
@@ -261,7 +261,7 @@ function M.reject(bufnr)
       config.log(relative_name, "DIFF:REJECT_DELETE");
       config.notify("Deletion rejected: " .. relative_name, vim.log.levels.INFO);
       -- RESOLVE in XML
-      require("nzi.dom.session").add("ask", string.format("<agent:status tool='delete' file='%s' status='denied'>User rejected deletion.</agent:status>", relative_name), nil);
+      require("nzi.dom.session").add("ask", string.format("<status tool='delete' file='%s' status='denied'>User rejected deletion.</status>", relative_name), nil);
       return;
     end
     config.notify("No pending diff for this buffer.", vim.log.levels.WARN);
@@ -276,7 +276,7 @@ function M.reject(bufnr)
   config.notify("Suggestion discarded.", vim.log.levels.INFO);
 
   -- RESOLVE in XML
-  require("nzi.dom.session").add("ask", string.format("<agent:status status='denied' tool='edit' file='%s'>User rejected the proposed changes.</agent:status>", relative_name), nil);
+  require("nzi.dom.session").add("ask", string.format("<status status='denied' tool='edit' file='%s'>User rejected the proposed changes.</status>", relative_name), nil);
 
   -- AUTO-DRAIN QUEUE
   vim.schedule(function()

@@ -5,33 +5,34 @@ M.job_id = nil;
 M.callbacks = {};
 M.next_id = 1;
 
---- Start the Python DOM Engine (New Modular Bridge)
+--- Start the Python DOM Engine
 function M.ensure_engine()
-  if M.job_id and M.job_id > 0 then return true; end
+  if M.job_id and M.job_id > 0 then return M.job_id end
 
-  local python_cmd = config.options.python_cmd and config.options.python_cmd[1] or "python3";
-  -- Locate the new modular bridge
-  local info = debug.getinfo(1).source;
-  if info:sub(1,1) == "@" then info = info:sub(2) end
-  local base_dir = vim.fn.fnamemodify(info, ":h:h:h:h"); -- Back out to root from lua/nzi/dom/
-  local engine_script = base_dir .. "/python/nzi/service/vim/bridge.py";
-  
-  config.log("Starting Python Core: " .. engine_script, "DOM");
+  local script_path = config.get_plugin_path() .. "/python/nzi/service/vim/bridge.py";
+  local cmd = vim.list_extend({}, config.options.python_cmd);
+  table.insert(cmd, "-u");
+  table.insert(cmd, script_path);
 
-  M.job_id = vim.fn.jobstart({ python_cmd, engine_script }, {
+  M.job_id = vim.fn.jobstart(cmd, {
     on_stdout = function(_, data)
       for _, line in ipairs(data) do
         if line ~= "" then
-          config.log("RPC RES: " .. line, "DOM");
           local ok, res = pcall(vim.fn.json_decode, line);
-          if ok then
-            if res.id and M.callbacks[res.id] then
-              M.callbacks[res.id](res);
+          if ok and res then
+            if res.method == "refresh_ui" then
+              -- Pure projection: Just re-render what Python says is true
+              vim.schedule(function()
+                require("nzi.ui.modal").render_history();
+              end);
+            elseif res.id and M.callbacks[res.id] then
+              local cb = M.callbacks[res.id];
               M.callbacks[res.id] = nil;
-            elseif res.method then
-              -- Request FROM Python to Vim
-              M.handle_incoming_request(res);
+              cb(res);
             end
+          else
+            -- NOT JSON: Log to file, NOT the command window
+            config.log("PYTHON RAW: " .. line, "BRIDGE");
           end
         end
       end
@@ -39,88 +40,54 @@ function M.ensure_engine()
     on_stderr = function(_, data)
       for _, line in ipairs(data) do
         if line ~= "" then
-          config.log("Engine Stderr: " .. line, "ERROR");
-          -- Also print to stdout for test harness visibility
-          print("ENGINE STDERR: " .. line);
+          config.log("PYTHON ERROR: " .. line, "BRIDGE");
         end
       end
     end,
-    on_exit = function(_, code)
-      config.log("Engine Exited with code: " .. code, "ERROR");
-      M.job_id = nil;
-    end
   });
 
-  return M.job_id > 0;
+  return M.job_id;
 end
 
---- Handle requests coming FROM Python TO Vim
-function M.handle_incoming_request(req)
-  local method = req.method;
-  local params = req.params or {};
-  
-  vim.schedule(function()
-    if method == "stream_chunk" then
-      require("nzi.ui.modal").write(params.text, params.type or "content", true);
-    elseif method == "notify" then
-      config.notify(params.msg, params.level or "info");
-    elseif method == "execute_command" then
-      vim.cmd(params.command);
-    elseif method == "propose_edit" then
-      require("nzi.ui.diff").propose_edit(params.file, params.content);
-    elseif method == "propose_create" then
-      require("nzi.ui.diff").propose_creation(params.file, params.content);
-    elseif method == "execute_shell" then
-      require("nzi.service.vim.effector").run_shell(params.command);
-    elseif method == "execute_grep" then
-      require("nzi.service.vim.effector").run_grep(params.pattern);
-    end
-  end);
-end
-
---- Send a synchronous request to the engine (using wait)
+--- Send a synchronous request to the Python bridge
 function M.request_sync(method, params)
   M.ensure_engine();
   local id = M.next_id;
   M.next_id = M.next_id + 1;
 
-  local response = nil;
+  local payload = vim.fn.json_encode({
+    jsonrpc = "2.0",
+    id = id,
+    method = method,
+    params = params or {}
+  });
+
+  local result = nil;
   M.callbacks[id] = function(res)
-    response = res;
+    result = res;
   end
 
-  local req = vim.fn.json_encode({ id = id, method = method, params = params });
-  config.log("RPC REQ: " .. req, "DOM");
-  vim.fn.jobsend(M.job_id, req .. "\n");
+  vim.fn.chansend(M.job_id, payload .. "\n");
 
-  -- Wait for response
-  -- In headless mode, we must manually allow the event loop to process stdout
-  local timeout = 5000;
-  local step = 20;
-  local elapsed = 0;
-  while response == nil and elapsed < timeout do
-    -- This helps spin the loop and process callbacks
-    vim.wait(step, function() return response ~= nil end);
-    elapsed = elapsed + step;
-  end
-  
-  if response == nil then
-    error("DOM Engine Timeout on method: " .. method);
+  -- Wait for result (Block Lua)
+  vim.wait(10000, function() return result ~= nil end, 10);
+
+  if not result then
+    error("RPC Timeout: " .. method);
   end
 
-  if not response.success then
-    local err_msg = "Contract Violation: " .. (response.error or "Unknown Error");
-    if response.xml_dump then
-      -- Write violation to a temp file for inspection
-      local dump_path = "/tmp/nzi_violation.xml";
+  if not result.success then
+    local err_msg = "Bridge Error (" .. method .. "): " .. (result.error or "Unknown");
+    if result.xml_dump then
+      local dump_path = "/tmp/nzi_error_dump.xml";
       local f = io.open(dump_path, "w");
-      if f then f:write(response.xml_dump); f:close(); end
+      if f then f:write(result.xml_dump); f:close(); end
       err_msg = err_msg .. "\nXML Dumped to: " .. dump_path;
     end
     error(err_msg);
   end
 
-  return response;
+  return result;
 end
 
 return M;

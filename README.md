@@ -121,33 +121,33 @@ NZI uses a `<leader>a` prefix for quick command access.
 ## Technical Specifications (XML Sublanguage)
 
 ### 1. Model Actions (Output Tags)
-The model communicates intentions using `<model:*>` tags.
+The model communicates intentions using `<*>` tags.
 
 | Tag | Attributes | Purpose |
 | :--- | :--- | :--- |
-| `<model:summary>` | - | **Turn Terminator**: A one-sentence summary of actions |
-| `<model:choice>` | - | **Turn Terminator**: A question requiring user input |
-| `<model:edit>` | `file="path"` | Surgical SEARCH/REPLACE code modification |
-| `<model:create>` | `file="path"` | Create a new file with full content |
-| `<model:read>` | `file="path"` | Pull a file into active buffer context |
-| `<model:grep>` | - | Search the project for a pattern |
-| `<model:shell>` | - | Execute a destructive terminal command |
-| `<model:env>` | - | Execute a read-only terminal command |
-| `<model:choice>` | - | Present a multiple-choice menu to user |
-| `<model:reset>` | - | Reset history and context |
+| `<summary>` | - | **Turn Terminator**: A one-sentence summary of actions |
+| `<choice>` | - | **Turn Terminator**: A question requiring user input |
+| `<edit>` | `file="path"` | Surgical SEARCH/REPLACE code modification |
+| `<create>` | `file="path"` | Create a new file with full content |
+| `<read>` | `file="path"` | Pull a file into active buffer context |
+| `<grep>` | - | Search the project for a pattern |
+| `<shell>` | - | Execute a destructive terminal command |
+| `<env>` | - | Execute a read-only terminal command |
+| `<choice>` | - | Present a multiple-choice menu to user |
+| `<reset>` | - | Reset history and context |
 
 ### 2. Agent Metadata (Input Tags)
-NZI provides structured environment data via `<agent:*>` tags.
+NZI provides structured environment data via `<*>` tags.
 
 | Tag | Attributes | Description |
 | :--- | :--- | :--- |
-| `<agent:selection>` | `file, start, end` | Character-perfect visual selection |
-| `<agent:user>` | - | The user's specific instruction |
-| `<agent:context>` | - | Current workspace/buffer facts |
-| `<agent:project_state>` | - | Contents of `./AGENTS.md` |
-| `<agent:next_task_suggest>` | - | First pending task from checklist |
-| `<agent:grep>` | - | List of `<agent:match file="..." line="...">text</agent:match>` |
-| `<agent:test>` | - | Output from a failing test or terminal |
+| `<selection>` | `file, start, end` | Character-perfect visual selection |
+| `<user>` | - | The user's specific instruction |
+| `<context>` | - | Current workspace/buffer facts |
+| `<project_state>` | - | Contents of `./AGENTS.md` |
+| `<next_task_suggest>` | - | First pending task from checklist |
+| `<grep>` | - | List of `<match file="..." line="...">text<match>` |
+| `<test>` | - | Output from a failing test or terminal |
 
 ---
 

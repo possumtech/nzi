@@ -36,7 +36,7 @@ describe("TRUE E2E: Full UI Lifecycle", function()
         -- Check if it contains the closing tag or an error
         local lines = vim.api.nvim_buf_get_lines(b, 0, -1, false)
         local content = table.concat(lines, "\n")
-        if content:match("</agent:content>") or content:match("</agent:error>") then
+        if content:match("</content>") or content:match("</status level='error'>") then
           return true
         end
 
@@ -50,21 +50,23 @@ describe("TRUE E2E: Full UI Lifecycle", function()
     local final_lines = vim.api.nvim_buf_get_lines(modal.bufnr, 0, -1, false);
     local final_content = table.concat(final_lines, "\n");
     
-    print("\n[TRUE E2E] Scraped Modal Content:\n" .. final_content .. "\n");
+    -- DUMP TO FILE
+    local f = io.open("modal_dump.xml", "w");
+    if f then f:write(final_content); f:close(); end
 
     assert.is_true(success, "True E2E timed out waiting for UI to update.");
     
-    if final_content:match("<agent:error>") then
+    if final_content:match("<status level='error'>") then
       error("API Error returned in UI: " .. final_content);
     end
 
     assert.match("Where's the beef", final_content, 1, true);
     
     -- Structural Integrity Check
-    assert.match("<agent:system>", final_content, 1, true);
-    assert.match("<agent:user>", final_content, 1, true);
-    assert.match("<agent:content>", final_content, 1, true);
-    assert.match("</agent:content>", final_content, 1, true);
+    assert.match("<system>", final_content, 1, true);
+    assert.match("<user>", final_content, 1, true);
+    assert.match("<content>", final_content, 1, true);
+    assert.match("</content>", final_content, 1, true);
     
     -- Negative check: ensure no mangled "disemvoweled" tags
     assert.is_nil(final_content:match("<ntsr>"), "Detected mangled tag <ntsr>");

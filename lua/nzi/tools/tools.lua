@@ -5,7 +5,7 @@ local M = {};
 
 --- Execute a grep search across the project universe (Active + Read files)
 --- @param pattern string: The search pattern
---- @return string: The formatted <agent:grep> output
+--- @return string: The formatted <grep> output
 function M.grep(pattern)
   local ctx_list = context.gather();
   local results = {};
@@ -32,7 +32,7 @@ function M.grep(pattern)
         if line:find(pattern, 1, true) then
           -- Escape & < > in the line content for XML safety
           local clean_line = line:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;");
-          table.insert(results, string.format("<agent:match file=\"%s\" line=\"%d\">%s</agent:match>", path, i, clean_line));
+          table.insert(results, string.format("<match file=\"%s\" line=\"%d\">%s</match>", path, i, clean_line));
         end
       end
     end

@@ -21,7 +21,7 @@ M.defaults = {
   },
 
   -- Ecosystem settings
-  python_cmd = vim.split(vim.env.NZI_PYTHON_CMD or "python3", " "), 
+  python_cmd = vim.split(vim.env.NZI_PYTHON_CMD or "./.venv/bin/python3", " "), 
 
   -- Advanced Model Options (OpenAI Standard)
   model_options = {
@@ -116,6 +116,12 @@ function M.log(msg, category)
       f:close();
     end
   end
+end
+
+function M.get_plugin_path()
+  local str = debug.getinfo(1, "S").source:sub(2);
+  -- Path is lua/nzi/core/config.lua, we want the root
+  return vim.fn.fnamemodify(str, ":h:h:h:h");
 end
 
 return M;

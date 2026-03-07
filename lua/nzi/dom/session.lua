@@ -38,7 +38,7 @@ function M.format_context(ctx_list, skip_roadmap, roadmap_content, roadmap_file)
   -- This is a bit of a hack to satisfy legacy tests while keeping DOM as SSOT.
   -- It temporarily updates context and returns the XML of Turn 0.
   M.update_context(ctx_list, roadmap_content);
-  local xml = M.xpath("//agent:turn[@id='0']/*");
+  local xml = M.xpath("//turn[@id='0']/*");
   -- Strip namespaces for legacy test compatibility
   for i, line in ipairs(xml) do
     xml[i] = line:gsub(' xmlns:[%a]+="[^"]+"', ''):gsub(' xmlns="[^"]+"', '');
@@ -81,7 +81,7 @@ function M.strip_line_numbers(text)
 end
 
 function M.get_next_id()
-  local ids = M.xpath("//agent:turn/@id");
+  local ids = M.xpath("//turn/@id");
   local max = -1;
   for _, id in ipairs(ids) do
     local n = tonumber(id);
@@ -91,22 +91,22 @@ function M.get_next_id()
 end
 --- Get all turns from the session (For UI/Summary)
 function M.get_turn_count()
-  local ids = M.xpath("count(//agent:turn)");
+  local ids = M.xpath("count(//turn)");
   return tonumber(ids[1]) or 0;
 end
 
 function M.get_all()
   local turns = {};
-  local turn_xmls = M.xpath("//agent:turn");
+  local turn_xmls = M.xpath("//turn");
   local parser = require("nzi.dom.parser");
   for _, tx in ipairs(turn_xmls) do
-    local id = tonumber(parser.xpath(tx, "//agent:turn/@id")[1]);
+    local id = tonumber(parser.xpath(tx, "//turn/@id")[1]);
 
-    local user_nodes = parser.xpath(tx, "//agent:user/node()");
-    local user = table.concat(user_nodes, "");
+    local user_nodes = parser.xpath(tx, "//user/node()");
+    local user = table.concat(user_nodes, ""):gsub(' xmlns:[%a]+="[^"]+"', ''):gsub(' xmlns="[^"]+"', '');
 
-    local asst_nodes = parser.xpath(tx, "//model:* | //agent:content/node()");
-    local assistant = table.concat(asst_nodes, "\n");
+    local asst_nodes = parser.xpath(tx, "//*[not(self::user)]/node() | //content/node()");
+    local assistant = table.concat(asst_nodes, "\n"):gsub(' xmlns:[%a]+="[^"]+"', ''):gsub(' xmlns="[^"]+"', '');
 
     table.insert(turns, {
       id = id,

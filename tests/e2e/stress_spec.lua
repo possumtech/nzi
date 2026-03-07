@@ -34,7 +34,7 @@ describe("STRESS E2E: Context and Synthesis", function()
       if b and vim.api.nvim_buf_is_valid(b) then
         local lines = vim.api.nvim_buf_get_lines(b, 0, -1, false)
         local content = table.concat(lines, "\n")
-        if content:match("</agent:content>") or content:match("</agent:error>") then
+        if content:match("</content>") or content:match("</status level='error'>") then
           return true
         end
       end
@@ -49,7 +49,7 @@ describe("STRESS E2E: Context and Synthesis", function()
 
     assert.is_true(success, "Stress E2E timed out.");
     
-    if final_content:match("<agent:error>") then
+    if final_content:match("<status level='error'>") then
       error("API Error returned in UI: " .. final_content);
     end
 

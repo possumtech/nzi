@@ -3,7 +3,7 @@ local health = vim.health or require("health");
 local M = {};
 
 function M.check()
-  health.start("nzi: Neovim-Native Agentic Zone Integration");
+  health.start("NZI: Neovim-Native Agentic Zone Integration");
 
   -- Check Neovim version
   if vim.fn.has("nvim-0.10.0") == 1 then

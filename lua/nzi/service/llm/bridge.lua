@@ -21,18 +21,14 @@ function M.run_loop(content, mode, include_lsp, target_file, selection)
   
   -- Gather current context state to sync once before the loop starts
   local ctx_list = watcher.sync_list() or {};
-  local roadmap_content = nil;
-  
-  -- We still use prompt.lua just to gather the roadmap file content for sync
-  local prompt_service = require("nzi.service.llm.prompt");
-  local parts = prompt_service.gather();
-  roadmap_content = parts.roadmap_content;
 
-  -- 1. Sync State to DOM
-  dom_session.update_context(ctx_list, roadmap_content);
+  -- 1. Sync State to DOM (Python reads the roadmap itself)
+  dom_session.update_context(ctx_list, nil);
 
   -- 2. Hand off to Python
   -- We pass the instruction and the current configuration
+  local active_model = config.get_active_model();
+  
   rpc.request_sync("run_loop", {
     instruction = content,
     mode = mode or "ask",
@@ -42,9 +38,9 @@ function M.run_loop(content, mode, include_lsp, target_file, selection)
       selection = selection
     },
     config = {
-      model = config.options.active_model,
-      api_key = config.options.api_key,
-      api_base = config.options.api_base,
+      model = active_model.model,
+      api_key = active_model.api_key,
+      api_base = active_model.api_base,
       model_options = config.options.model_options
     }
   });

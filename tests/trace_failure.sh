@@ -37,7 +37,7 @@ run_trace() {
 }
 
 IDENTITY="You are deepseek."
-CONSTRAINTS="## CONSTRAINTS\n* NEVER output <agent:*> tags.\n* NEVER repeat prompt, history, or context content.\n* Provide only new information or requested changes."
+CONSTRAINTS="## CONSTRAINTS\n* NEVER output structured XML tags like <turn>, <user>, <file> etc unless as a model action.\n* NEVER repeat prompt, history, or context content.\n* Provide only new information or requested changes."
 GLOBAL_RULES="### GLOBAL RULES\nBe concise."
 PROJECT_RULES="### PROJECT RULES\n$(cat AGENTS.md)"
 

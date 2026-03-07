@@ -37,7 +37,7 @@ This is the canonical source of truth for **nzi** development, technical specifi
 - [x] **Root Document**: Entire session wrapped in `<session>` with global state attributes.
 - [x] **XPath State Derivation**: `is_blocked()` and `get_pending_actions()` derived from XML.
 - [x] **Formal Validation**: Real-time XSD/Schematron enforcement on the DOM.
-- [ ] **Vim Watcher**: Synchronous update of `<agent:context>` on buffer events.
+- [ ] **Vim Watcher**: Synchronous update of `<context>` on buffer events.
 - [ ] **Vim Effector**: Declarative opening of diffs/terminals based on DOM state.
 - [ ] **LLM Bridge**: Pure-function translation of XML tree to OpenAI JSON.
 - [ ] **XML Streaming**: Direct real-time injection of LLM chunks into the DOM.
@@ -73,7 +73,7 @@ This is the canonical source of truth for **nzi** development, technical specifi
 - [x] `/ralph` / `/test`: Verification loops.
 
 ### Agentic Capabilities
-- [x] **Surgical Edits**: `<model:edit>` with precise SEARCH/REPLACE.
+- [x] **Surgical Edits**: `<edit>` with precise SEARCH/REPLACE.
 - [x] **Context Gathering**: Treesitter skeletons, LSP definitions, smart_filter escaping.
 - [x] **Ralph Mode**: Autonomous test-failure auto-retry.
 - [x] **Interpolation**: "Ghost writing" execution on save.
@@ -95,7 +95,7 @@ This is the canonical source of truth for **nzi** development, technical specifi
 
 ### Verification Targets
 - [x] **Character-Perfect Visual Selection**: Exact columns and mode (v, V, ^V).
-- [x] **Structured Grep**: Using <agent:match> attributes to avoid colon ambiguity.
+- [x] **Structured Grep**: Using <match> attributes to avoid colon ambiguity.
 - [x] **Terminating Logic**: Disabling background threads in bridge.py.
 - [x] **Passive Context**: Run output added to history without triggering turns.
 

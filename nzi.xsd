@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-           targetNamespace="nzi"
-           xmlns:nzi="nzi"
-           xmlns:agent="nzi"
            elementFormDefault="qualified">
 
   <!-- Root Element -->
@@ -10,11 +7,11 @@
     <xs:complexType>
       <xs:sequence>
         <!-- Environment / Global Knowledge -->
-        <xs:element ref="nzi:system"/>
-        <xs:element ref="nzi:project_roadmap" minOccurs="0"/>
-        <xs:element ref="nzi:file" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element ref="system"/>
+        <xs:element ref="project_roadmap" minOccurs="0"/>
+        <xs:element ref="file" minOccurs="0" maxOccurs="unbounded"/>
         <!-- Interaction History -->
-        <xs:element ref="agent:turn" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element ref="turn" minOccurs="0" maxOccurs="unbounded"/>
       </xs:sequence>
       <xs:attribute name="model" type="xs:string"/>
       <xs:attribute name="yolo" type="xs:string"/>
@@ -27,27 +24,27 @@
     <xs:complexType>
       <xs:sequence>
         <xs:choice minOccurs="0" maxOccurs="unbounded">
-          <xs:element ref="nzi:user"/>
-          <xs:element ref="nzi:project_roadmap"/>
-          <xs:element ref="nzi:next_task_suggest"/>
+          <xs:element ref="user"/>
+          <xs:element ref="project_roadmap"/>
+          <xs:element ref="next_task_suggest"/>
           <xs:element name="system" type="xs:string"/>
           <xs:element name="error" type="xs:string"/>
-          <xs:element ref="nzi:summary"/>
-          <xs:element ref="nzi:content"/>
-          <xs:element ref="nzi:reasoning"/>
-          <xs:element ref="nzi:edit"/>
-          <xs:element ref="nzi:create"/>
-          <xs:element ref="nzi:read"/>
-          <xs:element ref="nzi:grep"/>
-          <xs:element ref="nzi:delete"/>
-          <xs:element ref="nzi:shell"/>
-          <xs:element ref="nzi:env"/>
-          <xs:element ref="nzi:choice"/>
-          <xs:element ref="nzi:reset"/>
-          <xs:element ref="nzi:status"/>
-          <xs:element ref="nzi:ack"/>
-          <xs:element ref="nzi:match"/>
-          <xs:element ref="nzi:file"/>
+          <xs:element ref="summary"/>
+          <xs:element ref="content"/>
+          <xs:element ref="reasoning"/>
+          <xs:element ref="edit"/>
+          <xs:element ref="create"/>
+          <xs:element ref="read"/>
+          <xs:element ref="grep"/>
+          <xs:element ref="delete"/>
+          <xs:element ref="shell"/>
+          <xs:element ref="env"/>
+          <xs:element ref="choice"/>
+          <xs:element ref="reset"/>
+          <xs:element ref="status"/>
+          <xs:element ref="ack"/>
+          <xs:element ref="match"/>
+          <xs:element ref="file"/>
         </xs:choice>
       </xs:sequence>
       <xs:attribute name="id" type="xs:integer" use="required"/>
@@ -61,11 +58,11 @@
   <xs:element name="user">
     <xs:complexType mixed="true">
       <xs:choice minOccurs="0" maxOccurs="unbounded">
-        <xs:element ref="nzi:selection"/>
-        <xs:element ref="nzi:next_task_suggest"/>
-        <xs:element ref="nzi:status"/>
-        <xs:element ref="nzi:ack"/>
-        <xs:element ref="nzi:match"/>
+        <xs:element ref="selection"/>
+        <xs:element ref="next_task_suggest"/>
+        <xs:element ref="status"/>
+        <xs:element ref="ack"/>
+        <xs:element ref="match"/>
       </xs:choice>
       <xs:attribute name="type" type="xs:string"/>
     </xs:complexType>

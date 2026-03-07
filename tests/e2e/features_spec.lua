@@ -80,7 +80,7 @@ describe("AI New Features E2E", function()
       turns = turns + 1;
       if turns == 1 then
         -- This is the turn triggered by the test failure
-        assert.match("<agent:test>", messages[#messages].content);
+        assert.match("<test>", messages[#messages].content);
         assert.match("FAKE_FAILURE", messages[#messages].content);
         callback(true, "I will fix it");
       end

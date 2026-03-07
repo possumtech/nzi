@@ -16,12 +16,12 @@ function M.is_blocked()
   local xml = session.format();
   
   -- Find all blocking elements
-  local blocking_query = "//model:edit | //model:create | //model:delete | //model:choice";
+  local blocking_query = "//edit | //create | //delete | //choice";
   local blockers = protocol.xpath(xml, blocking_query);
   if #blockers == 0 then return false; end
 
   -- Find all resolving elements
-  local resolving_query = "//agent:ack | //agent:choice | //agent:status[@status='denied']";
+  local resolving_query = "//ack | //choice | //status[@status='denied']";
   local resolvers = protocol.xpath(xml, resolving_query);
 
   -- If we have more blockers than resolvers, we are blocked.
@@ -33,12 +33,12 @@ end
 function M.get_pending_actions()
   local xml = session.format();
   
-  local edits = protocol.xpath(xml, "//model:edit | //model:replace_all");
-  local creations = protocol.xpath(xml, "//model:create");
-  local deletions = protocol.xpath(xml, "//model:delete");
+  local edits = protocol.xpath(xml, "//edit | //replace_all");
+  local creations = protocol.xpath(xml, "//create");
+  local deletions = protocol.xpath(xml, "//delete");
   
-  local acks = protocol.xpath(xml, "//agent:ack");
-  local rejections = protocol.xpath(xml, "//agent:status[@status='denied']");
+  local acks = protocol.xpath(xml, "//ack");
+  local rejections = protocol.xpath(xml, "//status[@status='denied']");
   
   local all_actions = {};
   for _, e in ipairs(edits) do table.insert(all_actions, { type = "edit", xml = e, file = protocol.get_attr(e, "file") }) end
