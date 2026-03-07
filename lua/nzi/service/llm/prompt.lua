@@ -89,7 +89,9 @@ end
 function M.build_user_block(instruction, target_file, selection)
   local parts = M.gather();
   local block = "";
-  if target_file then block = block .. "Target File: " .. target_file .. "\n"; end
+  if type(target_file) == "string" and target_file ~= "" then 
+    block = block .. "Target File: " .. target_file .. "\n"; 
+  end
   
   if selection then
     block = block .. string.format("<agent:selection file=\"%s\" start=\"%d:%d\" end=\"%d:%d\">",

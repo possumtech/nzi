@@ -18,42 +18,25 @@ describe("AI active model integration", function()
 
   --- Custom polling helper that actually allows the event loop to spin
   local function poll_until_settle(expected_turns, timeout_ms)
-    local start = vim.loop.now();
-    
     -- We wait for at least expected_turns AND for the engine to be idle.
-    -- DeepSeek might take multiple turns to respond if it chooses to analyze.
-    while (vim.loop.now() - start) < timeout_ms do
-      local current_turns = #history.get_all();
-      if engine.is_busy == false and engine.current_job == nil then
-        if current_turns >= expected_turns then
-          return true;
-        end
-      end
-      vim.wait(2000); -- Spin the loop, give model time
-    end
-    return false;
+    local ok = vim.wait(timeout_ms, function()
+      local current_turns = history.get_turn_count();
+      return engine.is_busy == false and engine.current_job == nil and current_turns >= expected_turns
+    end, 200);
+    return ok;
   end
 
-  --- Helper to check if a string exists ANYWHERE in the conversation history
+  --- Helper to check if a string exists ANYWHERE in the session DOM
   local function history_contains(pattern)
-    local all = history.get_all();
-    for _, turn in ipairs(all) do
-      local assistant = history.strip_line_numbers(turn.assistant or "");
-      if assistant:upper():match(pattern:upper()) then
-        return true;
-      end
-      local user = history.strip_line_numbers(turn.user or "");
-      if user:upper():match(pattern:upper()) then
-        return true;
-      end
-    end
-    return false;
+    local full_xml = history.format();
+    return full_xml:upper():find(pattern:upper()) ~= nil;
   end
 
   it("should complete a series of real LLM interactions (CONSOLIDATED)", function()
     -- 1. HELLO WORLD
+    local turns_before_1 = #history.get_all();
     engine.run_loop("Say exactly 'HELLO WORLD' and nothing else.", "ask", false);
-    assert.True(poll_until_settle(1, 60000), "HELLO WORLD turn failed");
+    assert.True(poll_until_settle(turns_before_1 + 1, 60000), "HELLO WORLD turn failed");
     assert.True(history_contains("HELLO WORLD"));
 
     -- 2. BATTLE TEST (Multi-turn State)

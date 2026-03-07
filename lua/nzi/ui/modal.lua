@@ -238,14 +238,25 @@ function M.write(text, msg_type, append, turn_id, metadata)
     if header ~= "" then table.insert(new_lines, "  <!-- " .. header .. " -->") end
     table.insert(new_lines, string.format("  <%s>", tag));
     
-    local text_lines = vim.split(text, "\n");
-    for _, l in ipairs(text_lines) do table.insert(new_lines, "    " .. l) end
+    local text_lines = vim.split(text, "\n", { trimempty = false });
+    for _, l in ipairs(text_lines) do 
+      -- Remove ANY remaining newlines or carriage returns within the line
+      table.insert(new_lines, "    " .. l:gsub("[\r\n]", "")); 
+    end
     
     local tag_base = vim.split(tag, " ")[1];
     table.insert(new_lines, string.format("  </%s>", tag_base));
     table.insert(new_lines, "</agent:turn>");
     table.insert(new_lines, "");
     
+    -- Scrub all lines before set_lines
+    for i, line in ipairs(new_lines) do
+      if line:find("\n") then
+        require("nzi.core.config").log("CRITICAL: Newline detected in new_lines["..i.."]: " .. line, "UI");
+        new_lines[i] = line:gsub("\n", " [NL] ");
+      end
+    end
+
     vim.api.nvim_buf_set_lines(bufnr, insert_at, insert_at, false, new_lines);
     
     -- Highlight new lines
@@ -272,8 +283,12 @@ function M.write(text, msg_type, append, turn_id, metadata)
     
     if target_line ~= -1 then
       local lines = vim.api.nvim_buf_get_lines(bufnr, target_line - 1, target_line, false);
-      lines[1] = lines[1] .. text;
-      vim.api.nvim_buf_set_lines(bufnr, target_line - 1, target_line, false, lines);
+      local prev_line = lines[1] or "";
+      
+      local chunk_lines = vim.split(text, "\n");
+      chunk_lines[1] = prev_line .. chunk_lines[1];
+      
+      vim.api.nvim_buf_set_lines(bufnr, target_line - 1, target_line, false, chunk_lines);
     else
       -- Fallback: if no block exists, create one
       M.write(text, msg_type, false, turn_id, metadata);

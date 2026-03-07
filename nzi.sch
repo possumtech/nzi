@@ -16,12 +16,13 @@
 
   <!-- TURN Rules -->
   <sch:pattern id="turn-rules">
-    <sch:rule context="nzi:turn">
-      <sch:assert test="@id &gt;= 0">Turn IDs must be non-negative.</sch:assert>
-      <sch:assert test="count(nzi:user) &lt;= 1">A turn can have at most one user block.</sch:assert>
+    <sch:rule context="agent:turn">
+      <sch:assert test="@id >= 0">Turn IDs must be non-negative.</sch:assert>
+      <sch:assert test="count(agent:user) &lt;= 1">A turn can have at most one user block.</sch:assert>
       <sch:assert test="count(model:summary) &lt;= 1">A turn can have at most one summary block.</sch:assert>
     </sch:rule>
   </sch:pattern>
+
 
   <!-- ACTION Rules -->
   <sch:pattern id="action-contracts">

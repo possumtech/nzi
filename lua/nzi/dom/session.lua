@@ -90,9 +90,14 @@ function M.get_next_id()
   return max + 1;
 end
 --- Get all turns from the session (For UI/Summary)
+function M.get_turn_count()
+  local ids = M.xpath("count(//agent:turn)");
+  return tonumber(ids[1]) or 0;
+end
+
 function M.get_all()
   local turns = {};
-  local turn_xmls = M.xpath("//agent:turn[@id!='0']");
+  local turn_xmls = M.xpath("//agent:turn");
   local parser = require("nzi.dom.parser");
   for _, tx in ipairs(turn_xmls) do
     local id = tonumber(parser.xpath(tx, "//agent:turn/@id")[1]);

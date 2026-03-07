@@ -2,6 +2,7 @@
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
            targetNamespace="nzi"
            xmlns:nzi="nzi"
+           xmlns:agent="nzi"
            elementFormDefault="qualified">
 
   <!-- Root Element -->
@@ -13,7 +14,7 @@
         <xs:element ref="nzi:project_roadmap" minOccurs="0"/>
         <xs:element ref="nzi:file" minOccurs="0" maxOccurs="unbounded"/>
         <!-- Interaction History -->
-        <xs:element ref="nzi:turn" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element ref="agent:turn" minOccurs="0" maxOccurs="unbounded"/>
       </xs:sequence>
       <xs:attribute name="model" type="xs:string"/>
       <xs:attribute name="yolo" type="xs:string"/>
@@ -71,6 +72,8 @@
   </xs:element>
 
   <!-- AGENT Elements -->
+  <xs:element name="system" type="xs:string"/>
+
   <xs:element name="project_roadmap">
     <xs:complexType>
       <xs:simpleContent>
