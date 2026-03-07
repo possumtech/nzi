@@ -15,7 +15,7 @@ describe("AI prompts module", function()
     assert.is_nil(result:find("Project State"))
   end);
 
-  it("should format context correctly and skip AGENTS.md", function()
+  it("should format context correctly and skip roadmap file", function()
     local ctx = {
       { bufnr = 1, name = "test.lua", state = "active", content = "print('hi')", size = 10 },
       { bufnr = 2, name = "AGENTS.md", state = "active", content = "plan", size = 4 }
@@ -34,7 +34,6 @@ describe("AI prompts module", function()
     local old_gather = prompts.gather;
     prompts.gather = function()
       return { 
-        project = "Checklist:\n- [x] Task 1\n- [ ] Task 2\n- [ ] Task 3",
         next_task_suggest = "Task 2"
       }
     end
@@ -42,7 +41,7 @@ describe("AI prompts module", function()
     local result, _, _, _, turn_block = prompts.build_messages("test", "ask", nil, false);
     local last_msg = result[#result].content;
     
-    assert.truthy(last_msg:find("<agent:next_task_suggest>"));
+    assert.truthy(last_msg:find("<agent:next_task_suggest file=\"AGENTS.md\">"));
     assert.truthy(last_msg:find("Task 2"));
     
     -- Full session validation
@@ -70,7 +69,7 @@ describe("AI prompts module", function()
     local last_msg = result[#result].content;
     assert.truthy(last_msg:find("Refactor this"));
     assert.truthy(last_msg:find("main.lua"));
-    assert.truthy(last_msg:find("<agent:project_state>"));
+    assert.is_nil(last_msg:find("<agent:project_state>"));
     assert.truthy(last_msg:find("<agent:user>"));
 
     -- Full session validation

@@ -19,7 +19,7 @@
       <xs:sequence>
         <xs:choice minOccurs="0" maxOccurs="unbounded">
           <xs:element ref="nzi:user"/>
-          <xs:element ref="nzi:project_state"/>
+          <xs:element ref="nzi:project_roadmap"/>
           <xs:element ref="nzi:next_task_suggest"/>
           <xs:element name="system" type="xs:string"/>
           <xs:element name="error" type="xs:string"/>
@@ -52,7 +52,6 @@
     <xs:complexType mixed="true">
       <xs:choice minOccurs="0" maxOccurs="unbounded">
         <xs:element ref="nzi:selection"/>
-        <xs:element ref="nzi:project_state"/>
         <xs:element ref="nzi:next_task_suggest"/>
       </xs:choice>
       <xs:attribute name="type" type="xs:string"/>
@@ -60,8 +59,25 @@
   </xs:element>
 
   <!-- AGENT Elements -->
-  <xs:element name="project_state" type="xs:string"/>
-  <xs:element name="next_task_suggest" type="xs:string"/>
+  <xs:element name="project_roadmap">
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base="xs:string">
+          <xs:attribute name="file" type="xs:string"/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="next_task_suggest">
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base="xs:string">
+          <xs:attribute name="file" type="xs:string"/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
 
   <xs:element name="selection">
     <xs:complexType>

@@ -56,6 +56,7 @@ function M.build_system_prompt(prompts, model_alias)
     "* <agent:ack status=\"success\" tool=\"...\">Confirmation</agent:ack>",
     "* <agent:status level=\"error\">Error details</agent:status>",
     "* <agent:context>Project skeleton or file content</agent:context>",
+    "* <agent:next_task_suggest file=\"...\">Roadmap hint</agent:next_task_suggest>",
     "* <agent:match file=\"path\" line=\"10\">grep result</agent:match>",
     "* <agent:user>The human's instruction</agent:user>",
     "* <agent:selection file=\"path\" start=\"1:1\" end=\"1:5\">Visual selection text</agent:selection>",
@@ -70,18 +71,26 @@ function M.build_system_prompt(prompts, model_alias)
 end
 
 --- Format gathered context into a readable string
-function M.format_context(ctx_list, is_instruct)
+function M.format_context(ctx_list, is_instruct, roadmap_content, roadmap_file)
+  local config = require("nzi.core.config");
+  roadmap_file = roadmap_file or config.options.roadmap_file or "AGENTS.md";
   ctx_list = ctx_list or {};
   table.sort(ctx_list, function(a, b) return a.name < b.name end);
 
   local parts = {};
   
+  -- 0. Project Roadmap (Foundation)
+  if roadmap_content and roadmap_content ~= "" then
+    table.insert(parts, string.format("<agent:project_roadmap file=\"%s\">\n%s\n</agent:project_roadmap>", 
+      roadmap_file, M.smart_filter(roadmap_content)));
+  end
+
   -- 1. Universe Files (Open buffers and mapped project files)
   for _, item in ipairs(ctx_list) do
     local short_name = vim.fn.fnamemodify(item.name, ":.")
     
-    -- Skip AGENTS.md as it is sent as project_state
-    if short_name ~= "AGENTS.md" then
+    -- Skip roadmap file as it is handled by next_task_suggest
+    if short_name ~= roadmap_file then
       local size_str = string.format("%d bytes", item.size or 0)
       
       -- ONLY send content for active or read states. 
@@ -113,6 +122,7 @@ function M.build_messages(content, type, target_file, include_lsp, selection)
   local config = require("nzi.core.config");
   local queue = require("nzi.core.queue");
   local model_alias = config.options.active_model or "deepseek";
+  local roadmap_file = config.options.roadmap_file or "AGENTS.md";
   
   -- Flush any passive acknowledgments (the "Piggyback")
   local passive_acks = queue.flush_passive();
@@ -134,7 +144,7 @@ function M.build_messages(content, type, target_file, include_lsp, selection)
   table.insert(messages, { role = role, content = system_prompt });
   
   -- 2. CONTEXT (Project Facts/Buffers)
-  local context_str = M.format_context(ctx_list, (type == "instruct"));
+  local context_str = M.format_context(ctx_list, (type == "instruct"), prompt_parts.roadmap_content, roadmap_file);
   table.insert(messages, { 
     role = role, 
     content = string.format("<agent:context>\n%s\n</agent:context>", context_str) 
@@ -145,14 +155,10 @@ function M.build_messages(content, type, target_file, include_lsp, selection)
   for _, m in ipairs(history_msgs) do table.insert(messages, m) end
   
   -- 4. NEW TURN (Specific Ask or Instruct)
-  local state_block = "";
-  if prompt_parts.project then
-    state_block = string.format("<agent:project_state>\n%s\n</agent:project_state>", M.smart_filter(prompt_parts.project));
-  end
-
   local next_task_block = "";
   if prompt_parts.next_task_suggest then
-    next_task_block = string.format("\n\n<agent:next_task_suggest>\n%s\n</agent:next_task_suggest>", M.smart_filter(prompt_parts.next_task_suggest));
+    next_task_block = string.format("\n\n<agent:next_task_suggest file=\"%s\">\n%s\n</agent:next_task_suggest>", 
+      roadmap_file, M.smart_filter(prompt_parts.next_task_suggest));
   end
 
   local selection_block = "";
@@ -164,35 +170,36 @@ function M.build_messages(content, type, target_file, include_lsp, selection)
   local turn_block = "";
   if type == "instruct" and target_file then
     if selection_block ~= "" then
-      turn_block = string.format("<agent:user>\n%s\nInstruction: %s\nTarget File: %s\n</agent:user>",
-        selection_block, M.smart_filter(augmented_content), M.smart_filter(target_file));
+      turn_block = string.format("<agent:user>\n%s\nInstruction: %s\nTarget File: %s%s\n</agent:user>",
+        selection_block, M.smart_filter(augmented_content), M.smart_filter(target_file), next_task_block);
     else
-      turn_block = string.format("<agent:user>\nTarget File: %s\nInstruction: %s\n</agent:user>",
-        M.smart_filter(target_file), M.smart_filter(augmented_content));
+      turn_block = string.format("<agent:user>\nTarget File: %s\nInstruction: %s%s\n</agent:user>",
+        M.smart_filter(target_file), M.smart_filter(augmented_content), next_task_block);
     end
   else
     if selection_block ~= "" then
-      turn_block = string.format("<agent:user>\n%s\nInstruction: %s\n</agent:user>", 
-        selection_block, M.smart_filter(augmented_content));
+      turn_block = string.format("<agent:user>\n%s\nInstruction: %s%s\n</agent:user>", 
+        selection_block, M.smart_filter(augmented_content), next_task_block);
     else
-      turn_block = string.format("<agent:user>\n%s\n%s</agent:user>", 
+      turn_block = string.format("<agent:user>\n%s%s\n</agent:user>", 
         M.smart_filter(augmented_content), next_task_block);
     end
   end
 
-  local final_user_content = string.format("%s\n%s", state_block, turn_block);
-  table.insert(messages, { role = "user", content = final_user_content });
+  table.insert(messages, { role = "user", content = turn_block });
   
   return messages, system_prompt, context_str, ctx_list, turn_block;
 end
 
 --- Gather prompt parts from AGENTS.md
 function M.gather()
-  local parts = { global = nil, project = nil, next_task_suggest = nil };
-  local project_path = vim.fn.getcwd() .. "/AGENTS.md";
+  local config = require("nzi.core.config");
+  local roadmap_file = config.options.roadmap_file or "AGENTS.md";
+  local parts = { global = nil, roadmap_content = nil, next_task_suggest = nil };
+  local project_path = vim.fn.getcwd() .. "/" .. roadmap_file;
   if vim.fn.filereadable(project_path) == 1 then
     local content = table.concat(vim.fn.readfile(project_path), "\n");
-    parts.project = content;
+    parts.roadmap_content = content;
     for line in content:gmatch("[^\r\n]+") do
       local task = line:match("^%s*%- %[ %]%s*(.*)$")
       if task and task ~= "" then

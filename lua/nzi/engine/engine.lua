@@ -81,26 +81,7 @@ function M.run_loop(content, mode, include_lsp, target_file, selection)
     local tag_parser = protocol.create_parser();
     local error_displayed = false;
 
-    -- POLICY: 15s absolute timeout
-    local timeout_timer = vim.loop.new_timer();
-    timeout_timer:start(15000, 0, vim.schedule_wrap(function()
-      if M.current_job then
-        M.current_job:kill(15);
-        modal.write("Turn timed out after 15 seconds (Policy Violation).", "error", false, current_turn_id);
-        modal.close_tag();
-        M.current_job = nil;
-        M.is_busy = false;
-        visuals.set_busy(false);
-      end
-    end));
-
     M.current_job = job.run(messages, function(success, result)
-      if timeout_timer then 
-        timeout_timer:stop(); 
-        timeout_timer:close(); 
-        timeout_timer = nil; 
-      end
-
       vim.schedule(function()
         M.current_job = nil;
         local duration = (vim.loop.hrtime() - start_time) / 1e9; -- seconds
