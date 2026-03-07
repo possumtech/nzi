@@ -68,8 +68,12 @@ function M.handle_incoming_request(req)
       vim.cmd(params.command);
     elseif method == "propose_edit" then
       require("nzi.ui.diff").propose_edit(params.file, params.content);
+    elseif method == "propose_create" then
+      require("nzi.ui.diff").propose_creation(params.file, params.content);
     elseif method == "execute_shell" then
       require("nzi.service.vim.effector").run_shell(params.command);
+    elseif method == "execute_grep" then
+      require("nzi.service.vim.effector").run_grep(params.pattern);
     end
   end);
 end
