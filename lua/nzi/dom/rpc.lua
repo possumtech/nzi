@@ -123,7 +123,7 @@ function M.request_sync(method, params)
   end
 
   -- Wait for result (Block Lua)
-  vim.wait(10000, function() return result ~= nil end, 10);
+  vim.wait(30000, function() return result ~= nil end, 10);
 
   if not result then
     error("RPC Timeout: " .. method);

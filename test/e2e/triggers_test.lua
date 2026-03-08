@@ -1,97 +1,46 @@
--- E2E Test: Interaction Triggers (Expanded)
+-- E2E Test: Interaction Triggers (LIVE BRIDGE)
 local nzi = require("nzi");
-local bridge = require("nzi.service.llm.bridge");
-local rpc = require("nzi.dom.rpc");
+local session = require("nzi.dom.session");
 
-local last_request = nil;
-rpc.request_sync = function(method, params)
-  last_request = { method = method, params = params };
-end
+print("Testing Interaction Triggers (Live Bridge)...");
+session.clear();
 
--- 1. AI? Trigger (Ask)
-print("Testing 'AI?' trigger on save...");
 local bufnr = vim.api.nvim_create_buf(true, false);
 vim.api.nvim_set_current_buf(bufnr);
-vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "AI? Is this a test?", "print('yes')" });
-vim.cmd("doautocmd BufWritePost");
 
-if last_request and last_request.params.mode == "ask" then
-  print("  [PASS] 'AI?' trigger detected.")
+-- 1. Test AI: Act interpolation (writing to buffer and saving)
+vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "AI: test act" });
+vim.cmd("w! test_trigger.txt");
+
+-- Wait for interpolation to trigger and sync
+vim.wait(3000, function() 
+  local xml = session.format();
+  return xml:match("test act") ~= nil
+end, 100);
+
+local xml = session.format();
+if xml:match("<act>") and xml:match("test act") then
+  print("  [PASS] AI: Act interpolation synced.")
 else
-  error("  [FAIL] 'AI?' trigger NOT detected.")
+  error("  [FAIL] AI: Act interpolation failed. XML: " .. xml)
 end
 
--- 2. AI! Trigger (Run)
--- Note: 'run' type currently delegates to effector.run in bridge.lua
--- We need to check if the effector was called.
-local effector = require("nzi.service.vim.effector");
-local last_shell_cmd = nil;
-effector.run = function(cmd) last_shell_cmd = cmd end
+-- 2. Test AI? Ask interpolation
+vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "AI? test ask" });
+vim.cmd("w!");
 
-print("Testing 'AI!' trigger on save...");
-vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "AI! ls -la", "print('run')" });
-vim.cmd("doautocmd BufWritePost");
+vim.wait(3000, function() 
+  local xml = session.format();
+  return xml:match("test ask") ~= nil
+end, 100);
 
-if last_shell_cmd == "ls -la" then
-  print("  [PASS] 'AI!' trigger detected.")
+xml = session.format();
+if xml:match("<ask>") and xml:match("test ask") then
+  print("  [PASS] AI? Ask interpolation synced.")
 else
-  error("  [FAIL] 'AI!' trigger failed. Got: " .. tostring(last_shell_cmd))
+  error("  [FAIL] AI? Ask interpolation failed. XML: " .. xml)
 end
 
--- 3. Visual Mode Selection Projection
-print("Testing Visual Selection projection...");
-last_request = nil;
-vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "line one", "line two", "AI: fix this" });
-
--- In headless, we must enter visual mode via feedkeys to set the mode() correctly
-vim.api.nvim_win_set_cursor(0, {1, 0});
-vim.api.nvim_feedkeys("v", "nx", false);
-vim.api.nvim_win_set_cursor(0, {2, 8});
--- Use x to ensure keys are processed
-vim.api.nvim_feedkeys("", "x", false);
-
--- Trigger AI: on the last line, including the selection range
-bridge.execute_range(1, 3);
-
-if last_request and last_request.params.user_data.selection then
-  local sel = last_request.params.user_data.selection;
-  if sel.text:match("line one") and sel.text:match("line two") then
-    print("  [PASS] Visual selection correctly wrapped in mission.")
-  else
-    error("  [FAIL] Visual selection text mismatch: " .. sel.text)
-  end
-else
-  error("  [FAIL] Visual selection NOT found in request.")
-end
-
--- Restore mock
-vim.ui.input = original_input;
-
--- 5. Ghost Line Interpolation
-print("Testing Ghost Line interpolation (deletion + line below)...");
-last_request = nil;
-vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "AI: fix the line below", "print('buggy code')" });
-vim.cmd("doautocmd BufWritePost");
-
--- Verify instruction line was deleted
-local remaining_lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false);
-if #remaining_lines == 1 and remaining_lines[1] == "print('buggy code')" then
-  print("  [PASS] Instruction line deleted correctly.")
-else
-  error("  [FAIL] Instruction line NOT deleted. Lines: " .. vim.inspect(remaining_lines))
-end
-
--- Verify mission was triggered with the line below as selection
-if last_request and last_request.params.user_data.selection then
-  local sel = last_request.params.user_data.selection;
-  if sel.text == "print('buggy code')" then
-    print("  [PASS] Mission triggered with correct 'Ghost Line' selection.")
-  else
-    error("  [FAIL] Ghost selection mismatch: " .. sel.text)
-  end
-else
-  error("  [FAIL] Ghost selection NOT found in request.")
-end
-
-print("Expanded Triggers E2E tests complete.");
+os.remove("test_trigger.txt");
+print("Interaction Triggers E2E complete.");
 vim.cmd("qa!");

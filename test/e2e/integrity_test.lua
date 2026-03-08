@@ -136,22 +136,13 @@ end
 
 os.remove(ext_file);
 
--- 6. User Instruction Queue
-print("  Testing User Instruction Queue...");
+-- 6. User Instruction Queue (Live Bridge)
+print("  Testing User Instruction Queue (Live)...");
 local bridge = require("nzi.service.llm.bridge");
-local rpc = require("nzi.dom.rpc");
 
--- Mock rpc.request_sync to be fast
-local call_count = 0;
-local original_rpc = rpc.request_sync;
-rpc.request_sync = function(method, params)
-  if method == "run_loop" then
-    call_count = call_count + 1;
-  end
-  return { success = true, xml = "" };
-end
+session.clear();
 
--- Manually block the bridge
+-- Manually block the bridge to force enqueuing
 bridge.is_busy = true;
 
 -- This should enqueue
@@ -167,16 +158,18 @@ end
 bridge.is_busy = false; 
 bridge.finish();
 
--- Wait for the scheduled call in finish()
-vim.wait(1000, function() return call_count == 1 end);
+-- Wait for the turn to actually hit the DOM
+vim.wait(5000, function() 
+  local xml = session.format();
+  return xml:match("Queued turn") ~= nil 
+end, 100);
 
-if call_count == 1 then
-  print("    [PASS] Enqueued turn processed correctly via finish().")
+local xml = session.format();
+if xml:match("Queued turn") then
+  print("    [PASS] Enqueued turn processed correctly by Bridge.")
 else
-  error("    [FAIL] Sequential processing failed. Calls: " .. call_count)
+  error("    [FAIL] Bridge did not receive enqueued turn. XML: " .. xml)
 end
-
-rpc.request_sync = original_rpc;
 
 print("Boundary & Integrity E2E tests complete.");
 vim.cmd("qa!");

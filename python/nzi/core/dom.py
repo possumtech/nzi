@@ -59,8 +59,8 @@ class SessionDOM:
         if turn0.find("user") is None:
             user = etree.SubElement(turn0, "user")
             # Create a compliant interact tag
-            instruct = etree.SubElement(user, "instruct")
-            instruct.text = "Initialization"
+            act = etree.SubElement(user, "act")
+            act.text = "Initialization"
 
     def dump_xml(self):
         return etree.tostring(self.root, encoding='unicode', pretty_print=True)

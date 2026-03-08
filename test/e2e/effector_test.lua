@@ -24,7 +24,7 @@ local xml_payload = [[
 <session>
   <turn id="0">
     <system>You are an assistant.</system>
-    <user><instruct>edit</instruct></user>
+    <user><act>edit</act></user>
     <assistant><content><edit file="test_edit.py">
 SEARCH
 line one

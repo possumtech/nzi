@@ -30,8 +30,7 @@ function M.run() prompt_mission("!", "Run") end
 function M.cmd() prompt_mission("/", "Cmd") end
 
 -- Session Control
-function M.undo() commands.actions.undo() end
-
+function M.toggle_modal() commands.actions.toggle() end
 function M.undo() commands.actions.undo() end
 function M.stop() commands.actions.stop() end
 function M.reset() 
