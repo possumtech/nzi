@@ -56,7 +56,7 @@
     </sch:rule>
 
     <!-- Context Ownership -->
-    <sch:rule context="edit | create | delete | choice | ask | summary | response">
+    <sch:rule context="edit | create | delete | prompt_user | ask | summary | response">
       <sch:assert test="ancestor::assistant">
         This tag is only valid within the assistant envelope.
       </sch:assert>

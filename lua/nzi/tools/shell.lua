@@ -95,8 +95,11 @@ function M.run_shell(command, bufnr, line, silent, signal_type)
         end
 
         if should_add then
+          -- INTERNAL RULE: 'ralph' is projected as 'test' to the model
+          local projected_type = (s_type == "ralph") and "test" or s_type;
+
           history.add_turn({
-            type = s_type,
+            type = projected_type,
             status = "fail",
             command = command,
             content = err,
@@ -104,11 +107,9 @@ function M.run_shell(command, bufnr, line, silent, signal_type)
           }, "<status level='error'>\n" .. err .. "\n</status>");
 
           -- Automated Retry Loop (Ralph/Test)
-          -- If a test fails in YOLO mode, we automatically trigger a new mission 
-          -- so the Assistant can see the error and act.
           if config.options.yolo and (s_type == "test" or s_type == "ralph") then
             vim.schedule(function()
-              require("nzi.service.llm.bridge").run_loop("Diagnose and resolve the " .. s_type .. " failure.", "instruct");
+              require("nzi.service.llm.bridge").run_loop("Diagnose and resolve the test failure.", "instruct");
             end);
           end
         end

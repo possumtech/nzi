@@ -203,7 +203,7 @@ class VimBridge:
                 self.effector.propose_delete({
                     "file": action.attributes.get("file")
                 })
-            elif action.name == "choice":
+            elif action.name == "prompt_user":
                 self.effector.propose_choice({
                     "content": action.content
                 })

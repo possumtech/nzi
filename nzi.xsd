@@ -224,7 +224,7 @@
     </xs:complexType>
   </xs:element>
 
-  <xs:element name="choice" type="xs:string"/>
+  <xs:element name="prompt_user" type="xs:string"/>
 
   <xs:element name="read">
     <xs:complexType mixed="true">

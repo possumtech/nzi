@@ -35,8 +35,7 @@ Every user interaction MUST be a mission. Technical feedback is carried via the 
 | `shell` | `pass`/`fail` | Command completed / Command error. |
 | `test` | `pass`/`fail` | Test passed / Test failed. |
 | `env` | `pass`/`fail` | Discovery results / Discovery failed. |
-| `ralph` | `fail` | Protocol error detected. Correct XML. |
-| `answer` | `pass` | Your answer to a previous choice. |
+| `answer` | `pass` | Your answer to a previous prompt_user. |
 
 ---
 

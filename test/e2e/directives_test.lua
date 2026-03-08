@@ -75,14 +75,14 @@ vim.wait(2000, function()
 end, 100);
 
 xml = session.format();
-results = helper.xpath(xml, "//turn/user/instruct/selection[@type='ralph' and @status='fail']");
+results = helper.xpath(xml, "//turn/user/instruct/selection[@type='test' and @status='fail']");
 if #results > 0 then
-  print("    [PASS] Ralph Fail projected as <selection type='ralph' status='fail'>")
+  print("    [PASS] Ralph Fail projected as <selection type='test' status='fail'>")
 else
   error("    [FAIL] Ralph Fail projection failed.\nXML:\n" .. xml)
 end
 
--- 5. Answer Flow (Choice -> Answer)
+-- 5. Answer Flow (Prompt User -> Answer)
 print("  Testing Answer Flow...");
 session.clear();
 
@@ -92,7 +92,10 @@ vim.ui.select = function(options, opts, on_choice)
   on_choice("Lua", 2);
 end
 
--- Manually trigger propose_choice (simulating assistant action)
+-- Simulating assistant turn with prompt_user
+session.add_turn("Initialization", "<prompt_user>Should we use Python or Lua?\n- [ ] Python\n- [ ] Lua</prompt_user>", 1);
+
+-- Manually trigger propose_choice (which handles prompt_user logic in effector)
 require("nzi.service.vim.effector").propose_choice({
   content = "Should we use Python or Lua?\n- [ ] Python\n- [ ] Lua"
 });
@@ -106,7 +109,7 @@ end, 100);
 xml = session.format();
 results = helper.xpath(xml, "//turn/user/instruct/selection[@type='answer']");
 if #results > 0 and results[1]:match("Lua") then
-  print("    [PASS] Choice response projected as <selection type='answer'>")
+  print("    [PASS] Prompt User response projected as <selection type='answer'>")
 else
   error("    [FAIL] Answer Flow projection failed.\nXML:\n" .. xml)
 end

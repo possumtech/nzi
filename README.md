@@ -165,7 +165,7 @@ The assistant communicates via a direct projection of the LLM response.
 | **`<env>`** | `command` | Read-only environment discovery. |
 | **`<shell>`** | `command` | Destructive terminal command. |
 | **`<summary>`** | - | **Turn Terminator**: A one-sentence summary of actions |
-| **`<choice>`** | - | **Turn Terminator**: A question requiring user input |
+| **`<prompt_user>`** | - | **Turn Terminator**: A question requiring user input |
 
 ### 3. Environment Metadata (Within `<history>`)
 NZI provides structured environment data via `<history>` sub-tags.

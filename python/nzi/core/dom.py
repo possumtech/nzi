@@ -227,10 +227,9 @@ class SessionDOM:
             "shell:fail": "Command error. Diagnose and resolve.",
             "test:pass": "Test passed. Proceed.",
             "test:fail": "Test failed. Diagnose and resolve.",
-            "ralph:fail": "Test failed. Diagnose and resolve.",
             "env:pass": "Environment discovery command results.",
             "env:fail": "Environment discovery command failed.",
-            "answer": "Your answer to a previous choice."
+            "answer": "Your answer to a previous prompt_user."
         }
 
         if isinstance(user_data, dict) and "type" in user_data:
