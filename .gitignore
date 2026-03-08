@@ -39,6 +39,19 @@ luac.out
 *.x86_64
 *.hex
 
+# Environment and Credentials
 .env
 !.env.example
-__pycache__/*
+
+# Python 
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+
+# Neovim / Editor
+*.swp
+.netrwhist
+undo/
+backup/
+swap/
