@@ -326,15 +326,17 @@ function M.get_count()
   return #pending.edits + #pending.creations + #pending.deletions;
 end
 
-function M.has_pending_diff(bufnr)
-  local name = vim.api.nvim_buf_get_name(bufnr);
-  local relative_name = vim.fn.fnamemodify(name, ":.");
+function M.has_pending_diff_for_file(relative_name)
   local pending = M.get_pending_from_xml();
   
+  local config = require("nzi.core.config");
+  config.log("Checking pending for: " .. relative_name, "DIFF")
+
   -- Function to check if any XML string in a list matches our file
   local function matches(list)
     for _, xml in ipairs(list) do
       local f = protocol.get_attr(xml, "file");
+      config.log("Found pending file in XML: " .. tostring(f), "DIFF")
       if f == relative_name then return true end
     end
     return false;
@@ -343,4 +345,9 @@ function M.has_pending_diff(bufnr)
   return matches(pending.edits) or matches(pending.creations) or matches(pending.deletions);
 end
 
+function M.has_pending_diff(bufnr)
+  local name = vim.api.nvim_buf_get_name(bufnr);
+  local relative_name = vim.fn.fnamemodify(name, ":.");
+  return M.has_pending_diff_for_file(relative_name);
+end
 return M;

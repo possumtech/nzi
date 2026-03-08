@@ -49,10 +49,10 @@ effector.propose_edit({
 
 -- Verify a diff was opened
 -- The cache should now be populated from hydrate
-if diff.has_pending_diff(vim.api.nvim_get_current_buf()) then
+if diff.has_pending_diff_for_file(target_file) then
   print("    [PASS] Surgical edit triggered a pending diff.")
 else
-  error("    [FAIL] No pending diff found after <edit> action.")
+  error("    [FAIL] No pending diff found for " .. target_file .. " after <edit> action.")
 end
 
 -- Cleanup

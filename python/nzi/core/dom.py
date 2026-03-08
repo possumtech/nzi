@@ -141,13 +141,23 @@ class SessionDOM:
         sys_node.text = content
         self.validate_strictly()
 
-    def start_turn(self, turn_id, user_data, metadata=None):
+    def start_turn(self, user_data, metadata=None, turn_id=None):
         """
         Creates a new turn in the Unified Directive model.
         user_data can be:
         - str: Simple instruction
-        - dict: { "type": "shell_pass", "command": "...", "content": "...", "mode": "act" }
+        - dict: { "type": "run_pass", "command": "...", "content": "...", "mode": "act" }
         """
+        if turn_id is None:
+            # Auto-increment
+            turns = self.root.findall("turn")
+            ids = []
+            for t in turns:
+                try:
+                    ids.append(int(t.get("id", 0)))
+                except ValueError: pass
+            turn_id = max(ids) + 1 if ids else 1
+
         turn = etree.SubElement(self.root, "turn")
         turn.set("id", str(turn_id))
         
@@ -389,6 +399,19 @@ class SessionDOM:
 
         self._active_turn = None
         self.validate_strictly()
+
+    def hydrate(self, xml_string):
+        """Replaces the entire session with the provided XML."""
+        if not xml_string:
+            return
+        try:
+            parser = etree.XMLParser(remove_blank_text=True)
+            self.root = etree.fromstring(xml_string.encode('utf-8'), parser=parser)
+            self._active_turn = None
+            self._active_content_node = None
+            self.validate_strictly()
+        except Exception as e:
+            raise ContractViolationError(f"Hydration Error: {str(e)}")
 
     def delete_after(self, turn_id):
         """Removes the turn with the given ID and all subsequent turns."""

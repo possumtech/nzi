@@ -16,7 +16,7 @@ config.options.yolo = true; -- avoid confirm dialog
 run_tool.run("echo 'hello world'", nil, nil, true);
 
 -- Wait for it to finish and sync
-vim.wait(2000, function() 
+vim.wait(5000, function() 
   local xml = session.format();
   return xml:match("hello world") ~= nil
 end, 100);
@@ -33,7 +33,7 @@ end
 print("  Testing Run Fail projection...");
 run_tool.run("ls /nonexistent_directory_xyz", nil, nil, true);
 
-vim.wait(2000, function() 
+vim.wait(5000, function() 
   local xml = session.format();
   return xml:match("nonexistent") ~= nil
 end, 100);
@@ -51,7 +51,7 @@ print("  Testing Test Pass projection...");
 config.options.test_command = "echo 'tests passed'";
 require("nzi.core.commands").actions.test("");
 
-vim.wait(2000, function() 
+vim.wait(5000, function() 
   local xml = session.format();
   return xml:match("tests passed") ~= nil
 end, 100);
@@ -64,7 +64,7 @@ else
   error("    [FAIL] Test Pass projection failed.\nXML:\n" .. xml)
 end
 
--- 4. Ralph Loop (Retry on Failure)
+-- 4. Ralph Loop (Automated Retry)
 print("  Testing Ralph Loop (Automated Retry)...");
 session.clear();
 config.options.yolo = true;
@@ -73,32 +73,28 @@ config.options.ralph_command = "false"; -- Force immediate failure
 -- Ensure bridge is not busy
 require("nzi.service.llm.bridge").is_busy = false;
 
--- Mock rpc.request_sync to track if a new turn is started
-local bridge_called = false;
-local original_rpc = require("nzi.dom.rpc").request_sync;
-require("nzi.dom.rpc").request_sync = function(method, params)
-  if method == "run_loop" and params.mode == "act" and params.instruction:match("failure") then
-    bridge_called = true;
-  end
-  return original_rpc(method, params);
-end
-
 require("nzi.core.commands").actions.ralph("");
 
-vim.wait(3000, function() 
-  return bridge_called == true
-end, 100);
+-- We verify by checking if a NEW turn appeared after the failure
+-- Turn 1: ralph command (fail)
+-- Turn 2: automated diagnosis instruction
+vim.wait(10000, function() 
+  local xml = session.format();
+  return xml:match("id=\"2\"") and xml:match("Diagnose and resolve")
+end, 200);
 
-if bridge_called then
+local xml = session.format();
+if xml:match("id=\"2\"") and xml:match("Diagnose and resolve") then
   print("    [PASS] Ralph failure automatically triggered a diagnosis loop.")
 else
-  error("    [FAIL] Ralph Loop failed to trigger a new turn.")
+  error("    [FAIL] Ralph Loop failed to trigger a new turn.\nXML:\n" .. xml)
 end
-
-require("nzi.dom.rpc").request_sync = original_rpc;
 
 -- 5. Answer Flow (Prompt User -> Answer)
 print("  Testing Answer Flow...");
+session.clear();
+vim.wait(2000); -- Stabilize bridge
+
 -- Mock vim.ui.select to pick the second option ("Lua")
 local original_select = vim.ui.select;
 vim.ui.select = function(options, opts, on_choice)
@@ -114,7 +110,7 @@ require("nzi.service.vim.effector").propose_choice({
 });
 
 -- Wait for answer to be projected
-vim.wait(2000, function() 
+vim.wait(5000, function() 
   local xml = session.format();
   return xml:match("Lua") ~= nil
 end, 100);

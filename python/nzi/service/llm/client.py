@@ -16,6 +16,7 @@ class LLMClient:
         Executes a streaming completion.
         """
         litellm.set_verbose = False
+        litellm.suppress_debug_info = True
         try:
             model_options = config.get("model_options", {}).copy()
             if "stream" in model_options:
