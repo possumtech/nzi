@@ -67,7 +67,7 @@ function M.setup(opts)
 
     -- 1. Handle subcommands (AI/model, AI/clear, AI/status)
     if args:match("^/") then
-      local cmd = args:sub(2);
+      local cmd = args:sub(2):gsub("^%s*", "");
       local subcommand = vim.split(cmd, " ")[1];
       local internal_commands = { 
         model = true, clear = true, undo = true, status = true, toggle = true,

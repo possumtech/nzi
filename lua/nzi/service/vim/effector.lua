@@ -67,9 +67,29 @@ function M.propose_delete(params)
   diff.propose_deletion(file);
 end
 
+--- Propose a multiple choice question to the user
+--- @param params table: { content }
+function M.propose_choice(params)
+  local content = params.content;
+  if not content then return end
+  
+  local tools = require("nzi.tools.tools");
+  local history = require("nzi.dom.session");
+  
+  tools.choice(content, function(answer)
+    if answer then
+      history.add_turn({
+        type = "answer",
+        status = "pass",
+        content = answer
+      }, "<selection type='answer'>" .. answer .. "</selection>");
+    end
+  end);
+end
+
 --- Execute a shell command
-function M.run_shell(cmd, bufnr, line_idx, inject)
-  shell.run_shell(cmd, bufnr, line_idx, inject);
+function M.run_shell(cmd, bufnr, line_idx, inject, signal_type)
+  shell.run_shell(cmd, bufnr, line_idx, inject, signal_type);
 end
 
 return M;

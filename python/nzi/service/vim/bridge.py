@@ -99,7 +99,7 @@ class VimBridge:
                 self.send_to_vim({"method": "refresh_ui"})
 
             elif method == "add_turn":
-                self.dom.add_turn(params["id"], params["user_data"], params.get("assistant"), params.get("metadata"))
+                self.dom.add_turn(params["user_data"], params.get("assistant"), params.get("metadata"), params.get("id"))
                 self.send_to_vim({"success": True, "id": rid})
                 self.send_to_vim({"method": "refresh_ui"})
 
@@ -195,6 +195,10 @@ class VimBridge:
                 self.effector.propose_delete({
                     "file": action.attributes.get("file")
                 })
+            elif action.name == "choice":
+                self.effector.propose_choice({
+                    "content": action.content
+                })
             elif action.name == "read":
                 # Automated Discovery Loop
                 filename = action.attributes.get("file")
@@ -219,7 +223,7 @@ class VimBridge:
             elif action.name == "shell":
                 self.effector.run_shell(action.content)
             elif action.name == "env":
-                self.effector.run_shell(action.content)
+                self.effector.run_shell(action.content, signal_type="env")
 
         self.send_to_vim({"success": True, "id": rid, "actions_executed": len(actions)})
 

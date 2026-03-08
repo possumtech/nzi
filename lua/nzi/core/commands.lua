@@ -98,7 +98,13 @@ end
 function M.actions.test(args)
   local test_cmd = config.options.test_command or "./test/test.sh";
   if args and args ~= "" then test_cmd = test_cmd .. " " .. args; end
-  effector.run_shell(test_cmd);
+  effector.run_shell(test_cmd, nil, nil, false, "test");
+end
+
+function M.actions.ralph(args)
+  local ralph_cmd = config.options.ralph_command or "./test/ralph.sh";
+  if args and args ~= "" then ralph_cmd = ralph_cmd .. " " .. args; end
+  effector.run_shell(ralph_cmd, nil, nil, false, "ralph");
 end
 
 --- Execute an internal AI/ command

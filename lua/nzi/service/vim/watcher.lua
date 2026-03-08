@@ -12,15 +12,15 @@ end
 
 --- Get the current AI context state for a buffer
 --- @param bufnr number
---- @return string
+--- @return string, boolean (state, is_explicit)
 function M.get_state(bufnr)
   local ok, val = pcall(vim.api.nvim_buf_get_var, bufnr, "nzi_state");
-  if ok then return val end
+  if ok then return val, true end
   
   -- Default heuristics if no explicit state set
   local current_buf = vim.api.nvim_get_current_buf();
-  if bufnr == current_buf then return "active" end
-  return "map"
+  if bufnr == current_buf then return "active", false end
+  return "map", false
 end
 
 --- Check if a buffer is a real file (not a plugin UI, etc.)
@@ -51,10 +51,15 @@ function M.sync_list()
       local full_path = vim.api.nvim_buf_get_name(bufnr);
       if full_path ~= "" then
         local relative_name = vim.fn.fnamemodify(full_path, ":.");
-        local state = M.get_state(bufnr);
+        local is_external = relative_name:match("^/") ~= nil;
+        local state, is_explicit = M.get_state(bufnr);
 
-        if state ~= "ignore" then
+        -- PERMISSION RULE: External files are only included if explicitly marked Active or Read
+        local permitted = not is_external or (is_external and is_explicit and (state == "active" or state == "read"));
+
+        if state ~= "ignore" and permitted then
           local item = {
+            path = relative_name, -- Use 'path' for DOM consistency
             name = relative_name,
             state = state
           };

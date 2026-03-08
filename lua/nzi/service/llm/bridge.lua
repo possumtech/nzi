@@ -7,12 +7,20 @@ local modal = require("nzi.ui.modal");
 local M = {};
 
 M.is_busy = false;
+M.queue = {};
 
 --- The primary entry point for starting an interaction loop.
 --- This now delegates entirely to the Python core.
 function M.run_loop(content, mode, include_lsp, target_file, selection)
   if M.is_busy then
-    config.notify("AI is already processing a request.", "warn");
+    table.insert(M.queue, {
+      content = content,
+      mode = mode,
+      include_lsp = include_lsp,
+      target_file = target_file,
+      selection = selection
+    });
+    config.notify("AI is busy. Instruction enqueued (Queue size: " .. #M.queue .. ")", "info");
     return;
   end
 
@@ -41,7 +49,8 @@ function M.run_loop(content, mode, include_lsp, target_file, selection)
   -- 3. Hand off to Python
   local active_model = config.get_active_model();
   
-  rpc.request_sync("run_loop", {
+  -- We wrap the RPC in a pcall to ensure M.finish() runs if Python is dead
+  local ok, err = pcall(rpc.request_sync, "run_loop", {
     instruction = content,
     mode = mode or "ask",
     user_data = {
@@ -57,8 +66,25 @@ function M.run_loop(content, mode, include_lsp, target_file, selection)
     }
   });
 
+  if not ok then
+    config.notify("Bridge Error: " .. tostring(err), "error");
+  end
+
+  M.finish();
+end
+
+--- Signal turn completion and process queue
+function M.finish()
   M.is_busy = false;
   modal.set_thinking(false);
+  
+  if #M.queue > 0 then
+    local next_req = table.remove(M.queue, 1);
+    -- Trigger next request in next tick to avoid deep recursion
+    vim.schedule(function()
+      M.run_loop(next_req.content, next_req.mode, next_req.include_lsp, next_req.target_file, next_req.selection);
+    end);
+  end
 end
 
 --- Execute a specific line as a 'Ghost Line' interpolation

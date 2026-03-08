@@ -37,6 +37,11 @@ function M.get_or_create_buffer()
     vim.api.nvim_set_option_value("bufhidden", "hide", { buf = M.bufnr });
     vim.api.nvim_set_option_value("modifiable", true, { buf = M.bufnr });
     
+    -- Keybindings for the modal
+    vim.keymap.set("n", "X", M.rewind, { buffer = M.bufnr, desc = "AI: Prune history from here" });
+    vim.keymap.set("n", "q", M.close, { buffer = M.bufnr, desc = "AI: Close modal" });
+    vim.keymap.set("n", "<Esc>", M.close, { buffer = M.bufnr, desc = "AI: Close modal" });
+
     -- Initialize with valid XML structure
     vim.api.nvim_buf_set_lines(M.bufnr, 0, -1, false, { get_session_header(), "</session>" });
     highlight_lines(M.bufnr, 0, 0, "NziTelemetry");
@@ -69,20 +74,21 @@ function M.open()
   local col = math.floor((vim.o.columns - width) / 2);
 
   M.winid = vim.api.nvim_open_win(bufnr, true, {
-    relative = "editor",
-    width = width,
-    height = height,
-    row = row,
-    col = col,
-    border = "rounded",
-    title = get_title(),
-    title_pos = "center",
+  relative = "editor",
+  width = width,
+  height = height,
+  row = row,
+  col = col,
+  border = "rounded",
+  title = get_title(),
+  title_pos = "center",
   });
 
   vim.api.nvim_set_option_value("wrap", true, { win = M.winid });
   vim.api.nvim_set_option_value("cursorline", true, { win = M.winid });
-end
-
+  vim.api.nvim_set_option_value("foldmethod", "manual", { win = M.winid });
+  vim.api.nvim_set_option_value("foldlevel", 0, { win = M.winid });
+  end
 function M.close()
   if M.winid and vim.api.nvim_win_is_valid(M.winid) then
     vim.api.nvim_win_close(M.winid, true);
@@ -119,16 +125,31 @@ function M.render_history()
     vim.api.nvim_buf_clear_namespace(bufnr, M.turn_ns_id, 0, -1);
     M.mark_to_turn = {};
     
+    local tid_list = {};
     for i, line in ipairs(lines) do
       local idx = i - 1;
+      
+      -- Highlight all technical tags
       if line:match("^%s*<[/?]?[%a:]+") then
         highlight_lines(bufnr, idx, idx, "NziTelemetry");
       end
       
-      local tid = tonumber(line:match("id=\"(%d+)\""));
+      -- Turn detection and tracking
+      local tid = line:match("id=\"(%d+)\"");
       if tid and line:match("<turn") then
         local mid = vim.api.nvim_buf_set_extmark(bufnr, M.turn_ns_id, idx, 0, {});
-        M.mark_to_turn[mid] = tid;
+        M.mark_to_turn[mid] = tonumber(tid);
+        table.insert(tid_list, { id = tonumber(tid), line = idx });
+      end
+    end
+
+    -- Folding: All turns EXCEPT the last one are folded
+    if #tid_list > 1 then
+      for i = 1, #tid_list - 1 do
+        local start_line = tid_list[i].line;
+        local end_line = tid_list[i+1].line - 1;
+        -- Use pcall to avoid E16 errors in headless mode or invalid ranges
+        pcall(vim.cmd, string.format("%d,%dfold", start_line + 1, end_line + 1));
       end
     end
     
@@ -145,7 +166,13 @@ function M.render_history()
 end
 
 function M.write(text, msg_type, append, turn_id, metadata)
-  -- Pure projection: Just refresh
+  local bufnr = M.get_or_create_buffer();
+  if not vim.api.nvim_buf_is_valid(bufnr) then return end
+
+  -- If we're appending a stream, we can do it surgically at the end of the last turn
+  -- but for "Zero-Unwrap" fidelity, Python SSOT is king. 
+  -- However, Python Bridge sends refresh_ui on every chunk, which calls render_history.
+  -- To make it feel "real-time", we ensure render_history is fast.
   M.render_history();
 end
 

@@ -7,7 +7,7 @@ local M = {};
 --- @param prefix string: ":" for instruct, "?" for ask, etc.
 --- @param prompt_label string: Label for the input prompt
 local function prompt_mission(prefix, prompt_label)
-  local cmd = "AI" .. prefix .. " "
+  local cmd = "AI " .. prefix .. " "
   local mode = vim.fn.mode()
   if mode:match("[vV\22]") then
     -- Exit visual mode, then feed keys to trigger range command

@@ -27,6 +27,12 @@ class VimEffector:
             "params": params
         })
 
+    def propose_choice(self, params):
+        self.bridge.send_to_vim({
+            "method": "propose_choice",
+            "params": params
+        })
+
     def handle_read(self, filename):
         """Reads a file and returns its content for the discovery loop."""
         try:
@@ -55,12 +61,13 @@ class VimEffector:
         except Exception as e:
             return f"Internal lookup error: {str(e)}"
 
-    def run_shell(self, cmd):
+    def run_shell(self, cmd, signal_type="shell"):
         """Executes a state-changing shell command in Vim."""
         self.bridge.send_to_vim({
             "method": "execute_shell",
             "params": {
-                "command": cmd
+                "command": cmd,
+                "signal_type": signal_type
             }
         })
         return "Shell command dispatched."

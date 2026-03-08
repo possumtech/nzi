@@ -16,6 +16,7 @@ function M.setup()
     vim.api.nvim_set_hl(0, "NziStatusIgnore", { fg = "#ffffff", bg = "#b71c1c", ctermfg = 15, ctermbg = 1, bold = true });
     vim.api.nvim_set_hl(0, "NziStatusDiff",   { fg = "#ffffff", bg = "#0d47a1", ctermfg = 15, ctermbg = 4, bold = true });
     vim.api.nvim_set_hl(0, "NziStatusThinking", { fg = "#ffffff", bg = "#fe8019", ctermfg = 15, ctermbg = 214, bold = true });
+    vim.api.nvim_set_hl(0, "NziTelemetry",      { fg = "#666666", italic = true, ctermfg = 242 });
   end
 
   define_hls();

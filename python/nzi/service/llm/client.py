@@ -50,6 +50,7 @@ class LLMClient:
                 api_base=api_base,
                 api_key=api_key,
                 stream=True,
+                timeout=15, # Hardware Enforcement: 15s absolute limit
                 **model_options
             )
 

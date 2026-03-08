@@ -102,15 +102,16 @@ class SessionDOM:
 
         # 2. Add files to the <history> tag of the CURRENT ACTIVE TURN
         target_turn = self._active_turn if self._active_turn is not None else turn0
-        user = target_turn.find("user")
-        if user is None:
-            user = etree.SubElement(target_turn, "user")
         
-        hist = user.find("history")
+        hist = target_turn.find("history")
         if hist is None:
             hist = etree.Element("history")
-            # Insert as first child of user
-            user.insert(0, hist)
+            # Insert before <user> if possible
+            user_node = target_turn.find("user")
+            if user_node is not None:
+                user_node.addprevious(hist)
+            else:
+                target_turn.append(hist)
         
         for el in hist.findall("files"):
             hist.remove(el)
@@ -157,6 +158,70 @@ class SessionDOM:
         mission = etree.SubElement(user, mode)
         
         # 2. Handle Signals/Feedback
+        self._project_user_data(mission, user_data)
+        
+        self._active_turn = turn
+        # Assistant
+        assistant = etree.SubElement(turn, "assistant")
+        self._active_content_node = etree.SubElement(assistant, "content")
+        self._active_content_node.text = ""
+        
+        self.validate_strictly()
+        return turn
+
+    def add_turn(self, user_data, assistant_xml=None, metadata=None, turn_id=None):
+        """
+        Adds a complete turn manually.
+        """
+        if turn_id is None:
+            # Auto-increment
+            turns = self.root.findall("turn")
+            ids = []
+            for t in turns:
+                try:
+                    ids.append(int(t.get("id", 0)))
+                except ValueError: pass
+            turn_id = max(ids) + 1 if ids else 1
+
+        turn = etree.SubElement(self.root, "turn")
+        turn.set("id", str(turn_id))
+        
+        user = etree.SubElement(turn, "user")
+        mission = etree.SubElement(user, "instruct")
+        self._project_user_data(mission, user_data)
+        
+        assistant = etree.SubElement(turn, "assistant")
+        
+        # 1. Enforce <content> wrapper for Assistant part if needed
+        # Assistant must have: reasoning_content?, content, model?, provider?
+        content_node = etree.SubElement(assistant, "content")
+
+        if assistant_xml:
+            if assistant_xml.startswith("<"):
+                try:
+                    parser = etree.XMLParser(recover=True)
+                    # If it's already wrapped in <content>, we might double wrap, 
+                    # but finalizing_turn-like logic is better.
+                    if assistant_xml.startswith("<content"):
+                        # Unwrap and re-wrap or just append
+                        fragment = etree.fromstring(assistant_xml, parser=parser)
+                        content_node.text = fragment.text
+                        for child in fragment:
+                            content_node.append(child)
+                    else:
+                        fragment = etree.fromstring(f"<root>{assistant_xml}</root>", parser=parser)
+                        content_node.text = fragment.text
+                        for child in fragment:
+                            content_node.append(child)
+                except:
+                    content_node.text = assistant_xml
+            else:
+                content_node.text = assistant_xml
+        
+        self.validate_strictly()
+        return turn
+
+    def _project_user_data(self, mission_node, user_data):
         boilerplates = {
             "shell:pass": "Command completed successfully. Proceed.",
             "shell:fail": "Command error. Diagnose and resolve.",
@@ -172,7 +237,7 @@ class SessionDOM:
             s_type = user_data["type"]
             s_status = user_data.get("status", "pass")
             
-            sel = etree.SubElement(mission, "selection")
+            sel = etree.SubElement(mission_node, "selection")
             sel.set("type", s_type)
             sel.set("status", s_status)
             
@@ -190,26 +255,20 @@ class SessionDOM:
         elif isinstance(user_data, dict) and "selection" in user_data:
             # Traditional selection (from UI)
             s = user_data["selection"]
-            sel = etree.SubElement(mission, "selection")
+            sel = etree.SubElement(mission_node, "selection")
             sel.set("file", s.get("file", "unknown"))
             sel.set("first_row", str(s.get("start_line", 1)))
             sel.set("first_col", str(s.get("start_col", 1)))
             sel.set("final_row", str(s.get("end_line", 1)))
             sel.set("final_col", str(s.get("end_col", 1)))
             sel.text = s.get("text", "")
-            sel.tail = "\n" + user_data.get("instruction", "")
+            sel.tail = "\n" + (user_data.get("instruction") or "")
         else:
             # Simple text instruction
-            mission.text = str(user_data)
-        
-        self._active_turn = turn
-        # Assistant
-        assistant = etree.SubElement(turn, "assistant")
-        self._active_content_node = etree.SubElement(assistant, "content")
-        self._active_content_node.text = ""
-        
-        self.validate_strictly()
-        return turn
+            if isinstance(user_data, dict):
+                mission_node.text = user_data.get("instruction", str(user_data))
+            else:
+                mission_node.text = str(user_data)
 
     def append_to_turn(self, text):
         if self._active_content_node is not None:

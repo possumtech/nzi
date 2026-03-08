@@ -30,6 +30,26 @@ function M.ensure_engine()
               vim.schedule(function()
                 require("nzi.ui.modal").render_history();
               end);
+            elseif res.method == "propose_edit" then
+              vim.schedule(function()
+                require("nzi.service.vim.effector").propose_edit(res.params);
+              end);
+            elseif res.method == "propose_create" then
+              vim.schedule(function()
+                require("nzi.service.vim.effector").propose_create(res.params);
+              end);
+            elseif res.method == "propose_delete" then
+              vim.schedule(function()
+                require("nzi.service.vim.effector").propose_delete(res.params);
+              end);
+            elseif res.method == "propose_choice" then
+              vim.schedule(function()
+                require("nzi.service.vim.effector").propose_choice(res.params);
+              end);
+            elseif res.method == "execute_shell" then
+              vim.schedule(function()
+                require("nzi.service.vim.effector").run_shell(res.params.command, nil, nil, false, res.params.signal_type);
+              end);
             elseif res.id and M.callbacks[res.id] then
               local cb = M.callbacks[res.id];
               M.callbacks[res.id] = nil;

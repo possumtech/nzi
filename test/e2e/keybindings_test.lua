@@ -8,6 +8,17 @@ rpc.request_sync = function(method, params)
   last_request = { method = method, params = params };
 end
 
+-- Mock Effector run_shell to avoid side effects
+local last_shell_cmd = nil;
+require("nzi.service.vim.effector").run_shell = function(cmd)
+  last_shell_cmd = cmd;
+end
+
+local last_internal_cmd = nil;
+require("nzi.core.commands").run = function(cmd)
+  last_internal_cmd = cmd;
+end
+
 -- Mock vim.ui.input
 local original_input = vim.ui.input;
 vim.ui.input = function(opts, on_confirm)
@@ -34,6 +45,24 @@ else
   error("  [FAIL] actions.ask() failed.")
 end
 
+last_request = nil;
+last_shell_cmd = nil;
+actions.run();
+if last_shell_cmd == "test_input" then
+  print("  [PASS] actions.run() triggered correctly.")
+else
+  error("  [FAIL] actions.run() failed: " .. tostring(last_shell_cmd))
+end
+
+last_request = nil;
+last_internal_cmd = nil;
+actions.internal();
+if last_internal_cmd == "test_input" then
+  print("  [PASS] actions.internal() triggered correctly.")
+else
+  error("  [FAIL] actions.internal() failed: " .. tostring(last_internal_cmd))
+end
+
 -- 3. YOLO Toggle
 print("Testing YOLO toggle...");
 local original_yolo = config.options.yolo;
@@ -44,8 +73,6 @@ else
   error("  [FAIL] actions.toggle_yolo() failed.")
 end
 
--- Restore
-vim.ui.input = original_input;
 -- 4. Session Logic Mappings
 print("Testing Session actions...");
 local commands = require("nzi.core.commands");
@@ -83,5 +110,79 @@ else
   error("  [FAIL] actions.undo() linkage failed.")
 end
 
+called_action = nil;
+actions.stop();
+if called_action == "stop" then
+  print("  [PASS] actions.stop() linked to commands.actions.stop")
+else
+  error("  [FAIL] actions.stop() linkage failed.")
+end
+
+called_action = nil;
+actions.reset();
+if called_action == "clear" then
+  print("  [PASS] actions.reset() linked to commands.actions.stop/clear")
+else
+  error("  [FAIL] actions.reset() linkage failed: " .. tostring(called_action))
+end
+
+called_action = nil;
+actions.load_session();
+if called_action == "load" then
+  print("  [PASS] actions.load_session() linked to commands.actions.load")
+else
+  error("  [FAIL] actions.load_session() linkage failed.")
+end
+
+-- 5. Command Aliases
+print("Testing command aliases...");
+local last_cmd = nil;
+vim.cmd = function(cmd) last_cmd = cmd end
+
+actions.accept_diff();
+if last_cmd == "AI/accept" then
+  print("  [PASS] actions.accept_diff() triggers AI/accept")
+else
+  error("  [FAIL] actions.accept_diff() failed: " .. tostring(last_cmd))
+end
+
+actions.reject_diff();
+if last_cmd == "AI/reject" then
+  print("  [PASS] actions.reject_diff() triggers AI/reject")
+else
+  error("  [FAIL] actions.reject_diff() failed: " .. tostring(last_cmd))
+end
+
+actions.next_diff();
+if last_cmd == "AI/next" then
+  print("  [PASS] actions.next_diff() triggers AI/next")
+else
+  error("  [FAIL] actions.next_diff() failed: " .. tostring(last_cmd))
+end
+
+actions.prev_diff();
+if last_cmd == "AI/prev" then
+  print("  [PASS] actions.prev_diff() triggers AI/prev")
+else
+  error("  [FAIL] actions.prev_diff() failed: " .. tostring(last_cmd))
+end
+
+called_action = nil;
+actions.run_tests();
+if called_action == "test" then
+  print("  [PASS] actions.run_tests() linked to commands.actions.test")
+else
+  error("  [FAIL] actions.run_tests() linkage failed.")
+end
+
+actions.run_ralph();
+if last_cmd:match("^AI/ralph") then
+  print("  [PASS] actions.run_ralph() triggers AI/ralph")
+else
+  error("  [FAIL] actions.run_ralph() failed: " .. tostring(last_cmd))
+end
+
+-- Restore
+vim.ui.input = original_input;
 print("Keybindings E2E tests complete.");
 vim.cmd("qa!");

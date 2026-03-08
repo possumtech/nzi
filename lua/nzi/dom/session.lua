@@ -56,6 +56,19 @@ function M.delete_after(turn_id)
   return update_cache(res);
 end
 
+--- Add a manual turn (e.g. from a tool result) to the session
+--- @param user_content table|string: User-facing summary or structured signal
+--- @param assistant_xml string: The XML projection (mission result)
+--- @param id string|number: Optional turn ID (auto-incremented if nil)
+function M.add_turn(user_content, assistant_xml, id)
+  local res = rpc.request_sync("add_turn", {
+    user_data = user_content,
+    assistant = assistant_xml,
+    id = id
+  });
+  return update_cache(res);
+end
+
 -- Force a cache refresh from Python
 function M.refresh_cache()
   M.cache_xml = "";
