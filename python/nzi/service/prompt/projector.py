@@ -18,7 +18,8 @@ def project_dom_to_messages(dom, system_prompt_raw=None):
         # 1. Handle Turn 0 (Primordial)
         if tid == "0":
             # A. System Constitution -> role: system
-            sys_node = t.find("agent/system")
+            # Check for system directly under turn OR under agent
+            sys_node = t.find("system") or t.find("agent/system")
             sys_content = ""
             if sys_node is not None and sys_node.text:
                 sys_content = html.unescape(sys_node.text)
@@ -27,33 +28,47 @@ def project_dom_to_messages(dom, system_prompt_raw=None):
             
             messages.append({"role": "system", "content": sys_content})
 
-            # B. Everything else in Agent 0 -> role: user (First Prompt)
+            # B. Everything else in Turn 0 -> role: user (First Prompt)
+            # We look for children directly under turn or under agent
+            primordial_nodes = []
             agent_node = t.find("agent")
             if agent_node is not None:
-                primordial_text = ""
-                for child in agent_node:
-                    if child.tag == "system": continue
-                    
-                    if child.tag == "user":
-                        primordial_text += (child.text or "")
-                    elif child.tag == "project_roadmap":
-                        primordial_text += f"\n\nPROJECT_ROADMAP:\n{etree.tostring(child, encoding='unicode').strip()}"
-                    elif child.tag == "history":
-                        parts = []
-                        for f in child.findall("file"):
-                            # Strip internal metadata for protocol
-                            pf = etree.Element("file")
-                            pf.set("name", f.get("name"))
-                            pf.set("type", f.get("type"))
-                            pf.text = f.text
-                            parts.append(etree.tostring(pf, encoding='unicode').strip())
-                        if parts:
-                            primordial_text += "\n\nINITIAL_CONTEXT:\n" + "\n".join(parts)
-                    else:
-                        primordial_text += f"\n\n{etree.tostring(child, encoding='unicode').strip()}"
+                primordial_nodes.extend(list(agent_node))
+            
+            # Also add direct children of turn that aren't system or agent
+            for child in t:
+                if child.tag not in ["system", "agent", "assistant"]:
+                    primordial_nodes.append(child)
+            
+            primordial_text = ""
+            for child in primordial_nodes:
+                if child.tag == "system": continue
                 
-                if primordial_text.strip():
-                    messages.append({"role": "user", "content": primordial_text.strip()})
+                if child.tag == "user":
+                    # For user tags, we want their inner interaction content (ask, instruct, etc.)
+                    # If it has children (like <ask>), tounicode them.
+                    if len(child):
+                        for subchild in child:
+                            primordial_text += etree.tostring(subchild, encoding='unicode').strip() + "\n"
+                    else:
+                        primordial_text += (child.text or "") + "\n"
+                elif child.tag == "project_roadmap":
+                    primordial_text += f"\n\nPROJECT_ROADMAP:\n{etree.tostring(child, encoding='unicode').strip()}"
+                elif child.tag == "history":
+                    parts = []
+                    for f in child.findall("file"):
+                        pf = etree.Element("file")
+                        pf.set("name", f.get("name") or f.get("path"))
+                        pf.set("type", f.get("type"))
+                        pf.text = f.text
+                        parts.append(etree.tostring(pf, encoding='unicode').strip())
+                    if parts:
+                        primordial_text += "\n\nINITIAL_CONTEXT:\n" + "\n".join(parts)
+                else:
+                    primordial_text += f"\n\n{etree.tostring(child, encoding='unicode').strip()}"
+            
+            if primordial_text.strip():
+                messages.append({"role": "user", "content": primordial_text.strip()})
             
             # Assistant part of Turn 0
             asst_node = t.find("assistant")
@@ -69,30 +84,31 @@ def project_dom_to_messages(dom, system_prompt_raw=None):
             continue
 
         # 2. Subsequent Turns (N > 0)
-        agent_node = t.find("agent")
-        if agent_node is not None:
-            user_text = ""
-            user_node = agent_node.find("user")
-            if user_node is not None:
-                user_text += (user_node.text or "")
-            
-            for child in agent_node:
-                if child.tag == "user": continue
-                if child.tag == "history":
-                    parts = []
-                    for f in child.findall("file"):
-                        pf = etree.Element("file")
-                        pf.set("name", f.get("name"))
-                        pf.set("type", f.get("type"))
-                        pf.text = f.text
-                        parts.append(etree.tostring(pf, encoding='unicode').strip())
-                    if parts:
-                        user_text += "\n\nCONTEXT:\n" + "\n".join(parts)
-                else:
-                    user_text += f"\n\n{etree.tostring(child, encoding='unicode').strip()}"
-            
-            if user_text.strip():
-                messages.append({"role": "user", "content": user_text.strip()})
+        # Look for user directly or under agent
+        user_node = t.find("user") or t.find("agent/user")
+        user_text = ""
+        if user_node is not None:
+            if len(user_node):
+                for subchild in user_node:
+                    user_text += etree.tostring(subchild, encoding='unicode').strip() + "\n"
+            else:
+                user_text += (user_node.text or "") + "\n"
+        
+        # Context from history or other nodes
+        history_nodes = t.xpath(".//history")
+        for h in history_nodes:
+            parts = []
+            for f in h.findall("file"):
+                pf = etree.Element("file")
+                pf.set("name", f.get("name") or f.get("path"))
+                pf.set("type", f.get("type"))
+                pf.text = f.text
+                parts.append(etree.tostring(pf, encoding='unicode').strip())
+            if parts:
+                user_text += "\n\nCONTEXT:\n" + "\n".join(parts)
+        
+        if user_text.strip():
+            messages.append({"role": "user", "content": user_text.strip()})
 
         assistant_node = t.find("assistant")
         if assistant_node is not None:

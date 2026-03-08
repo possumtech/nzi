@@ -23,4 +23,9 @@
       <read file="README.md" />
     </assistant>
   </turn>
+  <turn id="2">
+    <user>
+      <ask>Based on the README, what is the next step?</ask>
+    </user>
+  </turn>
 </session>
