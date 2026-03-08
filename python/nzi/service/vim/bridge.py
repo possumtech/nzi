@@ -59,6 +59,13 @@ class VimBridge:
 
     def log(self, msg, level=logging.DEBUG):
         logging.log(level, f"[BRIDGE] {msg}")
+        if os.getenv("NZI_DEBUG") == "1":
+            try:
+                log_path = os.path.join(self.project_root or ".", "nzi_debug.log")
+                with open(log_path, "a") as f:
+                    import datetime
+                    f.write(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] [PYTHON] {msg}\n")
+            except: pass
 
     def send_to_vim(self, payload):
         # Auto-inject the latest XML state into every response to Lua
@@ -163,7 +170,8 @@ class VimBridge:
         success, full_result = self.llm.stream_complete(messages, config, on_chunk)
 
         if not success:
-            self.dom.finalize_turn(f"<status level='error'>{full_result}</status>")
+            error_msg = f"<status level='error'>{full_result}</status>"
+            self.dom.finalize_turn({"content": error_msg})
             self.send_to_vim({"success": False, "error": full_result, "id": rid})
             self.send_to_vim({"method": "refresh_ui"})
             return
@@ -199,6 +207,10 @@ class VimBridge:
                 self.effector.propose_choice({
                     "content": action.content
                 })
+            elif action.name == "ask":
+                self.effector.propose_choice({
+                    "content": f"{action.content}\n- [ ] Response"
+                })
             elif action.name == "read":
                 # Automated Discovery Loop
                 filename = action.attributes.get("file")
@@ -208,7 +220,8 @@ class VimBridge:
                     "status": "pass",
                     "file": filename,
                     "content": content,
-                    "instruction": f"Read file {filename}. Proceed."
+                    "instruction": f"Read file {filename}. Proceed.",
+                    "config": config # Carry forward model config
                 }, rid)
             elif action.name == "lookup":
                 # Automated Discovery Loop
@@ -218,7 +231,8 @@ class VimBridge:
                     "type": "env",
                     "status": "pass",
                     "content": results,
-                    "instruction": f"Lookup results for '{pattern}'. Proceed."
+                    "instruction": f"Lookup results for '{pattern}'. Proceed.",
+                    "config": config # Carry forward model config
                 }, rid)
             elif action.name == "shell":
                 self.effector.run_shell(action.content)

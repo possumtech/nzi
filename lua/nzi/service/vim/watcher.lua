@@ -7,7 +7,7 @@ local M = {};
 function M.set_state(bufnr, state)
   vim.api.nvim_buf_set_var(bufnr, "nzi_state", state);
   -- Trigger visual update
-  require("nzi.ui.visuals").update_buffer(bufnr);
+  require("nzi.ui.visuals").refresh();
 end
 
 --- Get the current AI context state for a buffer

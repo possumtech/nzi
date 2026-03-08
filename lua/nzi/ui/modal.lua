@@ -74,21 +74,21 @@ function M.open()
   local col = math.floor((vim.o.columns - width) / 2);
 
   M.winid = vim.api.nvim_open_win(bufnr, true, {
-  relative = "editor",
-  width = width,
-  height = height,
-  row = row,
-  col = col,
-  border = "rounded",
-  title = get_title(),
-  title_pos = "center",
+    relative = "editor",
+    width = width,
+    height = height,
+    row = row,
+    col = col,
+    border = "rounded",
+    title = get_title(),
+    title_pos = "center",
   });
 
   vim.api.nvim_set_option_value("wrap", true, { win = M.winid });
   vim.api.nvim_set_option_value("cursorline", true, { win = M.winid });
   vim.api.nvim_set_option_value("foldmethod", "manual", { win = M.winid });
   vim.api.nvim_set_option_value("foldlevel", 0, { win = M.winid });
-  end
+end
 function M.close()
   if M.winid and vim.api.nvim_win_is_valid(M.winid) then
     vim.api.nvim_win_close(M.winid, true);
@@ -126,29 +126,81 @@ function M.render_history()
     M.mark_to_turn = {};
     
     local tid_list = {};
+    local fold_stack = {};
+    local current_hl = nil;
+
     for i, line in ipairs(lines) do
       local idx = i - 1;
       
-      -- Highlight all technical tags
+      -- 1. Section Highlights (Apply background based on envelope)
+      if line:match("<history") then current_hl = "NziHistorySection"
+      elseif line:match("</history") then current_hl = nil
+      elseif line:match("<user") then current_hl = "NziUserSection"
+      elseif line:match("</user") then current_hl = nil
+      elseif line:match("<assistant") then current_hl = "NziAssistantSection"
+      elseif line:match("</assistant") then current_hl = nil
+      end
+
+      if current_hl then
+        vim.api.nvim_buf_set_extmark(bufnr, M.ns_id, idx, 0, {
+          end_line = idx + 1,
+          hl_group = current_hl,
+          hl_eol = true,
+          priority = 50, -- Lower than telemetry
+        })
+      end
+
+      -- 2. Technical Highlighting
       if line:match("^%s*<[/?]?[%a:]+") then
         highlight_lines(bufnr, idx, idx, "NziTelemetry");
       end
       
-      -- Turn detection and tracking
+      -- 3. Folding Detection
       local tid = line:match("id=\"(%d+)\"");
       if tid and line:match("<turn") then
         local mid = vim.api.nvim_buf_set_extmark(bufnr, M.turn_ns_id, idx, 0, {});
         M.mark_to_turn[mid] = tonumber(tid);
         table.insert(tid_list, { id = tonumber(tid), line = idx });
       end
+
+      -- Track tags for intra-turn folding
+      local open_tag = line:match("^%s*<([%a_]+)[^>]*>[^<]*$"); -- multi-line open
+      if open_tag then
+        table.insert(fold_stack, { tag = open_tag, line = idx });
+      else
+        local close_tag = line:match("^%s*</([%a_]+)>");
+        if close_tag and #fold_stack > 0 and fold_stack[#fold_stack].tag == close_tag then
+          local start_data = table.remove(fold_stack);
+          local start_line = start_data.line;
+          local end_line = idx;
+          
+          -- DECISION: What to fold?
+          local tags_to_fold = {
+            system = true, project_roadmap = true, history = true, 
+            model = true, provider = true, reasoning_content = true
+          };
+          
+          if tags_to_fold[close_tag] and (end_line - start_line) > 1 then
+            -- For reasoning_content, only fold if <content> is also present in this turn
+            local should_fold = true;
+            if close_tag == "reasoning_content" then
+              -- Heuristic: If we are in the middle of a stream, don't fold yet
+              -- For now, always fold if it's finished.
+            end
+            
+            if should_fold then
+              pcall(vim.cmd, string.format("%d,%dfold", start_line + 1, end_line + 1));
+            end
+          end
+        end
+      end
     end
 
-    -- Folding: All turns EXCEPT the last one are folded
+    -- 4. Global Turn Folding: Fold all turns EXCEPT the last one
     if #tid_list > 1 then
       for i = 1, #tid_list - 1 do
         local start_line = tid_list[i].line;
         local end_line = tid_list[i+1].line - 1;
-        -- Use pcall to avoid E16 errors in headless mode or invalid ranges
         pcall(vim.cmd, string.format("%d,%dfold", start_line + 1, end_line + 1));
       end
     end

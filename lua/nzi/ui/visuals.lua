@@ -11,12 +11,19 @@ local frames = { "   ", ".  ", ".. ", "...", " ..", "  ." };
 --- Setup visual context highlight groups
 function M.setup()
   local function define_hls()
-    vim.api.nvim_set_hl(0, "NziStatusActive", { fg = "#ffffff", bg = "#1b5e20", ctermfg = 15, ctermbg = 2, bold = true });
-    vim.api.nvim_set_hl(0, "NziStatusRead",   { fg = "#ffffff", bg = "#e65100", ctermfg = 15, ctermbg = 3, bold = true });
-    vim.api.nvim_set_hl(0, "NziStatusIgnore", { fg = "#ffffff", bg = "#b71c1c", ctermfg = 15, ctermbg = 1, bold = true });
-    vim.api.nvim_set_hl(0, "NziStatusDiff",   { fg = "#ffffff", bg = "#0d47a1", ctermfg = 15, ctermbg = 4, bold = true });
+    -- Statusline Highlights (Text + Colored BG)
+    vim.api.nvim_set_hl(0, "NziStatusActive",   { fg = "#ffffff", bg = "#1b5e20", ctermfg = 15, ctermbg = 2, bold = true });
+    vim.api.nvim_set_hl(0, "NziStatusRead",     { fg = "#ffffff", bg = "#e65100", ctermfg = 15, ctermbg = 3, bold = true });
+    vim.api.nvim_set_hl(0, "NziStatusIgnore",   { fg = "#ffffff", bg = "#b71c1c", ctermfg = 15, ctermbg = 1, bold = true });
+    vim.api.nvim_set_hl(0, "NziStatusDiff",     { fg = "#ffffff", bg = "#0d47a1", ctermfg = 15, ctermbg = 4, bold = true });
     vim.api.nvim_set_hl(0, "NziStatusThinking", { fg = "#ffffff", bg = "#fe8019", ctermfg = 15, ctermbg = 214, bold = true });
-    vim.api.nvim_set_hl(0, "NziTelemetry",      { fg = "#666666", italic = true, ctermfg = 242 });
+    
+    vim.api.nvim_set_hl(0, "NziTelemetry", { fg = "#666666", italic = true, ctermfg = 242 });
+    
+    -- Section Backgrounds (Modal ONLY)
+    vim.api.nvim_set_hl(0, "NziUserSection",      { bg = "#1a1a1a", ctermbg = 234 });
+    vim.api.nvim_set_hl(0, "NziAssistantSection", { bg = "#161616", ctermbg = 233 });
+    vim.api.nvim_set_hl(0, "NziHistorySection",   { bg = "#121212", ctermbg = 232 });
   end
 
   define_hls();
@@ -25,19 +32,30 @@ function M.setup()
     group = vim.api.nvim_create_augroup("NziVisuals", { clear = true }),
     callback = define_hls,
   });
+
+  -- NZI Statusline Integration: Add to global statusline if not present
+  local sl = vim.o.statusline;
+  if not sl:match("nzi_statusline") then
+    -- We append it to the right side
+    if sl == "" then
+      vim.o.statusline = "%f %m %= %{%v:lua.nzi_statusline()%} %l:%c %p%% ";
+    else
+      -- Try to insert before the right-aligned part or just append
+      if sl:match("%%=") then
+        vim.o.statusline = sl:gsub("%%=", "%%= %%{v:lua.nzi_statusline()%%} ");
+      end
+    end
+  end
 end
 
 function M.set_busy(busy)
-  M.is_busy = busy;
-  if busy then
-    M.start_thinking();
-  else
-    M.stop_thinking();
-  end
+  -- Forward to thinking animation
+  if busy then M.start_thinking() else M.stop_thinking() end
 end
 
 function M.start_thinking()
   if M.anim_timer then return end
+  M.is_busy = true; -- Ensure get_status_data sees it
   M.anim_timer = vim.loop.new_timer();
   M.anim_timer:start(0, 250, vim.schedule_wrap(function()
     M.anim_frame = (M.anim_frame % #frames) + 1;
@@ -51,6 +69,7 @@ function M.stop_thinking()
     M.anim_timer:close();
     M.anim_timer = nil;
   end
+  M.is_busy = false;
   M.anim_frame = 0;
   M.refresh();
 end
@@ -100,25 +119,6 @@ end
 
 -- EXPOSE GLOBALLY for Vim statusline (prevents E117 if require is tricky)
 _G.nzi_statusline = M.get_statusline;
-
---- Update the visual highlights for a specific buffer
-function M.update_buffer(bufnr)
-  if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then return end
-  
-  local context = require("nzi.service.vim.watcher");
-  local state = context.get_state(bufnr);
-  
-  -- Map state to highlight groups
-  local hl_map = {
-    active = "NziStatusActive",
-    read = "NziStatusRead",
-    ignore = "NziStatusIgnore"
-  }
-  
-  -- We use window-local highlights for background shifts
-  -- For now, let's just trigger a statusline refresh
-  M.refresh();
-end
 
 function M.refresh()
   vim.cmd("redrawstatus");

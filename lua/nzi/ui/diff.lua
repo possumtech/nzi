@@ -11,7 +11,9 @@ M.active_views = {};
 --- @return table: { edits = table, creations = table, deletions = table }
 function M.get_pending_from_xml()
   local history = require("nzi.dom.session");
-  local xml = history.format();
+  -- IMPORTANT: We use the local cache directly. Calling format() can trigger a synchronous RPC
+  -- call, which is catastrophic if called during a statusline redraw (E565).
+  local xml = history.cache_xml or "";
   if xml == "" then return { edits = {}, creations = {}, deletions = {} }; end
 
   -- 1. Find all proposed actions

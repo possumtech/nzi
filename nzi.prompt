@@ -43,6 +43,7 @@ Modify files by wrapping SEARCH/REPLACE blocks inside <edit /> tags.
 * Every SEARCH block must be unique and match the destination file exactly.
 
 ## TURN TERMINATION
-Every turn MUST end with exactly one of the following tags:
+Every turn MUST end with one or more of the following tags in assistant/content:
 * <summary>STRICTLY ONE LINE, UNDER 80 CHARS. The direct answer or a summary of actions.</summary>
-* <choice>Question? - [ ] Option 1 - [ ] Option 2</choice>
+* <choice>Question? - [ ] Option 1 - [ ] Option 2</choice> (For multiple choice)
+* <ask>Open ended question?</ask> (For user inquiry)

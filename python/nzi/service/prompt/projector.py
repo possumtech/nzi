@@ -32,36 +32,31 @@ def project_dom_to_messages(dom, system_prompt_raw=None):
             primordial_text = ""
             
             # Context First (History and Roadmap)
-            for child in primordial_nodes:
-                if child.tag == "history":
-                    parts = []
-                    for f in child.xpath(".//file"):
-                        pf = etree.Element("file")
-                        pf.set("name", f.get("name") or f.get("path"))
-                        pf.set("type", f.get("type"))
-                        pf.text = f.text
-                        parts.append(etree.tostring(pf, encoding='unicode').strip())
-                    if parts:
-                        primordial_text += "INITIAL_CONTEXT:\n" + "\n".join(parts) + "\n\n"
-                elif child.tag == "project_roadmap":
-                    primordial_text += f"PROJECT_ROADMAP:\n{etree.tostring(child, encoding='unicode').strip()}\n\n"
+            history_node = t.find("history")
+            if history_node is not None:
+                parts = []
+                for f in history_node.xpath(".//file"):
+                    pf = etree.Element("file")
+                    pf.set("name", f.get("name") or f.get("path"))
+                    pf.set("type", f.get("type"))
+                    pf.text = f.text
+                    parts.append(etree.tostring(pf, encoding='unicode').strip())
+                if parts:
+                    primordial_text += "INITIAL_CONTEXT:\n" + "\n".join(parts) + "\n\n"
+            
+            roadmap_node = t.find("project_roadmap")
+            if roadmap_node is not None:
+                primordial_text += f"PROJECT_ROADMAP:\n{etree.tostring(roadmap_node, encoding='unicode').strip()}\n\n"
 
             # Mission Second
-            for child in primordial_nodes:
-                if child.tag in ["system", "history", "project_roadmap", "assistant"]: 
-                    continue
-                
-                if child.tag == "user":
-                    for mission in child:
-                        # Selections then instructions
-                        for sel in mission.findall("selection"):
-                            primordial_text += etree.tostring(sel, encoding='unicode').strip() + "\n"
-                        if mission.text:
-                            primordial_text += mission.text.strip() + "\n"
-                else:
-                    # In the new structure, history might be here if it's not handled above
-                    # but we already handled history, roadmap and system.
-                    primordial_text += f"{etree.tostring(child, encoding='unicode').strip()}\n"
+            user_node = t.find("user")
+            if user_node is not None:
+                for mission in user_node:
+                    # Selections then instructions
+                    for sel in mission.findall("selection"):
+                        primordial_text += etree.tostring(sel, encoding='unicode').strip() + "\n"
+                    if mission.text:
+                        primordial_text += mission.text.strip() + "\n"
             
             if primordial_text.strip():
                 messages.append({"role": "user", "content": primordial_text.strip()})

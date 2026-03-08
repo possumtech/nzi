@@ -14,50 +14,64 @@ function M.ensure_engine()
   table.insert(cmd, "-u");
   table.insert(cmd, script_path);
 
+  local stdout_buf = "";
   M.job_id = vim.fn.jobstart(cmd, {
     on_stdout = function(_, data)
-      for _, line in ipairs(data) do
-        if line ~= "" then
-          local ok, res = pcall(vim.fn.json_decode, line);
-          if ok and res then
-            -- Proactive Cache Sync
-            if res.xml then
-              require("nzi.dom.session").cache_xml = res.xml;
-            end
+      if not data then return end
+      
+      -- Neovim jobstart gives a list of strings split by newline. 
+      -- The last string is the partial line (no newline yet).
+      if #data == 1 then
+        stdout_buf = stdout_buf .. data[1];
+      else
+        local lines_to_process = {};
+        table.insert(lines_to_process, stdout_buf .. data[1]);
+        for i = 2, #data - 1 do
+          table.insert(lines_to_process, data[i]);
+        end
+        stdout_buf = data[#data]; -- Save partial line
+        
+        for _, line in ipairs(lines_to_process) do
+          if line ~= "" then
+            local ok, res = pcall(vim.fn.json_decode, line);
+            if ok and res then
+              -- Proactive Cache Sync
+              if res.xml then
+                require("nzi.dom.session").cache_xml = res.xml;
+              end
 
-            if res.method == "refresh_ui" then
-              -- Pure projection: Just re-render what Python says is true
-              vim.schedule(function()
-                require("nzi.ui.modal").render_history();
-              end);
-            elseif res.method == "propose_edit" then
-              vim.schedule(function()
-                require("nzi.service.vim.effector").propose_edit(res.params);
-              end);
-            elseif res.method == "propose_create" then
-              vim.schedule(function()
-                require("nzi.service.vim.effector").propose_create(res.params);
-              end);
-            elseif res.method == "propose_delete" then
-              vim.schedule(function()
-                require("nzi.service.vim.effector").propose_delete(res.params);
-              end);
-            elseif res.method == "propose_choice" then
-              vim.schedule(function()
-                require("nzi.service.vim.effector").propose_choice(res.params);
-              end);
-            elseif res.method == "execute_shell" then
-              vim.schedule(function()
-                require("nzi.service.vim.effector").run_shell(res.params.command, nil, nil, false, res.params.signal_type);
-              end);
-            elseif res.id and M.callbacks[res.id] then
-              local cb = M.callbacks[res.id];
-              M.callbacks[res.id] = nil;
-              cb(res);
+              if res.method == "refresh_ui" then
+                vim.schedule(function()
+                  require("nzi.ui.modal").render_history();
+                end);
+              elseif res.method == "propose_edit" then
+                vim.schedule(function()
+                  require("nzi.service.vim.effector").propose_edit(res.params);
+                end);
+              elseif res.method == "propose_create" then
+                vim.schedule(function()
+                  require("nzi.service.vim.effector").propose_create(res.params);
+                end);
+              elseif res.method == "propose_delete" then
+                vim.schedule(function()
+                  require("nzi.service.vim.effector").propose_delete(res.params);
+                end);
+              elseif res.method == "propose_choice" then
+                vim.schedule(function()
+                  require("nzi.service.vim.effector").propose_choice(res.params);
+                end);
+              elseif res.method == "execute_shell" then
+                vim.schedule(function()
+                  require("nzi.service.vim.effector").run_shell(res.params.command, nil, nil, false, res.params.signal_type);
+                end);
+              elseif res.id and M.callbacks[res.id] then
+                local cb = M.callbacks[res.id];
+                M.callbacks[res.id] = nil;
+                cb(res);
+              end
+            else
+              config.log("PYTHON RAW: " .. line, "BRIDGE");
             end
-          else
-            -- NOT JSON: Log to file, NOT the command window
-            config.log("PYTHON RAW: " .. line, "BRIDGE");
           end
         end
       end
@@ -69,7 +83,17 @@ function M.ensure_engine()
         end
       end
     end,
+    on_exit = function(_, code)
+      config.log("PYTHON PROCESS EXITED with code " .. code, "BRIDGE");
+      M.job_id = nil;
+    end
   });
+
+  if M.job_id <= 0 then
+    local err = "Failed to start Python bridge (code " .. M.job_id .. ")";
+    M.job_id = nil;
+    error(err);
+  end
 
   return M.job_id;
 end
@@ -92,7 +116,11 @@ function M.request_sync(method, params)
     result = res;
   end
 
-  vim.fn.chansend(M.job_id, payload .. "\n");
+  local ok_send, err_send = pcall(vim.fn.chansend, M.job_id, payload .. "\n");
+  if not ok_send then
+    M.job_id = nil; -- Force restart on next call
+    error("Failed to send to Python bridge: " .. tostring(err_send));
+  end
 
   -- Wait for result (Block Lua)
   vim.wait(10000, function() return result ~= nil end, 10);
