@@ -105,9 +105,10 @@ function M.interpolate(bufnr)
         engine.run_loop(content, "ask", false, nil, selection);
       elseif type == "run" then
         require("nzi.tools.shell").run(content);
-      elseif type == "instruct" then
-        engine.run_loop(content, "instruct", false, file, selection);
-      elseif type == "internal" then
+      elseif type == "act" then
+        engine.run_loop(content, "act", false, file, selection);
+      elseif type == "ask" then
+
         require("nzi.core.commands").run(content);
       end
     end);

@@ -20,15 +20,15 @@
     </sch:rule>
     
     <sch:rule context="user">
-      <sch:assert test="ask or instruct or shell or error or answer">
-        Every user envelope must contain a valid interaction tag (ask, instruct, shell, error, or answer).
+      <sch:assert test="ask or act or shell or error or answer">
+        Every user envelope must contain a valid interaction tag (ask, act, shell, error, or answer).
       </sch:assert>
     </sch:rule>
 
     <!-- The "Ask" Constraint: Inquiry-only turns cannot perform destructive actions -->
     <sch:rule context="turn[user/ask]/assistant/content">
-      <sch:assert test="not(edit or create or delete or shell or choice)">
-        An inquiry (ask) turn cannot be answered with state-changing model actions (edit, shell, choice, etc.), but may use discovery tools (read, lookup, env).
+      <sch:assert test="not(edit or create or delete or shell or prompt_user)">
+        An inquiry (ask) turn cannot be answered with state-changing model actions (edit, shell, prompt_user, etc.), but may use discovery tools (read, lookup, env).
       </sch:assert>
     </sch:rule>
 

@@ -119,20 +119,20 @@ function M.setup(opts)
       local type = "ask";
       if first_char == "?" or first_char == ":" then
         instruction = args:sub(2):gsub("^%s*", "");
-        if first_char == ":" then type = "instruct" end
+        if first_char == ":" then type = "act" end
       end
       
       if line1 ~= line2 or (opts.range > 0) then
         local selection = engine.get_visual_selection();
-        local target_file = (type == "instruct") and selection.file or nil;
+        local target_file = (type == "act") and selection.file or nil;
         engine.run_loop(instruction, type, true, target_file, selection);
         return;
       end
 
-      if type == "instruct" then
+      if type == "act" then
         local cur_file = vim.api.nvim_buf_get_name(0);
         local relative_file = vim.fn.fnamemodify(cur_file, ":.");
-        engine.run_loop(instruction, "instruct", true, relative_file);
+        engine.run_loop(instruction, "act", true, relative_file);
       else
         engine.run_loop(instruction, "ask", true);
       end

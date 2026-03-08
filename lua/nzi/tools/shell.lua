@@ -109,7 +109,7 @@ function M.run_shell(command, bufnr, line, silent, signal_type)
           -- Automated Retry Loop (Ralph/Test)
           if config.options.yolo and (s_type == "test" or s_type == "ralph") then
             vim.schedule(function()
-              require("nzi.service.llm.bridge").run_loop("Diagnose and resolve the test failure.", "instruct");
+              require("nzi.service.llm.bridge").run_loop("Diagnose and resolve the test failure.", "act");
             end);
           end
         end

@@ -24,7 +24,7 @@ Unlike competing agents, NZI maintains an especially lean system prompt. We don'
 
 1.  **Requirement**: A Python environment with `pip install litellm lxml`.
 2.  **Environment**: Set `OPENROUTER_API_KEY` (or your preferred provider's key) in your `.env` or shell.
-3.  **The Trigger**: In any buffer, type `AI: Write a hello world function` and save the file.
+3.  **The Trigger**: In any buffer, type `AI: Act on this code` and save the file.
 4.  **The Review**: A **vimdiff** tab will open. Use `do` (diff obtain) or `dp` (diff put) to merge changes, then run `\aD` to accept and save.
 
 ## Requirements
@@ -103,7 +103,7 @@ The modal is your persistent log of the current session.
 
 | Mode | Symbol | CLI | Key | In-Code | Outcome |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Instruct** | `:` | `:AI: ...` | `\a:` | `AI: ...` | Surgical Edit / Diff |
+| **Act** | `:` | `:AI: ...` | `\a:` | `AI: ...` | Surgical Edit / Diff |
 | **Ask** | `?` | `:AI? ...` | `\a?` | `AI? ...` | Response in Modal |
 | **Run** | `!` | `:AI! ...` | `\a!` | `AI! ...` | TODO: UNVERIFIED - Project output as directive |
 | **Internal** | `/` | `:AI/ ...` | `\a/` | - | State/Context Control |
@@ -117,7 +117,7 @@ NZI uses a `<leader>a` prefix for quick command access.
 | Key | Action | Mode |
 | :--- | :--- | :--- |
 | **`\aa`** | **Toggle Modal** (AI Interaction window) | Normal |
-| **`\a:`** | **Instruct**: Prompt for code modification | Normal/Visual |
+| **`\a:`** | **Act**: Prompt for code modification | Normal/Visual |
 | **`\a?`** | **Ask**: Prompt for analysis | Normal/Visual |
 | **`\a!`** | **Run**: Prompt for command execution | Normal/Visual |
 | **`\a/`** | **Internal**: Prompt for control command | Normal/Visual |
@@ -148,7 +148,7 @@ Every turn from the user is a MISSION carried in one of two tags. Feedback signa
 | Tag | Mission Type | Purpose |
 | :--- | :--- | :--- |
 | **`<ask>`** | Inquiry | Pure analysis; only read-only discovery tools allowed. |
-| **`<instruct>`** | Action | Directive for state-changing modifications. |
+| **`<act>`** | Action | Directive for state-changing modifications. |
 
 ### 2. Model Actions (Outgoing Assistant Data)
 The assistant communicates via a direct projection of the LLM response.
@@ -189,7 +189,7 @@ NZI provides structured environment data via `<history>` sub-tags.
 When executing a shell command with a visual selection:
 *   **No Command**: `:AI!` — Runs the selected text directly in the shell.
 *   **With Command**: `:AI! command` — Runs `command selected_text`.
-*   **Output**: TODO: UNVERIFIED - Projected as directive inside an `<instruct>` mission.
+*   **Output**: TODO: UNVERIFIED - Projected as directive inside an `<act>` mission.
 
 ---
 *Sanitized. Structured. Assistant.*

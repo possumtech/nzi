@@ -6,7 +6,7 @@ This is the canonical source of truth for **nzi** development, technical specifi
 
 ### Recent Accomplishments
 - [x] Secured "Brutal Foundation" with 22 live model unit tests.
-- [x] Implemented "Unified Directive" model: All turns are Missions (<ask>/<instruct>).
+- [x] Implemented "Unified Directive" model: All turns are Missions (<ask>/<act>).
 - [x] Achieved "Zero-Unwrap" fidelity: Assistant turns are direct projections of LiteLLM data.
 - [x] Established technical <lookup> tag to replace ambiguous search/grep.
 - [x] Implemented heuristic healing for malformed SEARCH/REPLACE blocks.
@@ -27,7 +27,7 @@ Every user interaction MUST be a mission. Technical feedback is carried via the 
 | Tag | Attributes | Mission Type |
 | :--- | :--- | :--- |
 | **`<ask>`** | - | Pure inquiry; only read-only tools allowed. |
-| **`<instruct>`** | - | Directive for state-changing action. |
+| **`<act>`** | - | Directive for state-changing action. |
 
 ### Feedback Signals (Inside <selection>)
 | Type | Status | Boilerplate Directive |
@@ -49,7 +49,7 @@ Every user interaction MUST be a mission. Technical feedback is carried via the 
 - [ ] TODO: IMPLEMENTATION GAP - **Vim Effector**: Opening diffs based on healed SEARCH/REPLACE blocks.
 
 ### Interaction Modes
-- [x] **Instruct** (`:`): Directive action via `<instruct>`.
+- [x] **Act** (`:`): Directive action via `<act>`.
 - [x] **Ask** (`?`): Pure inquiry via `<ask>`.
 - [ ] TODO: UNVERIFIED - **Run** (`!`): Terminal output projected as `<selection type="shell">` inside a mission.
 

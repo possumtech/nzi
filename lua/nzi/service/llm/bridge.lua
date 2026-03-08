@@ -20,7 +20,7 @@ function M.run_loop(content, mode, include_lsp, target_file, selection)
       target_file = target_file,
       selection = selection
     });
-    config.notify("AI is busy. Instruction enqueued (Queue size: " .. #M.queue .. ")", "info");
+    config.notify("AI is busy. Turn enqueued (Queue size: " .. #M.queue .. ")", "info");
     return;
   end
 
@@ -52,7 +52,7 @@ function M.run_loop(content, mode, include_lsp, target_file, selection)
   -- We wrap the RPC in a pcall to ensure M.finish() runs if Python is dead
   local ok, err = pcall(rpc.request_sync, "run_loop", {
     instruction = content,
-    mode = mode or "ask",
+    mode = mode or "act",
     user_data = {
       instruction = content,
       target_file = target_file or relative_cur,

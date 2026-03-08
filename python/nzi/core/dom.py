@@ -143,15 +143,15 @@ class SessionDOM:
         Creates a new turn in the Unified Directive model.
         user_data can be:
         - str: Simple instruction
-        - dict: { "type": "shell_pass", "command": "...", "content": "...", "mode": "instruct" }
+        - dict: { "type": "shell_pass", "command": "...", "content": "...", "mode": "act" }
         """
         turn = etree.SubElement(self.root, "turn")
         turn.set("id", str(turn_id))
         
         user = etree.SubElement(turn, "user")
         
-        # 1. Determine Mode (ask/instruct)
-        mode = "instruct"
+        # 1. Determine Mode (ask/act)
+        mode = "act"
         if isinstance(user_data, dict) and user_data.get("mode") == "ask":
             mode = "ask"
         
@@ -187,7 +187,7 @@ class SessionDOM:
         turn.set("id", str(turn_id))
         
         user = etree.SubElement(turn, "user")
-        mission = etree.SubElement(user, "instruct")
+        mission = etree.SubElement(user, "act")
         self._project_user_data(mission, user_data)
         
         assistant = etree.SubElement(turn, "assistant")

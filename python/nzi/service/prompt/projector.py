@@ -48,7 +48,7 @@ def project_dom_to_messages(dom, system_prompt_raw=None):
             if roadmap_node is not None:
                 primordial_text += f"PROJECT_ROADMAP:\n{etree.tostring(roadmap_node, encoding='unicode').strip()}\n\n"
 
-            # Mission Second
+            # Turn Second
             user_node = t.find("user")
             if user_node is not None:
                 for mission in user_node:
@@ -75,31 +75,32 @@ def project_dom_to_messages(dom, system_prompt_raw=None):
                     messages.append({"role": "assistant", "content": "\n".join(asst_parts)})
             
             continue
+# 2. Subsequent Turns (N > 0)
+user_node = t.find("user")
+user_text = ""
 
-        # 2. Subsequent Turns (N > 0)
-        user_node = t.find("user")
-        user_text = ""
-        
-        # A. Context First (Inside Turn)
-        history_node = t.find("history")
-        if history_node is not None:
-            parts = []
-            for f in history_node.xpath(".//file"):
-                pf = etree.Element("file")
-                pf.set("name", f.get("name") or f.get("path"))
-                pf.set("type", f.get("type"))
-                pf.text = f.text
-                parts.append(etree.tostring(pf, encoding='unicode').strip())
-            if parts:
-                user_text += "CONTEXT:\n" + "\n".join(parts) + "\n\n"
-        
-        if user_node is not None:
-            # B. Directive Second (Selection then Instruction)
-            for mission in user_node:
-                for sel in mission.findall("selection"):
-                    user_text += etree.tostring(sel, encoding='unicode').strip() + "\n"
-                if mission.text:
-                    user_text += mission.text.strip() + "\n"
+# A. Context First (Inside Turn)
+history_node = t.find("history")
+if history_node is not None:
+    parts = []
+    for f in history_node.xpath(".//file"):
+        pf = etree.Element("file")
+        pf.set("name", f.get("name") or f.get("path"))
+        pf.set("type", f.get("type"))
+        pf.text = f.text
+        parts.append(etree.tostring(pf, encoding='unicode').strip())
+    if parts:
+        user_text += "CONTEXT:\n" + "\n".join(parts) + "\n\n"
+
+if user_node is not None:
+    # B. Directive Second (Selection then Mission)
+    for mission in user_node:
+        # Selections then instructions
+        for sel in mission.findall("selection"):
+            user_text += etree.tostring(sel, encoding='unicode').strip() + "\n"
+        if mission.text:
+            user_text += mission.text.strip() + "\n"
+
         
         if user_text.strip():
             messages.append({"role": "user", "content": user_text.strip()})

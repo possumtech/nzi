@@ -47,7 +47,7 @@
         <!-- The interaction choice (The Mission) -->
         <xs:choice>
           <xs:element ref="ask"/>
-          <xs:element ref="instruct"/>
+          <xs:element ref="act"/>
         </xs:choice>
       </xs:sequence>
     </xs:complexType>
@@ -63,7 +63,7 @@
     </xs:complexType>
   </xs:element>
 
-  <xs:element name="instruct">
+  <xs:element name="act">
     <xs:complexType mixed="true">
       <xs:sequence>
         <xs:element ref="selection" minOccurs="0" maxOccurs="unbounded"/>

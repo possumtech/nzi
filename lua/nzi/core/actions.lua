@@ -24,7 +24,7 @@ end
 local commands = require("nzi.core.commands");
 
 -- Core Interaction Missions
-function M.instruct() prompt_mission(":", "Instruct") end
+function M.act() prompt_mission(":", "Act") end
 function M.ask() prompt_mission("?", "Ask") end
 function M.run() prompt_mission("!", "Run") end
 function M.internal() prompt_mission("/", "Internal") end
@@ -97,7 +97,7 @@ function M.apply_default_mappings()
     { mode = "n", key = "<leader>aX", action = M.reset, desc = "AI: Abort and Reset session" },
     { mode = "n", key = "<leader>ak", action = M.run_tests, desc = "AI: Run project tests" },
     { mode = "n", key = "<leader>aK", action = M.run_ralph, desc = "AI: Run Ralph-style tests" },
-    { mode = { "n", "v" }, key = "<leader>a:", action = M.instruct, desc = "AI: Instruct" },
+    { mode = { "n", "v" }, key = "<leader>a:", action = M.act, desc = "AI: Act" },
     { mode = { "n", "v" }, key = "<leader>a?", action = M.ask, desc = "AI: Ask" },
     { mode = { "n", "v" }, key = "<leader>a!", action = M.run, desc = "AI: Run" },
     { mode = { "n", "v" }, key = "<leader>a/", action = M.internal, desc = "AI: Internal" },
