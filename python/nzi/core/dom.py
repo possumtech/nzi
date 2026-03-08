@@ -119,7 +119,7 @@ class SessionDOM:
             
         for item in ctx_list:
             f = etree.SubElement(files_container, "file")
-            f.set("path", item["name"]) # Use 'path' per XSD
+            f.set("path", item["path"]) # Use 'path' per XSD
             f.set("type", item.get("state", "map"))
             f.set("size", str(item.get("size", "-1")))
             if item.get("content"):
@@ -310,6 +310,13 @@ class SessionDOM:
             p_node.text = llm_result["provider"]
 
         self._active_turn = None
+        self.validate_strictly()
+
+    def delete_after(self, turn_id):
+        """Removes the turn with the given ID and all subsequent turns."""
+        turns = self.root.xpath(f"//turn[@id >= {turn_id}]")
+        for t in turns:
+            self.root.remove(t)
         self.validate_strictly()
 
     def xpath(self, expression):

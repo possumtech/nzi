@@ -180,4 +180,25 @@ function M.close_tag()
   M.render_history();
 end
 
+--- Delete the turn under the cursor and all subsequent turns
+function M.rewind()
+  if not M.bufnr or not vim.api.nvim_buf_is_valid(M.bufnr) then return end
+  
+  local cursor_row = vim.api.nvim_win_get_cursor(0)[1] - 1;
+  -- Search forward from start to find all preceding turn marks
+  local marks = vim.api.nvim_buf_get_extmarks(M.bufnr, M.turn_ns_id, {0, 0}, {cursor_row, -1}, {});
+  
+  if #marks > 0 then
+    -- The LAST mark before or at the cursor is our target turn
+    local mid = marks[#marks][1];
+    local turn_id = M.mark_to_turn[mid];
+    if turn_id then
+      local config = require("nzi.core.config");
+      local session = require("nzi.dom.session");
+      config.notify("Rewinding history from turn " .. turn_id, vim.log.levels.WARN);
+      session.delete_after(turn_id);
+    end
+  end
+end
+
 return M;

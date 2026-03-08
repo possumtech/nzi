@@ -44,7 +44,7 @@ class VimBridge:
     def setup(self, xsd_path, sch_path, project_root, debug=False):
         self.project_root = project_root
         load_env(project_root)
-        self.dom = SessionDOM(xsd_path, sch_path, debug_mode=debug)
+        self.dom = SessionDOM(xsd_path, sch_path)
         self.context = ContextService(project_root)
         
         # Load the Constitution (System Prompt) into Turn 0
@@ -61,6 +61,9 @@ class VimBridge:
         logging.log(level, f"[BRIDGE] {msg}")
 
     def send_to_vim(self, payload):
+        # Auto-inject the latest XML state into every response to Lua
+        if self.dom and "xml" not in payload:
+            payload["xml"] = self.dom.dump_xml()
         print(json.dumps(payload), flush=True)
 
     def handle_request(self, req):
@@ -97,6 +100,19 @@ class VimBridge:
 
             elif method == "add_turn":
                 self.dom.add_turn(params["id"], params["user_data"], params.get("assistant"), params.get("metadata"))
+                self.send_to_vim({"success": True, "id": rid})
+                self.send_to_vim({"method": "refresh_ui"})
+
+            elif method == "hydrate":
+                # Create a new DOM from the provided XML string
+                xsd = os.path.join(self.project_root, "nzi.xsd")
+                sch = os.path.join(self.project_root, "nzi.sch")
+                self.dom = SessionDOM(xsd, sch, xml_str=params.get("xml_str"))
+                self.send_to_vim({"success": True, "id": rid})
+                self.send_to_vim({"method": "refresh_ui"})
+
+            elif method == "delete_after":
+                self.dom.delete_after(params.get("turn_id"))
                 self.send_to_vim({"success": True, "id": rid})
                 self.send_to_vim({"method": "refresh_ui"})
 
@@ -153,13 +169,57 @@ class VimBridge:
             return
 
         # 6. Parse and Finalize DOM
+        # We pass the full result object for Zero-Unwrap fidelity
         self.dom.finalize_turn(full_result)
         self.send_to_vim({"method": "refresh_ui"})
         
         # 7. Execute Actions
-        actions = self.parser.extract_actions(full_result)
+        # In the new model, content holds the protocol tags.
+        # full_result is a dict: {content, reasoning_content, model, provider}
+        content_str = full_result.get("content", "")
+        actions = self.parser.extract_actions(content_str)
+        
         for action in actions:
-            self.effector.dispatch(action)
+            if action.name == "edit":
+                blocks = self.parser.parse_edit_blocks(action.content)
+                self.effector.propose_edit({
+                    "file": action.attributes.get("file"),
+                    "blocks": blocks
+                })
+            elif action.name == "create":
+                self.effector.propose_create({
+                    "file": action.attributes.get("file"),
+                    "content": action.content
+                })
+            elif action.name == "delete":
+                self.effector.propose_delete({
+                    "file": action.attributes.get("file")
+                })
+            elif action.name == "read":
+                # Automated Discovery Loop
+                filename = action.attributes.get("file")
+                content = self.effector.handle_read(filename)
+                self.execute_loop({
+                    "type": "env",
+                    "status": "pass",
+                    "file": filename,
+                    "content": content,
+                    "instruction": f"Read file {filename}. Proceed."
+                }, rid)
+            elif action.name == "lookup":
+                # Automated Discovery Loop
+                pattern = action.content
+                results = self.effector.handle_lookup(pattern)
+                self.execute_loop({
+                    "type": "env",
+                    "status": "pass",
+                    "content": results,
+                    "instruction": f"Lookup results for '{pattern}'. Proceed."
+                }, rid)
+            elif action.name == "shell":
+                self.effector.run_shell(action.content)
+            elif action.name == "env":
+                self.effector.run_shell(action.content)
 
         self.send_to_vim({"success": True, "id": rid, "actions_executed": len(actions)})
 

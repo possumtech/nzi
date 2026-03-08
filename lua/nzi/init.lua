@@ -173,7 +173,7 @@ function M.setup(opts)
       local parser = require("nzi.dom.parser");
       local row, type, content = parser.find_in_lines(lines);
       if type then
-        engine.execute_range(row, row);
+        engine.execute_interpolation(row);
       end
     end
   });

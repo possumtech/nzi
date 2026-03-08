@@ -67,5 +67,31 @@ end
 -- Restore mock
 vim.ui.input = original_input;
 
+-- 5. Ghost Line Interpolation
+print("Testing Ghost Line interpolation (deletion + line below)...");
+last_request = nil;
+vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "AI: fix the line below", "print('buggy code')" });
+vim.cmd("doautocmd BufWritePost");
+
+-- Verify instruction line was deleted
+local remaining_lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false);
+if #remaining_lines == 1 and remaining_lines[1] == "print('buggy code')" then
+  print("  [PASS] Instruction line deleted correctly.")
+else
+  error("  [FAIL] Instruction line NOT deleted. Lines: " .. vim.inspect(remaining_lines))
+end
+
+-- Verify mission was triggered with the line below as selection
+if last_request and last_request.params.user_data.selection then
+  local sel = last_request.params.user_data.selection;
+  if sel.text == "print('buggy code')" then
+    print("  [PASS] Mission triggered with correct 'Ghost Line' selection.")
+  else
+    error("  [FAIL] Ghost selection mismatch: " .. sel.text)
+  end
+else
+  error("  [FAIL] Ghost selection NOT found in request.")
+end
+
 print("Expanded Triggers E2E tests complete.");
 vim.cmd("qa!");

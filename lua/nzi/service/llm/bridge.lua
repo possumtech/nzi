@@ -19,14 +19,26 @@ function M.run_loop(content, mode, include_lsp, target_file, selection)
   M.is_busy = true;
   modal.set_thinking(true);
   
-  -- Gather current context state to sync once before the loop starts
+  -- 1. Gather Context & Prioritize current file
   local ctx_list = watcher.sync_list() or {};
+  local cur_file = vim.api.nvim_buf_get_name(0);
+  local relative_cur = (cur_file ~= "") and vim.fn.fnamemodify(cur_file, ":.") or nil;
 
-  -- 1. Sync State to DOM (Python reads the roadmap itself)
+  -- Move the current active file to the top of the context list for model attention
+  if relative_cur then
+    for i, item in ipairs(ctx_list) do
+      if item.name == relative_cur then
+        table.remove(ctx_list, i);
+        table.insert(ctx_list, 1, item);
+        break;
+      end
+    end
+  end
+
+  -- 2. Sync State to DOM
   dom_session.update_context(ctx_list, nil);
 
-  -- 2. Hand off to Python
-  -- We pass the instruction and the current configuration
+  -- 3. Hand off to Python
   local active_model = config.get_active_model();
   
   rpc.request_sync("run_loop", {
@@ -34,7 +46,7 @@ function M.run_loop(content, mode, include_lsp, target_file, selection)
     mode = mode or "ask",
     user_data = {
       instruction = content,
-      target_file = target_file,
+      target_file = target_file or relative_cur,
       selection = selection
     },
     config = {
@@ -47,6 +59,47 @@ function M.run_loop(content, mode, include_lsp, target_file, selection)
 
   M.is_busy = false;
   modal.set_thinking(false);
+end
+
+--- Execute a specific line as a 'Ghost Line' interpolation
+function M.execute_interpolation(row)
+  local bufnr = vim.api.nvim_get_current_buf();
+  local line = vim.api.nvim_buf_get_lines(bufnr, row - 1, row, false)[1];
+  local parser = require("nzi.dom.parser");
+  local type, content = parser.parse_line(line);
+
+  if not type then return end
+
+  -- 1. Immediate Cleanup: Delete the instruction line
+  vim.api.nvim_buf_set_lines(bufnr, row - 1, row, false, {});
+
+  -- 2. Target Selection: Line below the original instruction
+  -- Note: After deletion, the "line below" is now at 'row'
+  local total_lines = vim.api.nvim_buf_line_count(bufnr);
+  local selection = nil;
+  local cur_file = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":.");
+
+  if row <= total_lines then
+    local target_line = vim.api.nvim_buf_get_lines(bufnr, row - 1, row, false)[1];
+    selection = {
+      file = cur_file,
+      start_line = row,
+      start_col = 1,
+      end_line = row,
+      end_col = #target_line + 1,
+      text = target_line,
+      mode = "V" -- Treat as line selection
+    }
+  end
+
+  -- 3. Start Mission
+  if type == "run" then
+    require("nzi.service.vim.effector").run_shell(content);
+  elseif type == "internal" then
+    require("nzi.core.commands").run(content);
+  else
+    M.run_loop(content, type, false, cur_file, selection);
+  end
 end
 
 --- Helper to capture visual selection and start a loop

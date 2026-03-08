@@ -20,6 +20,11 @@ function M.ensure_engine()
         if line ~= "" then
           local ok, res = pcall(vim.fn.json_decode, line);
           if ok and res then
+            -- Proactive Cache Sync
+            if res.xml then
+              require("nzi.dom.session").cache_xml = res.xml;
+            end
+
             if res.method == "refresh_ui" then
               -- Pure projection: Just re-render what Python says is true
               vim.schedule(function()

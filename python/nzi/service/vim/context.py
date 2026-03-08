@@ -40,7 +40,7 @@ class ContextService:
                 size = os.path.getsize(full_path)
                 
             final_context.append({
-                "name": path,
+                "path": path,
                 "state": "map",
                 "size": str(size)
             })
@@ -48,7 +48,7 @@ class ContextService:
         # 2. Promote/Update with real buffer content from Vim
         for item in raw_vim_items:
             name = item['name']
-            existing = next((x for x in final_context if x["name"] == name), None)
+            existing = next((x for x in final_context if x["path"] == name), None)
             
             full_path = os.path.join(self.project_root, name)
             size = -1
@@ -62,7 +62,7 @@ class ContextService:
                     existing["content"] = item["content"]
             else:
                 final_context.append({
-                    "name": name,
+                    "path": name,
                     "state": item.get("state", "active"),
                     "size": str(size),
                     "content": item.get("content")

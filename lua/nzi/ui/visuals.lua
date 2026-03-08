@@ -100,6 +100,25 @@ end
 -- EXPOSE GLOBALLY for Vim statusline (prevents E117 if require is tricky)
 _G.nzi_statusline = M.get_statusline;
 
+--- Update the visual highlights for a specific buffer
+function M.update_buffer(bufnr)
+  if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then return end
+  
+  local context = require("nzi.service.vim.watcher");
+  local state = context.get_state(bufnr);
+  
+  -- Map state to highlight groups
+  local hl_map = {
+    active = "NziStatusActive",
+    read = "NziStatusRead",
+    ignore = "NziStatusIgnore"
+  }
+  
+  -- We use window-local highlights for background shifts
+  -- For now, let's just trigger a statusline refresh
+  M.refresh();
+end
+
 function M.refresh()
   vim.cmd("redrawstatus");
 end
