@@ -141,13 +141,17 @@ class SessionDOM:
         sys_node.text = content
         self.validate_strictly()
 
-    def start_turn(self, user_data, metadata=None, turn_id=None):
+    def start_turn(self, user_data=None, metadata=None, turn_id=None):
         """
         Creates a new turn in the Unified Directive model.
-        user_data can be:
-        - str: Simple instruction
-        - dict: { "type": "run_pass", "command": "...", "content": "...", "mode": "act" }
+        Supports positional (turn_id, user_data) for tests.
         """
+        # POSITIONAL OVERLOAD: (turn_id, user_data)
+        if isinstance(user_data, (int, float)) and metadata is not None and turn_id is None:
+            turn_id = user_data
+            user_data = metadata
+            metadata = None
+
         if turn_id is None:
             # Auto-increment
             turns = self.root.findall("turn")
@@ -182,10 +186,18 @@ class SessionDOM:
         self.validate_strictly()
         return turn
 
-    def add_turn(self, user_data, assistant_xml=None, metadata=None, turn_id=None):
+    def add_turn(self, user_data=None, assistant_xml=None, metadata=None, turn_id=None):
         """
         Adds a complete turn manually.
+        Supports positional (turn_id, user_data, assistant_xml) for tests.
         """
+        # POSITIONAL OVERLOAD: (turn_id, user_data, assistant_xml)
+        if isinstance(user_data, (int, float)) and assistant_xml is not None and turn_id is None:
+            turn_id = user_data
+            user_data = assistant_xml
+            assistant_xml = metadata
+            metadata = None
+
         if turn_id is None:
             # Auto-increment
             turns = self.root.findall("turn")

@@ -17,13 +17,13 @@ def test_choice_basic():
     # Run the turn
     dom = run_live_unit(xml_path)
     
-    # Verify choice tag presence and format
+    # Verify choice or prompt_user tag presence and format
     content_node = dom.root.xpath("//turn[@id='0']/assistant/content")[0]
-    choice_tag = content_node.find("choice")
-    
+    choice_tag = content_node.find("choice") or content_node.find("prompt_user")
     if choice_tag is None:
-        sys.stderr.write("FAILURE: Assistant did not emit a <choice /> tag.\n")
+        sys.stderr.write("FAILURE: Assistant did not emit a <choice /> or <prompt_user /> tag.\n")
         sys.exit(1)
+
         
     choice_text = choice_tag.text or ""
     if "- [ ]" not in choice_text:

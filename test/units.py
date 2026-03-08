@@ -28,10 +28,12 @@ def run_test(test_path):
             env['PYTHONPATH'] = f"{python_dir}:{project_root}"
 
         cmd = get_python_cmd() + [test_path]
-        result = subprocess.run(cmd, 
-                                env=env, 
-                                capture_output=True, 
-                                text=True)
+        try:
+            result = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=20)
+        except subprocess.TimeoutExpired:
+            print(f"TIMEOUT: {test_path} (20s limit reached)")
+            return False
+
         
         # Print ONLY the actual test output (the session XML)
         if result.stdout:
