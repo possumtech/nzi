@@ -33,7 +33,7 @@ Modify files by wrapping SEARCH/REPLACE blocks inside <edit /> tags.
 * Every SEARCH block must be unique and match the destination file exactly.
 
 ## TURN TERMINATION
-* <response>The text body of your response. Must end with either <summary /> or <choice />.</response>
+Every turn MUST end with exactly one of the following tags:
 * <summary>STRICTLY ONE LINE, UNDER 80 CHARS. The direct answer or a summary of actions.</summary>
 * <choice>Question? - [ ] Option 1 - [ ] Option 2</choice>
 

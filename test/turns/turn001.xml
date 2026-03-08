@@ -6,10 +6,8 @@
     </user>
     <assistant>
       <content>
-        <summary>Project initialized.</summary>
-        <response>
-          <summary>Ready to assist.</summary>
-        </response>
+        Project initialized.
+        <summary>Ready to assist.</summary>
       </content>
     </assistant>
   </turn>
@@ -19,11 +17,9 @@
     </user>
     <assistant>
       <content>
-        <summary>Checking status...</summary>
-        <response>
-          <summary>System is idle.</summary>
-        </response>
+        System is idle.
         <read file="README.md" />
+        <summary>Status checked.</summary>
       </content>
     </assistant>
   </turn>
