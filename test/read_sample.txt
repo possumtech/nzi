@@ -1,0 +1,4 @@
+This is a sample file for the unit_read_basic test.
+It contains multiple lines.
+Special characters: < > & " '
+Character-perfect reading is required.

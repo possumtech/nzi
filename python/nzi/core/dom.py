@@ -13,7 +13,9 @@ class SessionDOM:
     Single Source of Truth (SSOT) for the interaction session.
     Manages the XML tree and enforces schema validation.
     """
-    def __init__(self, xsd_path, sch_path, debug_mode=False):
+    def __init__(self, xsd_path, sch_path, xml_str=None):
+        self.xsd_path = xsd_path
+        self.sch_path = sch_path
         try:
             with open(xsd_path, 'rb') as f:
                 self.xsd = etree.XMLSchema(etree.parse(f))
@@ -22,13 +24,18 @@ class SessionDOM:
         except Exception as e:
             raise RuntimeError(f"Schema Load Error: {str(e)}")
 
-        self.root = etree.Element("session")
+        if xml_str:
+            self.root = etree.fromstring(xml_str)
+        else:
+            self.root = etree.Element("session")
+            self._active_turn = None
+            self._active_content_node = None
+            # 1. Initialize structural baseline
+            self._add_preamble()
+
         self._active_turn = None
         self._active_content_node = None
-        
-        # 1. Initialize structural baseline
-        self._add_preamble()
-        
+
         # 2. MANDATORY VALIDATION
         self.validate_strictly()
 
@@ -95,28 +102,28 @@ class SessionDOM:
 
         # 2. Add files to the <history> tag of the CURRENT ACTIVE TURN
         target_turn = self._active_turn if self._active_turn is not None else turn0
+        user = target_turn.find("user")
+        if user is None:
+            user = etree.SubElement(target_turn, "user")
         
-        hist = target_turn.find("history")
+        hist = user.find("history")
         if hist is None:
             hist = etree.Element("history")
-            # Insert before user
-            user = target_turn.find("user")
-            if user is not None:
-                user.addprevious(hist)
-            else:
-                target_turn.append(hist)
+            # Insert as first child of user
+            user.insert(0, hist)
         
-        for el in hist.findall("file"):
+        for el in hist.findall("files"):
             hist.remove(el)
+        
+        files_container = etree.SubElement(hist, "files")
             
         for item in ctx_list:
-            f = etree.Element("file")
+            f = etree.SubElement(files_container, "file")
             f.set("path", item["name"]) # Use 'path' per XSD
             f.set("type", item.get("state", "map"))
             f.set("size", str(item.get("size", "-1")))
             if item.get("content"):
                 f.text = item["content"]
-            hist.append(f)
         
         self.validate_strictly()
 
@@ -175,13 +182,14 @@ class SessionDOM:
     def finalize_turn(self, llm_result):
         """
         Zero-Unwrap Fidelity: Direct projection of LLM data into the DOM.
-        llm_result: { "content": "...", "reasoning_content": "...", "model": "...", "provider": "..." }
+        Ensures strict XSD sequence: reasoning_content?, content, model?, provider?
         """
         if self._active_turn is None:
             return
 
         assistant = self._active_turn.find("assistant")
-        if assistant is None: return
+        if assistant is None:
+            assistant = etree.SubElement(self._active_turn, "assistant")
 
         # Remove the temporary streaming node
         if self._active_content_node is not None:
@@ -190,48 +198,78 @@ class SessionDOM:
             except ValueError: pass
             self._active_content_node = None
 
+        def get_insertion_point(parent, before_tags):
+            # Finds the first existing tag from before_tags to insert before, or returns None.
+            for tag in before_tags:
+                node = parent.find(tag)
+                if node is not None:
+                    return node
+            return None
+
         # 1. Integrate Reasoning (The Gift)
         reasoning = llm_result.get("reasoning_content")
         if reasoning:
-            rc_node = etree.SubElement(assistant, "reasoning_content")
+            rc_node = assistant.find("reasoning_content")
+            if rc_node is None:
+                rc_node = etree.Element("reasoning_content")
+                # Insert before everything
+                point = get_insertion_point(assistant, ["content", "model", "provider"])
+                if point is not None:
+                    point.addprevious(rc_node)
+                else:
+                    assistant.append(rc_node)
             rc_node.text = reasoning
 
         # 2. Integrate Content (The Protocol + Conversational Body)
-        # We domify this directly into a <content> element.
         content_str = llm_result.get("content", "").strip()
-        content_node = etree.SubElement(assistant, "content")
+        content_node = assistant.find("content")
+        if content_node is None:
+            content_node = etree.Element("content")
+            # Insert before metadata
+            point = get_insertion_point(assistant, ["model", "provider"])
+            if point is not None:
+                point.addprevious(content_node)
+            else:
+                assistant.append(content_node)
         
+        # Clear any existing content
+        content_node.text = None
+        for child in list(content_node):
+            content_node.remove(child)
+
         try:
-            # We parse the content string as an XML fragment to handle mixed content
-            # and protocol tags (edit, summary, etc.) without losing filler text.
-            # We wrap in a dummy root to parse multiple top-level tags + text.
             parser = etree.XMLParser(recover=True)
             wrapped_content = f"<root>{content_str}</root>"
             fragment = etree.fromstring(wrapped_content, parser=parser)
             
-            # UNWRAP REDUNDANT <content> TAGS
-            # If the model itself wrapped its response in <content>, we unwrap it
-            # to avoid <content><content>...</content></content> which violates XSD.
             actual_content = fragment
             first_child = fragment.find("content")
             if first_child is not None and len(fragment) == 1 and not (fragment.text and fragment.text.strip()):
                 actual_content = first_child
             
-            # Transfer all text and child nodes to the content_node
             content_node.text = actual_content.text
             for child in actual_content:
                 content_node.append(child)
         except Exception as e:
-            # Fallback to raw text if parsing fails completely
             logging.error(f"Failed to domify content: {e}")
             content_node.text = content_str
 
         # 3. Add Metadata
         if llm_result.get("model"):
-            m_node = etree.SubElement(assistant, "model")
+            m_node = assistant.find("model")
+            if m_node is None:
+                m_node = etree.Element("model")
+                point = get_insertion_point(assistant, ["provider"])
+                if point is not None:
+                    point.addprevious(m_node)
+                else:
+                    assistant.append(m_node)
             m_node.text = llm_result["model"]
+
         if llm_result.get("provider"):
-            p_node = etree.SubElement(assistant, "provider")
+            p_node = assistant.find("provider")
+            if p_node is None:
+                p_node = etree.SubElement(assistant, "provider")
             p_node.text = llm_result["provider"]
 
         self._active_turn = None
