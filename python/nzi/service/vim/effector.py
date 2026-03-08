@@ -49,7 +49,15 @@ class VimEffector:
         
         healed = any(b['healed'] for b in blocks)
         if healed:
-            return "Edit applied via heuristic healing. Warning: SEARCH/REPLACE markers were malformed. Use strictly: <<<<<<< SEARCH [code] ======= [code] >>>>>>> REPLACE"
+            return (
+                "Edit applied via heuristic healing. Warning: SEARCH/REPLACE markers were malformed.\n"
+                "Please use strictly:\n"
+                "<<<<<<< SEARCH\n"
+                "[exact code to find]\n"
+                "=======\n"
+                "[new code to replace it with]\n"
+                ">>>>>>> REPLACE"
+            )
         
         return "Edit proposed in Vim."
 

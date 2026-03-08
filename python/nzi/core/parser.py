@@ -38,35 +38,38 @@ class ActionParser:
 
     def parse_edit_blocks(self, text):
         """
-        Parses SEARCH/REPLACE blocks. 
-        Supports standard markers: <<<<<<< SEARCH, =======, >>>>>>> REPLACE
-        Heuristically heals blocks with missing brackets or minor drift.
-        Returns a list of dicts: {"search": str, "replace": str, "healed": bool}
+        Robustly parses one or more SEARCH/REPLACE blocks.
+        Finds pairs of anchors (SEARCH...=======...REPLACE) and extracts content.
+        Preserves all line breaks and indentation.
         """
         blocks = []
-        # 1. Try standard regex first
-        standard_pattern = re.compile(r'<<<<<<< SEARCH\n(.*?)\n=======\n(.*?)\n>>>>>>> REPLACE', re.DOTALL)
-        matches = standard_pattern.findall(text)
+        # Pattern looks for: Optional markers + Keyword + Newline -> Content -> ======= -> Content -> Optional markers + Keyword
+        # This handles both:
+        # <<<<<<< SEARCH          SEARCH
+        # code                    code
+        # =======         AND     =======
+        # code                    code
+        # >>>>>>> REPLACE         REPLACE
+        pattern = re.compile(
+            r'(?:<{3,}\s*)?SEARCH\n(.*?)\n={3,}\n(.*?)\n(?:>{3,}\s*)?REPLACE', 
+            re.DOTALL | re.MULTILINE
+        )
         
-        if matches:
-            for s, r in matches:
-                blocks.append({"search": s, "replace": r, "healed": False})
-            return blocks
-
-        # 2. Heuristic fallback: Split by '=======' if 'SEARCH' and 'REPLACE' keywords exist
-        if "SEARCH" in text and "REPLACE" in text and "=======" in text:
-            # Attempt to split the whole block
-            parts = re.split(r'\n?=======\n?', text)
-            if len(parts) == 2:
-                s_part = parts[0]
-                r_part = parts[1]
-                
-                # Clean up leftover keywords/markers
-                s_clean = re.sub(r'^(.*?)SEARCH\n?', '', s_part, flags=re.DOTALL).strip()
-                r_clean = re.sub(r'\n?>>>>>>> REPLACE.*$', '', r_part, flags=re.DOTALL).strip()
-                
-                blocks.append({"search": s_clean, "replace": r_clean, "healed": True})
-        
+        matches = pattern.finditer(text)
+        for match in matches:
+            search_content = match.group(1)
+            replace_content = match.group(2)
+            
+            # Determine if this specific block was healed
+            # (If it doesn't start with the full <<<<<<< marker)
+            is_healed = not match.group(0).startswith('<<<<<<<')
+            
+            blocks.append({
+                "search": search_content,
+                "replace": replace_content,
+                "healed": is_healed
+            })
+            
         return blocks
 
     def extract_actions(self, text):

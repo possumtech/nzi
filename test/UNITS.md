@@ -11,8 +11,8 @@ This document outlines the complete set of unit tests required to verify the int
 ## 2. Modification Protocol (State-Changing)
 - [x] **unit_create_basic**: Verify `<create>` with full file content and proper escaping.
 - [x] **unit_edit_surgical**: Verify `<edit>` with a single SEARCH/REPLACE block.
-- [ ] **unit_edit_multi**: Verify `<edit>` with multiple blocks in one file.
-- [ ] **unit_edit_cross_file**: Verify `<edit>` across multiple files in one turn.
+- [x] **unit_edit_multi**: Verify `<edit>` with multiple blocks in one file.
+- [x] **unit_edit_cross_file**: Verify `<edit>` across multiple files in one turn.
 - [ ] **unit_shell_basic**: Verify `<shell>` execution for destructive actions.
 - [ ] **unit_delete_basic**: Verify `<delete>` correctly targets and removes a file.
 
