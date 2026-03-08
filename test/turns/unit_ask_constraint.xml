@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session alias="unit-ask-constraint">
+  <turn id="0">
+    <user>
+      <ask>What is the current greeting in 'test/f1.py'? Do not change it.</ask>
+    </user>
+  </turn>
+</session>

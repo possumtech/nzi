@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session alias="unit-delete-basic">
+  <turn id="0">
+    <user>
+      <instruct>Delete the temporary file 'test/read_sample.txt'. Use the specialized 'delete' protocol tag, not a shell command.</instruct>
+    </user>
+  </turn>
+</session>
