@@ -34,13 +34,15 @@ def run_test(test_path):
                                 capture_output=True, 
                                 text=True)
         
+        print(f"--- STDOUT ({test_path}) --- \n{result.stdout}")
+        if result.stderr:
+            print(f"--- STDERR ({test_path}) --- \n{result.stderr}")
+
         if result.returncode == 0:
             print(f"  [PASS] {test_path}")
             return True
         else:
             print(f"  [FAIL] {test_path}")
-            print(f"--- STDOUT --- \n{result.stdout}")
-            print(f"--- STDERR --- \n{result.stderr}")
             return False
             
     except Exception as e:

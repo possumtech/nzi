@@ -19,10 +19,13 @@ def project_dom_to_messages(dom, system_prompt_raw=None):
         if tid == "0":
             # A. System Constitution -> role: system
             # Check for system directly under turn OR under agent
-            sys_node = t.find("system") or t.find("agent/system")
+            sys_node = t.find("system")
+            if sys_node is None:
+                sys_node = t.find("agent/system")
+            
             sys_content = ""
             if sys_node is not None and sys_node.text:
-                sys_content = html.unescape(sys_node.text)
+                sys_content = sys_node.text
             else:
                 sys_content = "You are an agent."
             
@@ -46,8 +49,7 @@ def project_dom_to_messages(dom, system_prompt_raw=None):
                 
                 if child.tag == "user":
                     # For user tags, we want their inner interaction content (ask, instruct, etc.)
-                    # If it has children (like <ask>), tounicode them.
-                    if len(child):
+                    if len(child) > 0:
                         for subchild in child:
                             primordial_text += etree.tostring(subchild, encoding='unicode').strip() + "\n"
                     else:
@@ -77,7 +79,7 @@ def project_dom_to_messages(dom, system_prompt_raw=None):
                 for child in asst_node:
                     content = etree.tostring(child, encoding='unicode', with_tail=False).strip()
                     if content != "<content/>" and content != "<content></content>":
-                        asst_parts.append(html.unescape(content))
+                        asst_parts.append(content)
                 if asst_parts:
                     messages.append({"role": "assistant", "content": "\n".join(asst_parts)})
             
@@ -85,10 +87,13 @@ def project_dom_to_messages(dom, system_prompt_raw=None):
 
         # 2. Subsequent Turns (N > 0)
         # Look for user directly or under agent
-        user_node = t.find("user") or t.find("agent/user")
+        user_node = t.find("user")
+        if user_node is None:
+            user_node = t.find("agent/user")
+            
         user_text = ""
         if user_node is not None:
-            if len(user_node):
+            if len(user_node) > 0:
                 for subchild in user_node:
                     user_text += etree.tostring(subchild, encoding='unicode').strip() + "\n"
             else:
@@ -116,7 +121,7 @@ def project_dom_to_messages(dom, system_prompt_raw=None):
             for child in assistant_node:
                 content = etree.tostring(child, encoding='unicode', with_tail=False).strip()
                 if content != "<content/>" and content != "<content></content>":
-                    asst_parts.append(html.unescape(content))
+                    asst_parts.append(content)
             if asst_parts:
                 messages.append({"role": "assistant", "content": "\n".join(asst_parts)})
             

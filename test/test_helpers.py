@@ -15,7 +15,9 @@ def get_effective_xml(xml_path, prompt_path="nzi.prompt"):
             with open(prompt_path, 'r') as f:
                 prompt_content = f.read()
                 sys_el = etree.Element("system")
-                sys_el.text = prompt_content
+                # Use CDATA to keep the XML dump clean (raw < and >)
+                # and ensure the model gets character-perfect tokens.
+                sys_el.text = etree.CDATA(prompt_content)
                 # Insert at the beginning of Turn 0
                 turn0[0].insert(0, sys_el)
     
