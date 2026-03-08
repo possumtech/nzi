@@ -18,37 +18,25 @@ def project_dom_to_messages(dom, system_prompt_raw=None):
         # 1. Handle Turn 0 (Primordial)
         if tid == "0":
             # A. System Constitution -> role: system
-            # Check for system directly under turn OR under agent
             sys_node = t.find("system")
-            if sys_node is None:
-                sys_node = t.find("agent/system")
-            
             sys_content = ""
             if sys_node is not None and sys_node.text:
                 sys_content = sys_node.text
             else:
-                sys_content = "You are an agent."
+                sys_content = "You are an assistant."
             
             messages.append({"role": "system", "content": sys_content})
 
             # B. Everything else in Turn 0 -> role: user (First Prompt)
-            # We look for children directly under turn or under agent
             primordial_nodes = []
-            agent_node = t.find("agent")
-            if agent_node is not None:
-                primordial_nodes.extend(list(agent_node))
-            
-            # Also add direct children of turn that aren't system or agent
+            # Add direct children of turn that aren't system or assistant
             for child in t:
-                if child.tag not in ["system", "agent", "assistant"]:
+                if child.tag not in ["system", "assistant"]:
                     primordial_nodes.append(child)
             
             primordial_text = ""
             for child in primordial_nodes:
-                if child.tag == "system": continue
-                
                 if child.tag == "user":
-                    # For user tags, we want their inner interaction content (ask, instruct, etc.)
                     if len(child) > 0:
                         for subchild in child:
                             primordial_text += etree.tostring(subchild, encoding='unicode').strip() + "\n"
@@ -86,11 +74,7 @@ def project_dom_to_messages(dom, system_prompt_raw=None):
             continue
 
         # 2. Subsequent Turns (N > 0)
-        # Look for user directly or under agent
         user_node = t.find("user")
-        if user_node is None:
-            user_node = t.find("agent/user")
-            
         user_text = ""
         if user_node is not None:
             if len(user_node) > 0:

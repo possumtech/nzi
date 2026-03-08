@@ -124,7 +124,7 @@ function M.run(cmd)
     config.notify("Full system reset.", vim.log.levels.INFO);
 
   elseif subcommand == "test" then
-    local test_cmd = config.options.test_command or "./run_tests.sh";
+    local test_cmd = config.options.test_command or "./test/test.sh";
     if args ~= "" then test_cmd = test_cmd .. " " .. args; end
     effector.run_shell(test_cmd);
 

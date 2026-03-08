@@ -32,10 +32,10 @@
       </sch:assert>
     </sch:rule>
 
-    <!-- The "Payload" Constraint: Feedback tags require a selection -->
-    <sch:rule context="shell | error">
+    <!-- The "Payload" Constraint: User feedback tags require a selection -->
+    <sch:rule context="user/shell | user/error">
       <sch:assert test="selection">
-        Shell and Error tags must contain a selection payload.
+        User-provided Shell and Error tags must contain a selection payload.
       </sch:assert>
     </sch:rule>
   </sch:pattern>
