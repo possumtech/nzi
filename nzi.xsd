@@ -41,25 +41,13 @@
   <xs:element name="user">
     <xs:complexType>
       <xs:sequence>
-        <!-- Environmental Context -->
+        <!-- Environmental Context (Long-term memory) -->
         <xs:element ref="history" minOccurs="0"/>
         
-        <!-- The interaction choice -->
+        <!-- The interaction choice (The Mission) -->
         <xs:choice>
           <xs:element ref="ask"/>
           <xs:element ref="instruct"/>
-          <xs:element name="shell">
-            <xs:complexType mixed="true">
-              <xs:sequence>
-                <xs:element ref="selection"/>
-                <xs:element ref="choice" minOccurs="0"/>
-                <xs:element ref="summary" minOccurs="0"/>
-              </xs:sequence>
-              <xs:attribute name="command" type="xs:string" use="required"/>
-            </xs:complexType>
-          </xs:element>
-          <xs:element ref="error"/>
-          <xs:element ref="answer"/>
         </xs:choice>
       </xs:sequence>
     </xs:complexType>
@@ -70,9 +58,7 @@
   <xs:element name="ask">
     <xs:complexType mixed="true">
       <xs:sequence>
-        <xs:element ref="selection" minOccurs="0"/>
-        <xs:element ref="choice" minOccurs="0"/>
-        <xs:element ref="summary" minOccurs="0"/>
+        <xs:element ref="selection" minOccurs="0" maxOccurs="unbounded"/>
       </xs:sequence>
     </xs:complexType>
   </xs:element>
@@ -80,28 +66,7 @@
   <xs:element name="instruct">
     <xs:complexType mixed="true">
       <xs:sequence>
-        <xs:element ref="selection" minOccurs="0"/>
-        <xs:element ref="choice" minOccurs="0"/>
-        <xs:element ref="summary" minOccurs="0"/>
-      </xs:sequence>
-    </xs:complexType>
-  </xs:element>
-
-  <xs:element name="error">
-    <xs:complexType mixed="true">
-      <xs:sequence>
-        <xs:element ref="selection"/>
-        <xs:element ref="choice" minOccurs="0"/>
-        <xs:element ref="summary" minOccurs="0"/>
-      </xs:sequence>
-    </xs:complexType>
-  </xs:element>
-
-  <xs:element name="answer">
-    <xs:complexType mixed="true">
-      <xs:sequence>
-        <xs:element ref="choice" minOccurs="0"/>
-        <xs:element ref="summary" minOccurs="0"/>
+        <xs:element ref="selection" minOccurs="0" maxOccurs="unbounded"/>
       </xs:sequence>
     </xs:complexType>
   </xs:element>
@@ -206,7 +171,10 @@
     <xs:complexType>
       <xs:simpleContent>
         <xs:extension base="xs:string">
-          <xs:attribute name="file" type="xs:string" use="required"/>
+          <xs:attribute name="file" type="xs:string"/>
+          <xs:attribute name="type" type="xs:string"/> <!-- env, shell, test_pass, test_fail, ralph_fail, answer, etc. -->
+          <xs:attribute name="command" type="xs:string"/>
+          <xs:attribute name="status" type="xs:string"/>
           <xs:attribute name="first_row" type="xs:integer"/>
           <xs:attribute name="first_col" type="xs:integer"/>
           <xs:attribute name="final_row" type="xs:integer"/>

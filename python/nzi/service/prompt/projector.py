@@ -6,7 +6,7 @@ def project_dom_to_messages(dom, system_prompt_raw=None):
     Projects the XML DOM state into an array of LLM messages.
     Follows history-based model:
     - system from Turn 0 -> role: system
-    - everything else in Turn 0 (roadmap, history, user) -> role: user (Primordial)
+    - everything else in Turn 0 (roadmap, history, mission) -> role: user (Primordial)
     - everything else -> sequential user/assistant roles
     """
     messages = []
@@ -28,18 +28,14 @@ def project_dom_to_messages(dom, system_prompt_raw=None):
             messages.append({"role": "system", "content": sys_content})
 
             # B. Everything else in Turn 0 -> role: user (First Prompt)
-            primordial_nodes = []
-            # Add direct children of turn that aren't system or assistant
-            for child in t:
-                if child.tag not in ["system", "assistant"]:
-                    primordial_nodes.append(child)
-            
+            primordial_nodes = list(t)
             primordial_text = ""
-            # A. Extract Context first (OpenAI preference)
+            
+            # Context First (History and Roadmap)
             for child in primordial_nodes:
                 if child.tag == "history":
                     parts = []
-                    for f in child.findall("file"):
+                    for f in child.xpath(".//file"):
                         pf = etree.Element("file")
                         pf.set("name", f.get("name") or f.get("path"))
                         pf.set("type", f.get("type"))
@@ -50,17 +46,18 @@ def project_dom_to_messages(dom, system_prompt_raw=None):
                 elif child.tag == "project_roadmap":
                     primordial_text += f"PROJECT_ROADMAP:\n{etree.tostring(child, encoding='unicode').strip()}\n\n"
 
-            # B. Extract Instructions
+            # Mission Second
             for child in primordial_nodes:
-                if child.tag == "system" or child.tag == "history" or child.tag == "project_roadmap": 
+                if child.tag in ["system", "history", "project_roadmap", "assistant"]: 
                     continue
                 
                 if child.tag == "user":
-                    if len(child) > 0:
-                        for subchild in child:
-                            primordial_text += etree.tostring(subchild, encoding='unicode').strip() + "\n"
-                    else:
-                        primordial_text += (child.text or "") + "\n"
+                    for mission in child:
+                        # Selections then instructions
+                        for sel in mission.findall("selection"):
+                            primordial_text += etree.tostring(sel, encoding='unicode').strip() + "\n"
+                        if mission.text:
+                            primordial_text += mission.text.strip() + "\n"
                 else:
                     primordial_text += f"{etree.tostring(child, encoding='unicode').strip()}\n"
             
@@ -73,19 +70,16 @@ def project_dom_to_messages(dom, system_prompt_raw=None):
                 asst_parts = []
                 content_node = asst_node.find("content")
                 if content_node is not None:
-                    # Send the text and children of <content>
                     if content_node.text:
                         asst_parts.append(content_node.text.strip())
-                    for child in content_node:
-                        asst_parts.append(etree.tostring(child, encoding='unicode', with_tail=True).strip())
-                
+                    for sc in content_node:
+                        asst_parts.append(etree.tostring(sc, encoding='unicode', with_tail=True).strip())
                 if asst_parts:
                     messages.append({"role": "assistant", "content": "\n".join(asst_parts)})
             
             continue
 
         # 2. Subsequent Turns (N > 0)
-        # Look for user directly
         user_node = t.find("user")
         user_text = ""
         if user_node is not None:
@@ -93,7 +87,7 @@ def project_dom_to_messages(dom, system_prompt_raw=None):
             history_nodes = user_node.xpath(".//history")
             for h in history_nodes:
                 parts = []
-                for f in h.findall("file"):
+                for f in h.xpath(".//file"):
                     pf = etree.Element("file")
                     pf.set("name", f.get("name") or f.get("path"))
                     pf.set("type", f.get("type"))
@@ -102,13 +96,13 @@ def project_dom_to_messages(dom, system_prompt_raw=None):
                 if parts:
                     user_text += "CONTEXT:\n" + "\n".join(parts) + "\n\n"
             
-            # B. Instruction Second
-            if len(user_node) > 0:
-                for subchild in user_node:
-                    if subchild.tag == "history": continue
-                    user_text += etree.tostring(subchild, encoding='unicode').strip() + "\n"
-            else:
-                user_text += (user_node.text or "") + "\n"
+            # B. Directive Second (Selection then Instruction)
+            for mission in user_node:
+                if mission.tag == "history": continue
+                for sel in mission.findall("selection"):
+                    user_text += etree.tostring(sel, encoding='unicode').strip() + "\n"
+                if mission.text:
+                    user_text += mission.text.strip() + "\n"
         
         if user_text.strip():
             messages.append({"role": "user", "content": user_text.strip()})
@@ -120,8 +114,8 @@ def project_dom_to_messages(dom, system_prompt_raw=None):
             if content_node is not None:
                 if content_node.text:
                     asst_parts.append(content_node.text.strip())
-                for child in content_node:
-                    asst_parts.append(etree.tostring(child, encoding='unicode', with_tail=True).strip())
+                for sc in content_node:
+                    asst_parts.append(etree.tostring(sc, encoding='unicode', with_tail=True).strip())
             
             if asst_parts:
                 messages.append({"role": "assistant", "content": "\n".join(asst_parts)})

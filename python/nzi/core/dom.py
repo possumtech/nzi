@@ -138,32 +138,69 @@ class SessionDOM:
         self.validate_strictly()
 
     def start_turn(self, turn_id, user_data, metadata=None):
-        """Creates a new turn."""
+        """
+        Creates a new turn in the Unified Directive model.
+        user_data can be:
+        - str: Simple instruction
+        - dict: { "type": "shell_pass", "command": "...", "content": "...", "mode": "instruct" }
+        """
         turn = etree.SubElement(self.root, "turn")
         turn.set("id", str(turn_id))
         
         user = etree.SubElement(turn, "user")
         
-        if isinstance(user_data, dict):
-            if user_data.get("selection"):
-                s = user_data["selection"]
-                sel = etree.SubElement(turn, "selection")
-                sel.set("file", s.get("file", "unknown"))
-                # Note: XSD uses separate row/col attributes, not a range string
-                sel.set("first_row", str(s.get("start_line", 1)))
-                sel.set("first_col", str(s.get("start_col", 1)))
-                sel.set("final_row", str(s.get("end_line", 1)))
-                sel.set("final_col", str(s.get("end_col", 1)))
-                sel.text = s.get("text", "")
-                # Ensure selection is before user interaction choice
-                # Handled by choice in XSD
+        # 1. Determine Mode (ask/instruct)
+        mode = "instruct"
+        if isinstance(user_data, dict) and user_data.get("mode") == "ask":
+            mode = "ask"
+        
+        mission = etree.SubElement(user, mode)
+        
+        # 2. Handle Signals/Feedback
+        boilerplates = {
+            "shell:pass": "Command completed successfully. Proceed.",
+            "shell:fail": "Command error. Diagnose and resolve.",
+            "test:pass": "Test passed. Proceed.",
+            "test:fail": "Test failed. Diagnose and resolve.",
+            "ralph:fail": "Test failed. Diagnose and resolve.",
+            "env:pass": "Environment discovery command results.",
+            "env:fail": "Environment discovery command failed.",
+            "answer": "Your answer to a previous choice."
+        }
+
+        if isinstance(user_data, dict) and "type" in user_data:
+            s_type = user_data["type"]
+            s_status = user_data.get("status", "pass")
             
-            # User must contain a CHOICE of interaction
-            instruct = etree.SubElement(user, "instruct")
-            instruct.text = user_data.get("instruction", "")
+            sel = etree.SubElement(mission, "selection")
+            sel.set("type", s_type)
+            sel.set("status", s_status)
+            
+            if user_data.get("command"):
+                sel.set("command", user_data["command"])
+            if user_data.get("file"):
+                sel.set("file", user_data["file"])
+            
+            sel.text = user_data.get("content", "")
+            
+            # Append boilerplate
+            signal_key = f"{s_type}:{s_status}" if s_type != "answer" else "answer"
+            instruct_text = user_data.get("instruction") or boilerplates.get(signal_key, "Proceed.")
+            sel.tail = "\n" + instruct_text
+        elif isinstance(user_data, dict) and "selection" in user_data:
+            # Traditional selection (from UI)
+            s = user_data["selection"]
+            sel = etree.SubElement(mission, "selection")
+            sel.set("file", s.get("file", "unknown"))
+            sel.set("first_row", str(s.get("start_line", 1)))
+            sel.set("first_col", str(s.get("start_col", 1)))
+            sel.set("final_row", str(s.get("end_line", 1)))
+            sel.set("final_col", str(s.get("end_col", 1)))
+            sel.text = s.get("text", "")
+            sel.tail = "\n" + user_data.get("instruction", "")
         else:
-            instruct = etree.SubElement(user, "instruct")
-            instruct.text = str(user_data)
+            # Simple text instruction
+            mission.text = str(user_data)
         
         self._active_turn = turn
         # Assistant

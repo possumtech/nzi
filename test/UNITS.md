@@ -13,11 +13,11 @@ This document outlines the complete set of unit tests required to verify the int
 - [x] **unit_edit_surgical**: Verify `<edit>` with a single SEARCH/REPLACE block.
 - [x] **unit_edit_multi**: Verify `<edit>` with multiple blocks in one file.
 - [x] **unit_edit_cross_file**: Verify `<edit>` across multiple files in one turn.
-- [ ] **unit_shell_basic**: Verify `<shell>` execution for destructive actions.
-- [ ] **unit_delete_basic**: Verify `<delete>` correctly targets and removes a file.
+- [x] **unit_shell_basic**: Verify `<shell>` execution for destructive actions.
+- [x] **unit_delete_basic**: Verify `<delete>` correctly targets and removes a file.
 
 ## 3. Protocol Constraints (Schematron/Logic)
-- [ ] **unit_ask_constraint**: Verify that an `<ask>` turn fails if the model attempts state-changing actions (`edit`, `shell`, etc.).
+- [x] **unit_ask_constraint**: Verify that an `<ask>` turn fails if the model attempts state-changing actions (`edit`, `shell`, etc.).
 - [ ] **unit_instruct_freedom**: Verify that `<instruct>` allows any valid combination of tools.
 - [ ] **unit_user_feedback**: Verify that `<shell>` or `<error>` feedback from the user includes the required `<selection>`.
 

@@ -24,22 +24,16 @@ def test_shell_lifecycle():
         sys.stderr.write("FAILURE: Assistant did not emit <shell /> tag\n")
         sys.exit(1)
 
-    # TURN 1: Provide results
-    # User-side shell results must include a selection
-    dom.start_turn(1, "I have executed the command for you.")
+    # TURN 1: Provide results via UNIFIED DIRECTIVE (selection in instruct)
+    # We use the new start_turn helper logic
+    feedback = {
+        "type": "shell_pass",
+        "command": shell_tag.get("command", "mkdir test/tmp_shell_test && rmdir test/tmp_shell_test"),
+        "content": "Directory created and removed successfully.",
+        "mode": "instruct"
+    }
+    dom.start_turn(1, feedback)
     
-    user_node = dom.root.xpath("//turn[@id='1']/user")[0]
-    # We simulate the effector output
-    shell_result = etree.SubElement(user_node, "shell")
-    shell_result.set("command", shell_tag.get("command", "grep -r 'NZI' test/"))
-    
-    # Required selection payload for user feedback
-    selection = etree.SubElement(shell_result, "selection")
-    selection.set("file", "stdout")
-    selection.text = "test/read_sample.txt:Hello, NZI Protocol!"
-    
-    shell_result.text = "Found 1 match in test/read_sample.txt."
-
     # Now run the second turn live
     import tempfile
     with tempfile.NamedTemporaryFile(suffix=".xml", delete=False) as tmp:

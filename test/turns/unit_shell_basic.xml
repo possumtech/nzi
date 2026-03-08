@@ -2,7 +2,7 @@
 <session alias="unit-shell-basic">
   <turn id="0">
     <user>
-      <instruct>Execute a shell command to find all occurrences of 'NZI' in the 'test/' directory. Report the findings.</instruct>
+      <instruct>Execute a destructive shell command to create a temporary directory named 'test/tmp_shell_test' and then delete it. Report completion.</instruct>
     </user>
   </turn>
 </session>
