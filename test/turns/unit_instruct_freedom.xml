@@ -1,8 +1,8 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <session alias="unit-instruct-freedom">
   <turn id="0">
     <user>
-      <instruct>Perform a complete mini-task: Create a file 'test/task.txt' with content 'task info', then read it back, and finally lookup for 'task' in the project. Do all of this in one turn.</instruct>
+      <act>Perform a complete mini-task: Create a file 'test/task.txt' with content 'task info', then read it back, and finally lookup for 'task' in the project. Do all of this in one turn.</act>
     </user>
   </turn>
 </session>

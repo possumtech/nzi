@@ -37,8 +37,13 @@ def test_discovery_multi_lifecycle():
     dom.update_context(ctx, None)
     
     # 2. Env result (Update context for env isn't in SessionDOM helper yet, adding manually)
-    user_node = dom.root.xpath("//turn[@id='1']/user")[0]
-    history_node = user_node.find("history")
+    turn_node = dom.root.xpath("//turn[@id='1']")[0]
+    user_node = turn_node.find("user")
+    history_node = turn_node.find("history")
+    if history_node is None:
+        history_node = etree.Element("history")
+        user_node.addprevious(history_node)
+    
     env_result = etree.SubElement(history_node, "env")
     env_result.set("command", "ls test/fs/")
     env_result.text = "helper.lua\nintegrity_test.py\nuniverse_test.lua\n"

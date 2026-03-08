@@ -34,7 +34,7 @@ def test_user_feedback_lifecycle():
         "status": "fail",
         "command": "mkdir test/fail_dir/sub",
         "content": "mkdir: cannot create directory ‘test/fail_dir/sub’: No such file or directory",
-        "mode": "instruct"
+        "mode": "act"
     }
     dom.start_turn(1, feedback)
     

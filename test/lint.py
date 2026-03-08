@@ -32,6 +32,13 @@ def lint_file(xml_path, xsd_path, sch_path):
                 print(f"ERROR: Schematron Validation failed for {xml_path}")
                 # Get the validation report (SVRL)
                 report = schematron.validation_report
+                if report is None:
+                    print("  [CRITICAL] Schematron validation_report is None!")
+                    # Check error log
+                    for error in schematron.error_log:
+                        print(f"  Schematron Error: {error.message}")
+                    return False
+                
                 for failed_assert in report.xpath('//svrl:failed-assert', namespaces={'svrl': 'http://purl.oclc.org/dsdl/svrl'}):
                     text = failed_assert.xpath('./svrl:text', namespaces={'svrl': 'http://purl.oclc.org/dsdl/svrl'})[0].text
                     print(f"  [FAIL] {text.strip()}")

@@ -1,8 +1,8 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <session alias="unit-choice-basic">
   <turn id="0">
     <user>
-      <instruct>I need to refactor the project. Should we start with the tests or the core logic? Present this as a choice.</instruct>
+      <act>I need to refactor the project. Should we start with the tests or the core logic? Present this as a choice.</act>
     </user>
   </turn>
 </session>

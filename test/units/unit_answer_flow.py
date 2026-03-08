@@ -29,7 +29,7 @@ def test_answer_flow_lifecycle():
     feedback = {
         "type": "answer",
         "content": "Python",
-        "mode": "instruct",
+        "mode": "act",
         "instruction": "I have chosen Python. Please proceed with setting up a Python project structure."
     }
     dom.start_turn(1, feedback)

@@ -1,8 +1,8 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <session alias="unit-create-basic">
   <turn id="0">
     <user>
-      <instruct>Create a new python script named 'test/hello.py' that prints 'Hello, NZI Protocol!'.</instruct>
+      <act>Create a new python script named 'test/hello.py' that prints 'Hello, NZI Protocol!'.</act>
     </user>
   </turn>
 </session>

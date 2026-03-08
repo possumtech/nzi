@@ -34,10 +34,11 @@ def test_lookup_lifecycle():
     # Actually, XSD says <history> contains <lookup> tags.
     
     user_node = dom.root.xpath("//turn[@id='1']/user")[0]
-    history_node = user_node.find("history")
+    turn_node = dom.root.xpath("//turn[@id='1']")[0]
+    history_node = turn_node.find("history")
     if history_node is None:
         history_node = etree.Element("history")
-        user_node.insert(0, history_node)
+        user_node.addprevious(history_node)
     
     lookup_result = etree.SubElement(history_node, "lookup")
     lookup_result.text = "assistant"

@@ -1,8 +1,8 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <session alias="unit-nested-content">
   <turn id="0">
     <user>
-      <instruct>Wrap your entire response in a 'content' tag. For example: &lt;content&gt;&lt;summary&gt;Done&lt;/summary&gt;&lt;/content&gt;.</instruct>
+      <act>Wrap your entire response in a 'content' tag. For example: &lt;content&gt;&lt;summary&gt;Done&lt;/summary&gt;&lt;/content&gt;.</act>
     </user>
   </turn>
 </session>

@@ -1,8 +1,8 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <session alias="test-session">
   <turn id="0">
     <user>
-      <instruct>Initialize the project.</instruct>
+      <act>Initialize the project.</act>
     </user>
     <assistant>
       <content>
@@ -18,7 +18,7 @@
     <assistant>
       <content>
         System is idle.
-        <read file="README.md" />
+        <read file="README.md"/>
         <summary>Status checked.</summary>
       </content>
     </assistant>

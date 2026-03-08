@@ -120,7 +120,10 @@ class SessionDOM:
             
         for item in ctx_list:
             f = etree.SubElement(files_container, "file")
-            f.set("path", item["path"]) # Use 'path' per XSD
+            path = item.get("path") or item.get("name")
+            if not path:
+                continue
+            f.set("path", path) # Use 'path' per XSD
             f.set("type", item.get("state", "map"))
             f.set("size", str(item.get("size", "-1")))
             if item.get("content"):
@@ -236,6 +239,12 @@ class SessionDOM:
             s_type = user_data["type"]
             s_status = user_data.get("status", "pass")
             
+            # Normalization: handle "shell_pass" -> type="shell", status="pass"
+            if "_" in s_type and s_type.split("_")[1] in ["pass", "fail"]:
+                parts = s_type.split("_")
+                s_type = parts[0]
+                s_status = parts[1]
+
             sel = etree.SubElement(mission_node, "selection")
             sel.set("type", s_type)
             sel.set("status", s_status)
@@ -337,13 +346,24 @@ class SessionDOM:
             wrapped_content = f"<root>{content_str}</root>"
             fragment = etree.fromstring(wrapped_content, parser=parser)
             
-            actual_content = fragment
-            first_child = fragment.find("content")
-            if first_child is not None and len(fragment) == 1 and not (fragment.text and fragment.text.strip()):
-                actual_content = first_child
+            # UNWRAP NESTED <content> (De-slop)
+            # If we find a <content> tag anywhere inside, and it seems redundant
+            # (e.g. the model is trying to use it as a tool), we unwrap it.
+            nested_content = fragment.find(".//content")
+            if nested_content is not None:
+                # If there's a nested content, we take its content and append it
+                # to any existing text in fragment.
+                if fragment.text:
+                    fragment.text = fragment.text.strip() + "\n" + (nested_content.text or "")
+                else:
+                    fragment.text = nested_content.text
+                
+                for child in nested_content:
+                    fragment.append(child)
+                fragment.remove(nested_content)
             
-            content_node.text = actual_content.text
-            for child in actual_content:
+            content_node.text = fragment.text
+            for child in fragment:
                 content_node.append(child)
         except Exception as e:
             logging.error(f"Failed to domify content: {e}")

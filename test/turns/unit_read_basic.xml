@@ -1,8 +1,8 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <session alias="unit-read-basic">
   <turn id="0">
     <user>
-      <instruct>Please read the file 'test/read_sample.txt' and tell me exactly how many lines it has.</instruct>
+      <act>Please read the file 'test/read_sample.txt' and tell me exactly how many lines it has.</act>
     </user>
   </turn>
 </session>

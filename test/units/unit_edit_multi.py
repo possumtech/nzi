@@ -38,10 +38,11 @@ def test_edit_multi_lifecycle():
     dom.start_turn(1, "I have applied both edits for you.")
     
     user_node = dom.root.xpath("//turn[@id='1']/user")[0]
-    history_node = user_node.find("history")
+    turn_node = dom.root.xpath("//turn[@id='1']")[0]
+    history_node = turn_node.find("history")
     if history_node is None:
         history_node = etree.Element("history")
-        user_node.insert(0, history_node)
+        user_node.addprevious(history_node)
     
     ack = etree.SubElement(history_node, "ack")
     ack.set("tool", "edit")

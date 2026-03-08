@@ -1,14 +1,14 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <session alias="unit-edit-cross-file">
   <turn id="0">
-    <user>
-      <history>
+    <history>
         <files>
           <file path="test/f1.py" type="text/plain" size="30">print("file one")</file>
           <file path="test/f2.py" type="text/plain" size="30">print("file two")</file>
         </files>
       </history>
-      <instruct>In 'test/f1.py' change 'one' to 'alpha'. In 'test/f2.py' change 'two' to 'beta'. Perform both edits in this turn.</instruct>
+      <user>
+      <act>In 'test/f1.py' change 'one' to 'alpha'. In 'test/f2.py' change 'two' to 'beta'. Perform both edits in this turn.</act>
     </user>
   </turn>
 </session>

@@ -30,7 +30,7 @@ def test_shell_lifecycle():
         "type": "shell_pass",
         "command": shell_tag.get("command", "mkdir test/tmp_shell_test && rmdir test/tmp_shell_test"),
         "content": "Directory created and removed successfully.",
-        "mode": "instruct"
+        "mode": "act"
     }
     dom.start_turn(1, feedback)
     

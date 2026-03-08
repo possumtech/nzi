@@ -1,8 +1,8 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <session alias="unit-user-feedback">
   <turn id="0">
     <user>
-      <instruct>Create a directory named 'test/fail_dir/sub' and report completion. Use a simple 'mkdir' command without the -p flag.</instruct>
+      <act>Create a directory named 'test/fail_dir/sub' and report completion. Use a simple 'mkdir' command without the -p flag.</act>
     </user>
   </turn>
 </session>

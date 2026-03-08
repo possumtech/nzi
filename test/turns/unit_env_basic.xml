@@ -1,8 +1,8 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <session alias="unit-env-basic">
   <turn id="0">
     <user>
-      <instruct>Use a system command to list all files in the 'test/' directory. Do not use lookup.</instruct>
+      <act>Use a system command to list all files in the 'test/' directory. Do not use lookup.</act>
     </user>
   </turn>
 </session>

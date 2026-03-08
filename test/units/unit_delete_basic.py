@@ -35,7 +35,7 @@ def test_delete_lifecycle():
         "status": "pass",
         "command": f"rm {target_file}",
         "content": "File deleted successfully.",
-        "mode": "instruct"
+        "mode": "act"
     }
     dom.start_turn(1, feedback)
     

@@ -1,8 +1,8 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <session alias="unit-history-projection">
   <turn id="0">
     <user>
-      <instruct>Please read the file 'test/f1.py' and tell me what it says.</instruct>
+      <act>Please read the file 'test/f1.py' and tell me what it says.</act>
     </user>
   </turn>
 </session>

@@ -56,7 +56,14 @@
     </sch:rule>
 
     <!-- Context Ownership -->
-    <sch:rule context="edit | create | delete | prompt_user | ask | summary | response">
+    <sch:rule context="edit | create | delete | prompt_user | summary | response">
+      <sch:assert test="ancestor::assistant">
+        This tag is only valid within the assistant envelope.
+      </sch:assert>
+    </sch:rule>
+
+    <!-- The Assistant's Ask tool vs User's Ask mission -->
+    <sch:rule context="assistant/content/ask">
       <sch:assert test="ancestor::assistant">
         This tag is only valid within the assistant envelope.
       </sch:assert>

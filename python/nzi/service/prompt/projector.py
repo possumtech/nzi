@@ -28,7 +28,6 @@ def project_dom_to_messages(dom, system_prompt_raw=None):
             messages.append({"role": "system", "content": sys_content})
 
             # B. Everything else in Turn 0 -> role: user (First Prompt)
-            primordial_nodes = list(t)
             primordial_text = ""
             
             # Context First (History and Roadmap)
@@ -51,12 +50,12 @@ def project_dom_to_messages(dom, system_prompt_raw=None):
             # Turn Second
             user_node = t.find("user")
             if user_node is not None:
-                for mission in user_node:
-                    # Selections then instructions
-                    for sel in mission.findall("selection"):
+                for turn_part in user_node:
+                    # Selections then text
+                    for sel in turn_part.findall("selection"):
                         primordial_text += etree.tostring(sel, encoding='unicode').strip() + "\n"
-                    if mission.text:
-                        primordial_text += mission.text.strip() + "\n"
+                    if turn_part.text:
+                        primordial_text += turn_part.text.strip() + "\n"
             
             if primordial_text.strip():
                 messages.append({"role": "user", "content": primordial_text.strip()})
@@ -75,32 +74,31 @@ def project_dom_to_messages(dom, system_prompt_raw=None):
                     messages.append({"role": "assistant", "content": "\n".join(asst_parts)})
             
             continue
-# 2. Subsequent Turns (N > 0)
-user_node = t.find("user")
-user_text = ""
 
-# A. Context First (Inside Turn)
-history_node = t.find("history")
-if history_node is not None:
-    parts = []
-    for f in history_node.xpath(".//file"):
-        pf = etree.Element("file")
-        pf.set("name", f.get("name") or f.get("path"))
-        pf.set("type", f.get("type"))
-        pf.text = f.text
-        parts.append(etree.tostring(pf, encoding='unicode').strip())
-    if parts:
-        user_text += "CONTEXT:\n" + "\n".join(parts) + "\n\n"
-
-if user_node is not None:
-    # B. Directive Second (Selection then Mission)
-    for mission in user_node:
-        # Selections then instructions
-        for sel in mission.findall("selection"):
-            user_text += etree.tostring(sel, encoding='unicode').strip() + "\n"
-        if mission.text:
-            user_text += mission.text.strip() + "\n"
-
+        # 2. Subsequent Turns (N > 0)
+        user_node = t.find("user")
+        user_text = ""
+        
+        # A. Context First (Inside Turn)
+        history_node = t.find("history")
+        if history_node is not None:
+            parts = []
+            for f in history_node.xpath(".//file"):
+                pf = etree.Element("file")
+                pf.set("name", f.get("name") or f.get("path"))
+                pf.set("type", f.get("type"))
+                pf.text = f.text
+                parts.append(etree.tostring(pf, encoding='unicode').strip())
+            if parts:
+                user_text += "CONTEXT:\n" + "\n".join(parts) + "\n\n"
+        
+        if user_node is not None:
+            # B. Directive Second (Selection then Turn text)
+            for turn_part in user_node:
+                for sel in turn_part.findall("selection"):
+                    user_text += etree.tostring(sel, encoding='unicode').strip() + "\n"
+                if turn_part.text:
+                    user_text += turn_part.text.strip() + "\n"
         
         if user_text.strip():
             messages.append({"role": "user", "content": user_text.strip()})

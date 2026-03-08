@@ -1,8 +1,7 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <session alias="unit-edit-multi">
   <turn id="0">
-    <user>
-      <history>
+    <history>
         <files>
           <file path="test/multi.py" type="text/plain" size="100">
 # Line 1: Header
@@ -15,7 +14,8 @@ def bar():
           </file>
         </files>
       </history>
-      <instruct>In 'test/multi.py', change 'foo' to 'apple' and 'bar' to 'banana'. Perform both changes in a single edit tag.</instruct>
+      <user>
+      <act>In 'test/multi.py', change 'foo' to 'apple' and 'bar' to 'banana'. Perform both changes in a single edit tag.</act>
     </user>
   </turn>
 </session>
