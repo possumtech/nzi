@@ -46,7 +46,7 @@ class SessionDOM:
         
         if turn0.find("system") is None:
             sys = etree.Element("system")
-            sys.text = "You are an agent."
+            sys.text = "You are an assistant."
             turn0.insert(0, sys)
             
         if turn0.find("user") is None:
