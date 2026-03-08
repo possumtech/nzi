@@ -55,6 +55,10 @@ def run_live_turn():
     last_turn = xml_doc.xpath("//turn")[-1]
     dom._active_turn = last_turn
     
+    # Ensure assistant envelope exists
+    if last_turn.find("assistant") is None:
+        etree.SubElement(last_turn, "assistant")
+    
     dom.finalize_turn(full_response)
     
     # 6. FAITHFUL OUTPUT

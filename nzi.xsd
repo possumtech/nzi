@@ -174,7 +174,7 @@
     <xs:complexType>
       <xs:sequence>
         <xs:element ref="files" minOccurs="0"/>
-        <xs:element ref="search" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element ref="grep" minOccurs="0" maxOccurs="unbounded"/>
         <xs:element ref="read" minOccurs="0" maxOccurs="unbounded"/>
         <xs:element ref="ack" minOccurs="0" maxOccurs="unbounded"/>
       </xs:sequence>
@@ -238,12 +238,11 @@
   </xs:element>
 
   <xs:element name="env" type="xs:string"/>
-  <xs:element name="search">
+  <xs:element name="grep">
     <xs:complexType mixed="true">
       <xs:sequence>
         <xs:element ref="match" minOccurs="0" maxOccurs="unbounded"/>
       </xs:sequence>
-      <xs:attribute name="pattern" type="xs:string"/>
     </xs:complexType>
   </xs:element>
   <xs:element name="choice" type="xs:string"/>
