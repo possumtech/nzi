@@ -31,14 +31,26 @@ class VimEffector:
             return f"Error reading file {filename}: {str(e)}"
 
     def handle_edit(self, action):
-        # Edits MUST be delegated to Vim because they involve buffer state and UI
+        from nzi.core.parser import ActionParser
+        parser = ActionParser()
+        blocks = parser.parse_edit_blocks(action.content)
+        
+        if not blocks:
+            return "Error: Could not parse SEARCH/REPLACE blocks. Ensure you use the unified diff format."
+
+        # Edits are delegated to Vim
         self.bridge.send_to_vim({
             "method": "propose_edit",
             "params": {
                 "file": action.attributes.get("file"),
-                "content": action.content
+                "blocks": blocks # Send pre-parsed (and potentially healed) blocks
             }
         })
+        
+        healed = any(b['healed'] for b in blocks)
+        if healed:
+            return "Edit applied via heuristic healing. Warning: SEARCH/REPLACE markers were malformed. Use strictly: <<<<<<< SEARCH [code] ======= [code] >>>>>>> REPLACE"
+        
         return "Edit proposed in Vim."
 
     def handle_shell(self, action):

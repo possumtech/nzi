@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session alias="unit-edit-surgical">
+  <turn id="0">
+    <user>
+      <history>
+        <files>
+          <file path="test/hello.py" type="text/plain" size="30">print("Hello, NZI Protocol!")</file>
+        </files>
+      </history>
+      <instruct>Change the greeting in 'test/hello.py' to say 'Hello, Surgical NZI!'. Use exactly one edit block.</instruct>
+    </user>
+  </turn>
+</session>

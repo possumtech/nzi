@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session alias="unit-edit-multi">
+  <turn id="0">
+    <user>
+      <history>
+        <files>
+          <file path="test/multi.py" type="text/plain" size="100">
+# Line 1: Header
+def foo():
+    print("foo")
+
+# Line 5: Footer
+def bar():
+    print("bar")
+          </file>
+        </files>
+      </history>
+      <instruct>In 'test/multi.py', change 'foo' to 'apple' and 'bar' to 'banana'. Perform both changes in a single edit tag.</instruct>
+    </user>
+  </turn>
+</session>

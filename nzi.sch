@@ -46,9 +46,6 @@
     <!-- Surgical Edits -->
     <sch:rule context="assistant/content/edit">
       <sch:assert test="@file">Edit blocks must specify a target file.</sch:assert>
-      <sch:assert test="contains(., '&lt;&lt;&lt;&lt;&lt;&lt;&lt;') and contains(., '=======') and contains(., '&gt;&gt;&gt;&gt;&gt;&gt;&gt;')">
-        Edit blocks must use the unified diff format (SEARCH/REPLACE).
-      </sch:assert>
     </sch:rule>
 
     <!-- Shell Execution -->

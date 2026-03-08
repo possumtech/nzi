@@ -191,7 +191,7 @@ class SessionDOM:
         if assistant is None:
             assistant = etree.SubElement(self._active_turn, "assistant")
 
-        # Remove the temporary streaming node
+        # Remove the temporary streaming node BEFORE validation
         if self._active_content_node is not None:
             try:
                 assistant.remove(self._active_content_node)
