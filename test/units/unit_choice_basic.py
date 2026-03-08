@@ -17,17 +17,17 @@ def test_choice_basic():
     # Run the turn
     dom = run_live_unit(xml_path)
     
-    # Verify choice or prompt_user tag presence and format
+    # Verify prompt_user tag presence and format
     content_node = dom.root.xpath("//turn[@id='0']/assistant/content")[0]
-    choice_tag = content_node.find("choice") or content_node.find("prompt_user")
-    if choice_tag is None:
-        sys.stderr.write("FAILURE: Assistant did not emit a <choice /> or <prompt_user /> tag.\n")
+    prompt_user_tag = content_node.find("prompt_user")
+    if prompt_user_tag is None:
+        sys.stderr.write("FAILURE: Assistant did not emit a <prompt_user /> tag.\n")
         sys.exit(1)
 
         
-    choice_text = choice_tag.text or ""
-    if "- [ ]" not in choice_text:
-        sys.stderr.write("FAILURE: Choice tag is missing the expected checkbox format '- [ ]'.\n")
+    prompt_text = prompt_user_tag.text or ""
+    if "- [ ]" not in prompt_text:
+        sys.stderr.write("FAILURE: prompt_user tag is missing the expected checkbox format '- [ ]'.\n")
         sys.exit(1)
         
     # Final validation

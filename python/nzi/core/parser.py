@@ -19,7 +19,7 @@ class ActionParser:
         # List of tags that we consider "actions" or protocol units
         self.action_tags = [
             "edit", "create", "read", "shell", "env", "lookup", "delete", 
-            "choice", "prompt_user", "ask", "reset", "status", "ack", "match",
+            "prompt_user", "reset", "status", "ack", "match",
             "summary", "reasoning", "response"
         ]
         # Regex to match any of the action tags

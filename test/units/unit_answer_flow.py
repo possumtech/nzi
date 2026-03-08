@@ -17,11 +17,11 @@ def test_answer_flow_lifecycle():
     # TURN 0: User asks for a choice
     dom = run_live_unit(xml_path)
     
-    # Verify assistant emitted choice or prompt_user
+    # Verify assistant emitted prompt_user
     content_node = dom.root.xpath("//turn[@id='0']/assistant/content")[0]
-    choice_tag = content_node.find("choice") or content_node.find("prompt_user")
+    choice_tag = content_node.find("prompt_user")
     if choice_tag is None:
-        sys.stderr.write("FAILURE: Assistant did not emit a <choice /> or <prompt_user /> tag.\n")
+        sys.stderr.write("FAILURE: Assistant did not emit a <prompt_user /> tag.\n")
         sys.exit(1)
 
     # TURN 1: Provide the ANSWER via Unified Directive
