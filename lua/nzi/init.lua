@@ -159,90 +159,10 @@ function M.setup(opts)
   vim.cmd([[cnoreabbrev <expr> AI? (getcmdtype() == ':' && getcmdline() == 'AI?') ? 'AI ?' : 'AI?']])
   vim.cmd([[cnoreabbrev <expr> AI: (getcmdtype() == ':' && getcmdline() == 'AI:') ? 'AI :' : 'AI:']])
 
-  -- Leader Keymaps
-  vim.keymap.set("n", "<leader>au", function() vim.cmd("AI/undo") end, { desc = "AI: Undo last turn" });
-  vim.keymap.set("n", "<leader>an", function() vim.cmd("AI/next") end, { desc = "AI: Next pending diff" });
-  vim.keymap.set("n", "<leader>ap", function() vim.cmd("AI/prev") end, { desc = "AI: Prev pending diff" });
-  vim.keymap.set("n", "<leader>aD", function() vim.cmd("AI/accept") end, { desc = "AI: Accept current diff" });
-  vim.keymap.set("n", "<leader>ad", function() vim.cmd("AI/reject") end, { desc = "AI: Reject current diff" });
-
-  vim.keymap.set("n", "<leader>ax", function() vim.cmd("AI/stop") end, { desc = "AI: Abort generation" });
-  vim.keymap.set("n", "<leader>aX", function() 
-    vim.cmd("AI/stop");
-    vim.cmd("AI/reset");
-  end, { desc = "AI: Abort and Reset session" });
-
-  vim.keymap.set("n", "<leader>ak", function() 
-    local current_file = vim.fn.expand("%:.")
-    vim.ui.input({ prompt = "Test args: ", default = current_file }, function(input)
-      vim.cmd("AI/test " .. (input or ""))
-    end)
-  end, { desc = "AI: Run project tests" });
-
-  vim.keymap.set("n", "<leader>aK", function() 
-    local current_file = vim.fn.expand("%:.")
-    vim.ui.input({ prompt = "Ralph args: ", default = current_file }, function(input)
-      vim.cmd("AI/ralph " .. (input or ""))
-    end)
-  end, { desc = "AI: Run Ralph-style tests" });
-
-  -- The Four Interaction Mode Keybindings
-  local function prompt_mode(prefix, prompt)
-    return function()
-      local cmd = "AI" .. prefix .. " "
-      local mode = vim.fn.mode()
-      if mode:match("[vV\22]") then
-        -- Exit visual mode, then feed keys to trigger range command
-        vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, false, true), "nx", false)
-        vim.api.nvim_feedkeys(":'<,'>" .. cmd, "n", false)
-      else
-        -- Prompt for input in normal mode
-        vim.ui.input({ prompt = prompt .. ": " }, function(input)
-          if input and input ~= "" then vim.cmd(cmd .. input) end
-        end)
-      end
-    end
+  -- Idiomatic Keymappings
+  if config.options.default_mappings then
+    require("nzi.core.actions").apply_default_mappings();
   end
-
-  vim.keymap.set({ "n", "v" }, "<leader>a:", prompt_mode(":", "Instruct"), { desc = "AI: Instruct" });
-  vim.keymap.set({ "n", "v" }, "<leader>a?", prompt_mode("?", "Ask"), { desc = "AI: Ask" });
-  vim.keymap.set({ "n", "v" }, "<leader>a!", prompt_mode("!", "Run"), { desc = "AI: Run" });
-  vim.keymap.set({ "n", "v" }, "<leader>a/", prompt_mode("/", "Internal"), { desc = "AI: Internal" });
-
-  vim.keymap.set("n", "<leader>ay", function() vim.cmd("AI/yank") end, { desc = "AI: Yank last response" });
-  vim.keymap.set("n", "<leader>as", function() 
-    vim.ui.input({ prompt = "Session Name: ", default = "default" }, function(input)
-      if input then vim.cmd("AI/save " .. input) end
-    end)
-  end, { desc = "AI: Save Session" });
-  vim.keymap.set("n", "<leader>al", function() 
-    vim.ui.input({ prompt = "Session Name: ", default = "default" }, function(input)
-      if input then vim.cmd("AI/load " .. input) end
-    end)
-  end, { desc = "AI: Load Session" });
-  vim.keymap.set("n", "<leader>aa", function() vim.cmd("AI/toggle") end, { desc = "AI: Toggle Modal" });
-
-  -- Handle Execute selection (Visual mode shortcut)
-  vim.keymap.set("v", "<leader>av", function()
-    local selection = engine.get_visual_selection();
-    vim.ui.input({ prompt = "AI Ask on selection: " }, function(input)
-      if input and input ~= "" then
-        engine.run_loop(input, "ask", false, nil, selection);
-      end
-    end);
-  end, { desc = "AI: Ask on selection" });
-
-  -- Context State Keymaps
-  vim.keymap.set("n", "<leader>aA", function() vim.cmd("AI/active") end, { desc = "AI: Mark buffer as Active" });
-  vim.keymap.set("n", "<leader>aR", function() vim.cmd("AI/read") end, { desc = "AI: Mark buffer as Read-only Context" });
-  vim.keymap.set("n", "<leader>aI", function() vim.cmd("AI/ignore") end, { desc = "AI: Mark buffer as Ignored" });
-  
-  vim.keymap.set("n", "<leader>aY", function() 
-    config.options.yolo = not config.options.yolo;
-    local mode = config.options.yolo and "ACTIVE" or "OFF";
-    config.notify("YOLO Mode is now " .. mode, vim.log.levels.WARN);
-  end, { desc = "AI: Toggle YOLO mode" });
-
 end
 
 return M;

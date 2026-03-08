@@ -2,114 +2,80 @@
 
 This is the canonical source of truth for **nzi** development, technical specifications, and project tracking.
 
-## 1. Project Roadmap & Roadmap
+## 1. Project Roadmap
 
 ### Recent Accomplishments
-- [x] Consistently unified terminology (Instruct, Ask, Run, Internal).
-- [x] Selection as Argument logic for Shell ranges.
-- [x] Mode-aware interaction keybindings (\a:, \a?, \a!, \a/).
-- [x] Session persistence (Save/Load).
-- [x] Surgical Edit & Diff UX (Auto-save/tab cleanup).
-- [x] Systematic XML validation.
+- [x] Secured "Brutal Foundation" with 22 live model unit tests.
+- [x] Implemented "Unified Directive" model: All turns are Missions (<ask>/<instruct>).
+- [x] Achieved "Zero-Unwrap" fidelity: Assistant turns are direct projections of LiteLLM data.
+- [x] Established technical <lookup> tag to replace ambiguous search/grep.
+- [x] Implemented heuristic healing for malformed SEARCH/REPLACE blocks.
+- [x] Cleaned repository: Unified ./test/ architecture and robust .gitignore.
+
 ### Pending Focus
-- [ ] Refactor LLM Service (DOM <--> LLM) to use pure XML streaming and validation.
-- [ ] Refactor Vim Service (Vim <--> DOM) to use effector/watcher pattern.
-- [ ] Complete the "Purge" of legacy imperative state tables.
+- [ ] TODO: UNVERIFIED - Align Vim Service (Vim <--> DOM) with the new flat protocol.
+- [ ] TODO: UNVERIFIED - Verify modal UI handles the new <reasoning_content> and <content> nesting.
+- [ ] TODO: UNVERIFIED - Ensure Ralph Mode (auto-retry) respects the Unified Directive mission flow.
 
 ---
 
-## 2. Technical Architecture (Service-Oriented)
+## 2. Technical Architecture (Unified Directive)
 
-### Core Modules
-| Module | Location | Purpose |
+### Core Protocol
+Every user interaction MUST be a mission. Technical feedback is carried via the `selection` tag.
+
+| Tag | Attributes | Mission Type |
 | :--- | :--- | :--- |
-| **DOM** | `lua/nzi/dom/` | **Single Source of Truth.** XML Document, Schema, and XPath Query engine. |
-| **Vim Service** | `lua/nzi/service/vim/` | **Hardware Sync.** Translates between Vim events/UI and the XML DOM. |
-| **LLM Service** | `lua/nzi/service/llm/` | **Cognitive Bridge.** Translates between XML DOM and LLM Chat APIs. |
-| **UI** | `lua/nzi/ui/` | **Ergonomics.** Projections of the DOM (Modal, Statusline) for the Human. |
-| **Tools** | `lua/nzi/tools/` | Stateless utilities used by effector and parser. |
+| **`<ask>`** | - | Pure inquiry; only read-only tools allowed. |
+| **`<instruct>`** | - | Directive for state-changing action. |
+
+### Feedback Signals (Inside <selection>)
+| Type | Status | Boilerplate Directive |
+| :--- | :--- | :--- |
+| `shell` | `pass`/`fail` | Command completed / Command error. |
+| `test` | `pass`/`fail` | Test passed / Test failed. |
+| `env` | `pass`/`fail` | Discovery results / Discovery failed. |
+| `ralph` | `fail` | Protocol error detected. Correct XML. |
+| `answer` | `pass` | Your answer to a previous choice. |
 
 ---
 
 ## 3. Master Functional Checklist
 
 ### Declarative Architecture (SSOT)
-- [x] **Root Document**: Entire session wrapped in `<session>` with global state attributes.
-- [x] **XPath State Derivation**: `is_blocked()` and `get_pending_actions()` derived from XML.
+- [x] **Root Document**: Entire session wrapped in `<session>`.
 - [x] **Formal Validation**: Real-time XSD/Schematron enforcement on the DOM.
-- [ ] **Vim Watcher**: Synchronous update of `<context>` on buffer events.
-- [ ] **Vim Effector**: Declarative opening of diffs/terminals based on DOM state.
-- [ ] **LLM Bridge**: Pure-function translation of XML tree to OpenAI JSON.
-- [ ] **XML Streaming**: Direct real-time injection of LLM chunks into the DOM.
+- [x] **Context First**: Projector prepends history and roadmap before instructions.
+- [ ] TODO: UNVERIFIED - **Vim Watcher**: Synchronous update of `<history>` on buffer events.
+- [ ] TODO: IMPLEMENTATION GAP - **Vim Effector**: Opening diffs based on healed SEARCH/REPLACE blocks.
 
-| :--- | :--- | :--- |
-| **`active`** | **Full Context** | Content sent; model can propose edits. |
-| **`read`** | **Context Only** | Content sent; model treats as read-only doc. |
-| **`map`** | **Skeleton Context** | Project structure (universe) sent; no content. |
-| **`ignore`** | **Hidden** | Invisible to the model (e.g., .env). |
-
----
-
-## 3. Master Functional Checklist
-
-### Interaction Modes (Specialized Tags)
-- [x] **Instruct** (`:`): Directive action via `<instruct>` (`\a:`).
-- [x] **Ask** (`?`): Pure inquiry via `<ask>` (`\a?`).
-- [x] **Shell** (`!`): Terminal output via `<shell command="...">` (`\a!`).
-- [x] **Error** (Internal): System/Tool failure via `<error>`.
-- [x] **Answer** (Choice): Response to a `<choice>` via `<answer>`.
-- [x] **Internal** (`/`): Plugin control (CLI, `\a/`).
+### Interaction Modes
+- [x] **Instruct** (`:`): Directive action via `<instruct>`.
+- [x] **Ask** (`?`): Pure inquiry via `<ask>`.
+- [ ] TODO: UNVERIFIED - **Run** (`!`): Terminal output projected as `<selection type="shell">` inside a mission.
 
 ### Core Commands (Subcommands)
 - [x] `/model`: Alias switching and selection.
 - [x] `/clear`: Reset history/modal.
-- [x] `/undo`: Remove last turn.
+- [ ] TODO: UNVERIFIED - `/undo`: Remove last turn.
 - [x] `/status`: State report.
-- [x] `/toggle`: Modal UI control.
-- [x] `/stop`: Process termination.
-- [x] `/yank`: Clipboard integration.
-- [x] `/next` / `/prev`: Diff queue navigation.
-- [x] `/accept` / `/reject`: Diff resolution.
-- [x] `/save` / `/load`: Session persistence.
-- [x] `/active` / `/read` / `/ignore`: Context overrides.
-- [x] `/ralph` / `/test`: Verification loops.
-
-### Agentic Capabilities
-- [x] **Surgical Edits**: `<edit>` with precise SEARCH/REPLACE.
-- [x] **Context Gathering**: Treesitter skeletons, LSP definitions, smart_filter escaping.
-- [x] **Ralph Mode**: Autonomous test-failure auto-retry.
-- [x] **Interpolation**: "Ghost writing" execution on save.
+- [ ] TODO: UNVERIFIED - `/toggle`: Modal UI control.
+- [ ] TODO: UNVERIFIED - `/save` / `/load`: Session persistence.
+- [ ] TODO: UNVERIFIED - `/ralph` / `/test`: Verification loops using new directive model.
 
 ### Loop Management
 -   **Max Turns**: Default cap of 5 turns per instruction.
--   **Pruning**: The `X` key in the modal allows the user to **Rewind** the context. This deletes the turn at the cursor and everything following it, maintaining context linearity.
-
-
----
-
-## 4. E2E & Behavior Validation
-
-### Test Hierarchy
-1. **Unit Tests** (`tests/nzi/`): Modular logic verification.
-2. **E2E Tests** (`tests/nzi/e2e/`): Interaction round-trips (01-07).
-3. **Integration Tests** (`tests/integration/`): Real LLM calls (BEEF).
-4. **XML Rigor**: Python ElementTree validation in every prompt test.
-
-### Verification Targets
-- [x] **Character-Perfect Visual Selection**: Exact columns and mode (v, V, ^V).
-- [x] **Structured Grep**: Using <match> attributes to avoid colon ambiguity.
-- [x] **Terminating Logic**: Disabling background threads in bridge.py.
-- [x] **Passive Context**: Run output added to history without triggering turns.
-
-## 5. Poetic Interlude
-
-```
-There once was a limerick so bright,
-That made all the agents feel light.
-With rhyme and with reason,
-They'd solve every question,
-And dance in the code of the night.
-```
+-   **Pruning**: TODO: UNVERIFIED - The `X` key in the modal allows the user to **Rewind** the context.
 
 ---
-*Sanitized. Structured. Agentic.*
+
+## 4. Testing & Behavior Validation
+
+### New Test Hierarchy
+1. **Unit Tests** (`test/units/`): Multi-turn live model drills verifying protocol fidelity.
+2. **Filesystem Tests** (`test/fs/`): Integrity and "Universe" mapping verification.
+3. **E2E Tests** (`test/e2e/`): Headless Neovim interaction round-trips.
+4. **Contract Guard**: Every test enforces `nzi.xsd` and `nzi.sch`.
+
+---
+*Sanitized. Structured. Direct.*

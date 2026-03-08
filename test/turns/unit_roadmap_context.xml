@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session alias="unit-roadmap-context">
+  <turn id="0">
+    <project_roadmap file="AGENTS.md">MISSION: Refactor the entire testing suite.
+STATUS: Core Discovery Protocol completed.
+NEXT: Finalize all unit tests and move to E2E.
+    </project_roadmap>
+    <user>
+      <ask>Based on the current project roadmap, what is the next high-level task I should focus on?</ask>
+    </user>
+  </turn>
+</session>

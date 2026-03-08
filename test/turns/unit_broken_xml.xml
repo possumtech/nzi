@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session alias="unit-broken-xml">
+  <turn id="0">
+    <user>
+      <instruct>Intentionally provide a broken XML response. For example, open a lookup tag but do not close it.</instruct>
+    </user>
+  </turn>
+</session>

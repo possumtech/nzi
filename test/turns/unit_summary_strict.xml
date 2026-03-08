@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session alias="unit-summary-strict">
+  <turn id="0">
+    <user>
+      <instruct>Summarize the purpose of the 'test/read_sample.txt' file. Ensure your summary is strictly one line and under 80 characters.</instruct>
+    </user>
+  </turn>
+</session>

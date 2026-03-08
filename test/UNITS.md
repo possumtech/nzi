@@ -18,20 +18,20 @@ This document outlines the complete set of unit tests required to verify the int
 
 ## 3. Protocol Constraints (Schematron/Logic)
 - [x] **unit_ask_constraint**: Verify that an `<ask>` turn fails if the model attempts state-changing actions (`edit`, `shell`, etc.).
-- [ ] **unit_instruct_freedom**: Verify that `<instruct>` allows any valid combination of tools.
-- [ ] **unit_user_feedback**: Verify that `<shell>` or `<error>` feedback from the user includes the required `<selection>`.
+- [x] **unit_instruct_freedom**: Verify that `<instruct>` allows any valid combination of tools.
+- [x] **unit_user_feedback**: Verify that `<shell>` or `<error>` feedback from the user includes the required `<selection>`.
 
 ## 4. Robustness & Healing (Fidelity)
-- [ ] **unit_junk_handling**: Verify that conversational filler outside of tags is correctly captured in the `<content>` node.
-- [ ] **unit_broken_xml**: Verify that malformed XML from the model is healed into a readable string without crashing the DOM.
-- [ ] **unit_nested_content**: Verify that model-generated redundant `<content>` or `<response>` tags are unwrapped correctly.
-- [ ] **unit_reasoning_gift**: Verify that `reasoning_content` from supported models is preserved and projected into the DOM.
+- [x] **unit_junk_handling**: Verify that conversational filler outside of tags is correctly captured in the `<content>` node.
+- [x] **unit_broken_xml**: Verify that malformed XML from the model is healed into a readable string without crashing the DOM.
+- [x] **unit_nested_content**: Verify that model-generated redundant `<content>` or `<response>` tags are unwrapped correctly.
+- [x] **unit_reasoning_gift**: Verify that `reasoning_content` from supported models is preserved and projected into the DOM.
 
 ## 5. Interaction & Navigation
-- [ ] **unit_choice_basic**: Verify the model correctly formats a `<choice>` for user interaction.
-- [ ] **unit_summary_strict**: Verify the model adheres to the 80-character, one-line constraint for `<summary>`.
-- [ ] **unit_answer_flow**: Verify the flow of a user `<answer>` to a model `<choice>`.
+- [x] **unit_choice_basic**: Verify the model correctly formats a `<choice>` for user interaction.
+- [x] **unit_summary_strict**: Verify the model adheres to the 80-character, one-line constraint for `<summary>`.
+- [x] **unit_answer_flow**: Verify the flow of a user `<answer>` to a model `<choice>`.
 
 ## 6. History & Context
-- [ ] **unit_history_projection**: Verify that previously visited files in `<history>` are correctly projected back to the model in subsequent turns.
-- [ ] **unit_roadmap_context**: Verify that the `<project_roadmap>` is correctly utilized by the model for long-term planning.
+- [x] **unit_history_projection**: Verify that previously visited files in `<history>` are correctly projected back to the model in subsequent turns.
+- [x] **unit_roadmap_context**: Verify that the `<project_roadmap>` is correctly utilized by the model for long-term planning.

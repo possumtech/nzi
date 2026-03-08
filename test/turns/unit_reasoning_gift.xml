@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session alias="unit-reasoning-gift">
+  <turn id="0">
+    <user>
+      <ask>Explain the game of chess in exactly three sentences. Please think deeply before responding.</ask>
+    </user>
+  </turn>
+</session>

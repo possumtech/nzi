@@ -70,6 +70,7 @@ M.defaults = {
   yolo = false,  -- If true, skip permission prompts for shell/env tools
   auto_test = nil, -- Command string to run after turns (e.g. "npm test")
   ralph = false,   -- If true, automatically send test failures back to model
+  default_mappings = true, -- If true, register the standard <leader>a mappings
 };
 
 M.options = M.defaults;

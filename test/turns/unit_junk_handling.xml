@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session alias="unit-junk-handling">
+  <turn id="0">
+    <user>
+      <instruct>Perform a lookup for 'NZI' and then chat with me a bit about how you feel about being a protocol-driven assistant.</instruct>
+    </user>
+  </turn>
+</session>
