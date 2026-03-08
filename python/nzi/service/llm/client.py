@@ -54,18 +54,27 @@ class LLMClient:
             )
 
             full_content = ""
+            full_reasoning = ""
             for chunk in response:
                 delta = chunk.choices[0].delta
                 content = getattr(delta, "content", None)
                 reasoning = getattr(delta, "reasoning_content", None) or getattr(delta, "thought", None)
 
                 if reasoning:
+                    full_reasoning += reasoning
                     on_chunk(reasoning, "reasoning")
                 if content:
                     full_content += content
                     on_chunk(content, "content")
             
-            return True, full_content
+            # Return full data object for "Zero-Unwrap" fidelity
+            result = {
+                "content": full_content,
+                "reasoning_content": full_reasoning,
+                "model": model_name,
+                "provider": config.get("api_base") # or similar source
+            }
+            return True, result
         except Exception as e:
             logging.error(f"LLM Error: {str(e)}", exc_info=True)
             return False, str(e)

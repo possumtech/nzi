@@ -16,10 +16,11 @@ class ActionParser:
     Supported actions: edit, create, read, shell, env, grep, delete, etc.
     """
     def __init__(self):
-        # List of tags that we consider "actions"
+        # List of tags that we consider "actions" or protocol units
         self.action_tags = [
             "edit", "create", "read", "shell", "env", "grep", "delete", 
-            "choice", "reset", "status", "ack", "match"
+            "choice", "reset", "status", "ack", "match",
+            "summary", "reasoning", "response"
         ]
         # Regex to match any of the action tags
         tag_list = "|".join(self.action_tags)

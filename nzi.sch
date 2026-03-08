@@ -26,7 +26,7 @@
     </sch:rule>
 
     <!-- The "Ask" Constraint: Inquiry-only turns cannot perform destructive actions -->
-    <sch:rule context="turn[user/ask]/assistant">
+    <sch:rule context="turn[user/ask]/assistant/content">
       <sch:assert test="not(edit or create or delete or shell or choice)">
         An inquiry (ask) turn cannot be answered with state-changing model actions (edit, shell, choice, etc.), but may use discovery tools (read, search, env).
       </sch:assert>
@@ -38,19 +38,13 @@
         Shell and Error tags must contain a selection payload.
       </sch:assert>
     </sch:rule>
-
-    <sch:rule context="response">
-      <sch:assert test="*[last()][self::choice or self::summary]">
-        Response tag must contain either one &lt;choice&gt; or one &lt;summary&gt; tag, as the last element.
-      </sch:assert>
-    </sch:rule>
   </sch:pattern>
 
 
-  <!-- ACTION Rules (Enforced only in assistant envelope) -->
+  <!-- ACTION Rules (Enforced only in assistant/content envelope) -->
   <sch:pattern id="action-contracts">
     <!-- Surgical Edits -->
-    <sch:rule context="assistant/edit">
+    <sch:rule context="assistant/content/edit">
       <sch:assert test="@file">Edit blocks must specify a target file.</sch:assert>
       <sch:assert test="contains(., '&lt;&lt;&lt;&lt;&lt;&lt;&lt;') and contains(., '=======') and contains(., '&gt;&gt;&gt;&gt;&gt;&gt;&gt;')">
         Edit blocks must use the unified diff format (SEARCH/REPLACE).
@@ -58,21 +52,21 @@
     </sch:rule>
 
     <!-- Shell Execution -->
-    <sch:rule context="assistant/shell | assistant/env">
+    <sch:rule context="assistant/content/shell | assistant/content/env">
       <sch:assert test="string-length(normalize-space(.)) &gt; 0">
         Shell/Env commands cannot be empty.
       </sch:assert>
     </sch:rule>
 
     <!-- Context Ownership -->
-    <sch:rule context="edit | create | read | delete | shell | env | search | choice">
-      <sch:assert test="parent::assistant">
-        Model actions are only valid within the assistant envelope.
+    <sch:rule context="edit | create | read | delete | shell | env | search | choice | error | summary | response">
+      <sch:assert test="ancestor::assistant">
+        Model actions and protocol tags are only valid within the assistant envelope.
       </sch:assert>
     </sch:rule>
 
     <!-- File-based Action Validation -->
-    <sch:rule context="assistant/edit | assistant/create | assistant/read | assistant/delete">
+    <sch:rule context="assistant/content/edit | assistant/content/create | assistant/content/read | assistant/content/delete">
       <sch:assert test="@file">This action must specify a target file via the 'file' attribute.</sch:assert>
     </sch:rule>
   </sch:pattern>

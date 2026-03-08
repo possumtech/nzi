@@ -37,30 +37,23 @@ class SessionDOM:
         if turn0 is None:
             turn0 = etree.Element("turn")
             turn0.set("id", "0")
-            # No 'model' attribute on Turn itself according to refined theory
             self.root.insert(0, turn0)
         return turn0
 
-    def _get_agent_envelope(self, turn):
-        agent = turn.find("agent")
-        if agent is None:
-            agent = etree.SubElement(turn, "agent")
-        return agent
-
     def _add_preamble(self):
-        """Sets up the Constitution in Turn 0/Agent only."""
+        """Sets up the Constitution in Turn 0 directly."""
         turn0 = self._get_turn_zero()
-        agent = self._get_agent_envelope(turn0)
         
-        if agent.find("system") is None:
+        if turn0.find("system") is None:
             sys = etree.Element("system")
             sys.text = "You are an agent."
-            # Ensure it's the first child
-            agent.insert(0, sys)
+            turn0.insert(0, sys)
             
-        if turn0.find("agent/user") is None:
-            user = etree.SubElement(agent, "user")
-            user.text = "Initialization"
+        if turn0.find("user") is None:
+            user = etree.SubElement(turn0, "user")
+            # Create a compliant interact tag
+            instruct = etree.SubElement(user, "instruct")
+            instruct.text = "Initialization"
 
     def dump_xml(self):
         return etree.tostring(self.root, encoding='unicode', pretty_print=True)
@@ -82,19 +75,18 @@ class SessionDOM:
     def update_context(self, ctx_list, roadmap_content):
         """
         Synchronizes environment state into the history.
-        Roadmap goes in Turn 0/Agent.
-        Files go in <agent/history> in EVERY turn.
+        Roadmap goes in Turn 0.
+        Files go in <history> in the CURRENT ACTIVE TURN.
         """
         turn0 = self._get_turn_zero()
-        agent0 = self._get_agent_envelope(turn0)
         
         # 1. Update Roadmap in Turn 0 ONLY
-        road = agent0.find("project_roadmap")
+        road = turn0.find("project_roadmap")
         if road is None:
             road = etree.Element("project_roadmap")
             road.set("file", "AGENTS.md")
             # Insert after system if exists
-            agent0.insert(1, road)
+            turn0.insert(1, road)
         
         if roadmap_content:
             road.text = roadmap_content
@@ -103,24 +95,23 @@ class SessionDOM:
 
         # 2. Add files to the <history> tag of the CURRENT ACTIVE TURN
         target_turn = self._active_turn if self._active_turn is not None else turn0
-        agent = self._get_agent_envelope(target_turn)
         
-        hist = agent.find("history")
+        hist = target_turn.find("history")
         if hist is None:
             hist = etree.Element("history")
             # Insert before user
-            user = agent.find("user")
+            user = target_turn.find("user")
             if user is not None:
                 user.addprevious(hist)
             else:
-                agent.append(hist)
+                target_turn.append(hist)
         
         for el in hist.findall("file"):
             hist.remove(el)
             
         for item in ctx_list:
             f = etree.Element("file")
-            f.set("name", item["name"])
+            f.set("path", item["name"]) # Use 'path' per XSD
             f.set("type", item.get("state", "map"))
             f.set("size", str(item.get("size", "-1")))
             if item.get("content"):
@@ -130,42 +121,46 @@ class SessionDOM:
         self.validate_strictly()
 
     def set_system_prompt(self, content):
-        """Updates the constitution in Turn 0/Agent."""
+        """Updates the constitution in Turn 0."""
         turn0 = self._get_turn_zero()
-        agent = self._get_agent_envelope(turn0)
-        sys_node = agent.find("system")
+        sys_node = turn0.find("system")
         if sys_node is None:
             sys_node = etree.Element("system")
-            agent.insert(0, sys_node)
+            turn0.insert(0, sys_node)
         sys_node.text = content
         self.validate_strictly()
 
     def start_turn(self, turn_id, user_data, metadata=None):
-        """Creates a new turn with agent and assistant envelopes."""
+        """Creates a new turn."""
         turn = etree.SubElement(self.root, "turn")
         turn.set("id", str(turn_id))
         
-        agent = etree.SubElement(turn, "agent")
-        user = etree.SubElement(agent, "user")
+        user = etree.SubElement(turn, "user")
         
         if isinstance(user_data, dict):
             if user_data.get("selection"):
                 s = user_data["selection"]
-                sel = etree.SubElement(agent, "selection")
+                sel = etree.SubElement(turn, "selection")
                 sel.set("file", s.get("file", "unknown"))
-                sel.set("range", f"{s.get('start_line', 0)}:{s.get('start_col', 0)}-{s.get('end_line', 0)}:{s.get('end_col', 0)}")
+                # Note: XSD uses separate row/col attributes, not a range string
+                sel.set("first_row", str(s.get("start_line", 1)))
+                sel.set("first_col", str(s.get("start_col", 1)))
+                sel.set("final_row", str(s.get("end_line", 1)))
+                sel.set("final_col", str(s.get("end_col", 1)))
                 sel.text = s.get("text", "")
-                # Ensure selection is before user
-                user.addprevious(sel)
+                # Ensure selection is before user interaction choice
+                # Handled by choice in XSD
             
-            user.text = user_data.get("instruction", "")
+            # User must contain a CHOICE of interaction
+            instruct = etree.SubElement(user, "instruct")
+            instruct.text = user_data.get("instruction", "")
         else:
-            user.text = str(user_data)
+            instruct = etree.SubElement(user, "instruct")
+            instruct.text = str(user_data)
         
         self._active_turn = turn
-        # Pre-create assistant and content node for streaming
+        # Assistant
         assistant = etree.SubElement(turn, "assistant")
-        assistant.set("model", (metadata or {}).get("model", "unknown"))
         self._active_content_node = etree.SubElement(assistant, "content")
         self._active_content_node.text = ""
         
@@ -177,7 +172,11 @@ class SessionDOM:
             curr = self._active_content_node.text or ""
             self._active_content_node.text = curr + text
 
-    def finalize_turn(self, full_assistant_content):
+    def finalize_turn(self, llm_result):
+        """
+        Zero-Unwrap Fidelity: Direct projection of LLM data into the DOM.
+        llm_result: { "content": "...", "reasoning_content": "...", "model": "...", "provider": "..." }
+        """
         if self._active_turn is None:
             return
 
@@ -186,21 +185,54 @@ class SessionDOM:
 
         # Remove the temporary streaming node
         if self._active_content_node is not None:
-            assistant.remove(self._active_content_node)
+            try:
+                assistant.remove(self._active_content_node)
+            except ValueError: pass
             self._active_content_node = None
 
+        # 1. Integrate Reasoning (The Gift)
+        reasoning = llm_result.get("reasoning_content")
+        if reasoning:
+            rc_node = etree.SubElement(assistant, "reasoning_content")
+            rc_node.text = reasoning
+
+        # 2. Integrate Content (The Protocol + Conversational Body)
+        # We domify this directly into a <content> element.
+        content_str = llm_result.get("content", "").strip()
+        content_node = etree.SubElement(assistant, "content")
+        
         try:
-            if "<" in full_assistant_content and ">" in full_assistant_content:
-                frag_xml = f'<root>{full_assistant_content}</root>'
-                frag = etree.fromstring(frag_xml)
-                for child in frag:
-                    assistant.append(child)
-            else:
-                content_node = etree.SubElement(assistant, "content")
-                content_node.text = full_assistant_content
-        except Exception:
-            content_node = etree.SubElement(assistant, "content")
-            content_node.text = full_assistant_content
+            # We parse the content string as an XML fragment to handle mixed content
+            # and protocol tags (edit, summary, etc.) without losing filler text.
+            # We wrap in a dummy root to parse multiple top-level tags + text.
+            parser = etree.XMLParser(recover=True)
+            wrapped_content = f"<root>{content_str}</root>"
+            fragment = etree.fromstring(wrapped_content, parser=parser)
+            
+            # UNWRAP REDUNDANT <content> TAGS
+            # If the model itself wrapped its response in <content>, we unwrap it
+            # to avoid <content><content>...</content></content> which violates XSD.
+            actual_content = fragment
+            first_child = fragment.find("content")
+            if first_child is not None and len(fragment) == 1 and not (fragment.text and fragment.text.strip()):
+                actual_content = first_child
+            
+            # Transfer all text and child nodes to the content_node
+            content_node.text = actual_content.text
+            for child in actual_content:
+                content_node.append(child)
+        except Exception as e:
+            # Fallback to raw text if parsing fails completely
+            logging.error(f"Failed to domify content: {e}")
+            content_node.text = content_str
+
+        # 3. Add Metadata
+        if llm_result.get("model"):
+            m_node = etree.SubElement(assistant, "model")
+            m_node.text = llm_result["model"]
+        if llm_result.get("provider"):
+            p_node = etree.SubElement(assistant, "provider")
+            p_node.text = llm_result["provider"]
 
         self._active_turn = None
         self.validate_strictly()

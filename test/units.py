@@ -16,7 +16,6 @@ def get_python_cmd():
     return [sys.executable] # fallback to current runner's python
 
 def run_test(test_path):
-    print(f"Running unit test {test_path}...")
     try:
         # Run test in a subprocess for isolation
         env = os.environ.copy()
@@ -34,15 +33,16 @@ def run_test(test_path):
                                 capture_output=True, 
                                 text=True)
         
-        print(f"--- STDOUT ({test_path}) --- \n{result.stdout}")
-        if result.stderr:
-            print(f"--- STDERR ({test_path}) --- \n{result.stderr}")
-
+        # Print ONLY the actual test output (the session XML)
+        if result.stdout:
+            print(result.stdout.strip())
+            
         if result.returncode == 0:
-            print(f"  [PASS] {test_path}")
             return True
         else:
-            print(f"  [FAIL] {test_path}")
+            if result.stderr:
+                print(f"--- FAIL: {test_path} ---")
+                print(result.stderr)
             return False
             
     except Exception as e:
@@ -66,7 +66,6 @@ def main():
         if run_test(test):
             success_count += 1
             
-    print(f"\n{success_count}/{len(tests)} tests passed.")
     if success_count < len(tests):
         sys.exit(1)
 

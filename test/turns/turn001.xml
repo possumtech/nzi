@@ -5,10 +5,12 @@
       <instruct>Initialize the project.</instruct>
     </user>
     <assistant>
-      <summary>Project initialized.</summary>
-      <response>
-        <summary>Ready to assist.</summary>
-      </response>
+      <content>
+        <summary>Project initialized.</summary>
+        <response>
+          <summary>Ready to assist.</summary>
+        </response>
+      </content>
     </assistant>
   </turn>
   <turn id="1">
@@ -16,11 +18,13 @@
       <ask>What is the current status?</ask>
     </user>
     <assistant>
-      <summary>Checking status...</summary>
-      <response>
-        <summary>System is idle.</summary>
-      </response>
-      <read file="README.md" />
+      <content>
+        <summary>Checking status...</summary>
+        <response>
+          <summary>System is idle.</summary>
+        </response>
+        <read file="README.md" />
+      </content>
     </assistant>
   </turn>
   <turn id="2">

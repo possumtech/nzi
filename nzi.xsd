@@ -106,23 +106,25 @@
     </xs:complexType>
   </xs:element>
 
-  <!-- ASSISTANT: The output envelope (Package from the model) -->
+  <!-- ASSISTANT: The output envelope (Direct projection of LLM response) -->
   <xs:element name="assistant">
     <xs:complexType>
       <xs:sequence>
-        <xs:element ref="summary" minOccurs="0"/>
-        <xs:element ref="reasoning" minOccurs="0"/>
-        <xs:element ref="response" minOccurs="0"/>
-        <xs:choice minOccurs="0" maxOccurs="unbounded">
-          <xs:element ref="edit"/>
-          <xs:element ref="create"/>
-          <xs:element ref="read"/>
-          <xs:element ref="search"/>
-          <xs:element ref="delete"/>
-          <xs:element name="shell" type="xs:string"/>
-          <xs:element ref="env"/>
-          <xs:element ref="choice"/>
-        </xs:choice>
+        <!-- The "Gift": Internal thoughts from the model -->
+        <xs:element name="reasoning_content" type="xs:string" minOccurs="0"/>
+        
+        <!-- The Body: Protocol tags and conversational filler -->
+        <xs:element name="content">
+          <xs:complexType mixed="true">
+            <xs:sequence>
+              <xs:any minOccurs="0" maxOccurs="unbounded" processContents="skip"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        
+        <!-- Metadata -->
+        <xs:element name="model" type="xs:string" minOccurs="0"/>
+        <xs:element name="provider" type="xs:string" minOccurs="0"/>
       </xs:sequence>
       <xs:attribute name="duration" type="xs:decimal"/>
       <xs:attribute name="prompt_tokens" type="xs:integer"/>
@@ -133,13 +135,11 @@
   <!-- CORE DATA ELEMENTS -->
   
   <xs:element name="system" type="xs:string"/>
-  <xs:element name="reasoning" type="xs:string"/>
   <xs:element name="response">
     <xs:complexType mixed="true">
-      <xs:choice>
-        <xs:element ref="choice"/>
-        <xs:element ref="summary"/>
-      </xs:choice>
+      <xs:sequence>
+        <xs:any minOccurs="0" maxOccurs="unbounded" processContents="skip"/>
+      </xs:sequence>
     </xs:complexType>
   </xs:element>
   <xs:element name="summary">
