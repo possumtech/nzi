@@ -17,9 +17,9 @@ def test_user_feedback_lifecycle():
     # TURN 0: User asks to create dir
     dom = run_live_unit(xml_path)
     
-    # Verify assistant emitted <shell /> or <create />
+    # Verify assistant emitted <run /> or <create />
     content_node = dom.root.xpath("//turn[@id='0']/assistant/content")[0]
-    action_tag = content_node.find("shell")
+    action_tag = content_node.find("run")
     if action_tag is None:
         action_tag = content_node.find("create")
         
@@ -30,7 +30,7 @@ def test_user_feedback_lifecycle():
     # TURN 1: Provide a FAILURE signal via selection
     # We use 'mkdir' which will fail if parents don't exist
     feedback = {
-        "type": "shell",
+        "type": "run",
         "status": "fail",
         "command": "mkdir test/fail_dir/sub",
         "content": "mkdir: cannot create directory ‘test/fail_dir/sub’: No such file or directory",

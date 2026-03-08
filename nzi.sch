@@ -20,22 +20,22 @@
     </sch:rule>
     
     <sch:rule context="user">
-      <sch:assert test="ask or act or shell or error or answer">
-        Every user envelope must contain a valid interaction tag (ask, act, shell, error, or answer).
+      <sch:assert test="ask or act or run or error or answer">
+        Every user envelope must contain a valid interaction tag (ask, act, run, error, or answer).
       </sch:assert>
     </sch:rule>
 
     <!-- The "Ask" Constraint: Inquiry-only turns cannot perform destructive actions -->
     <sch:rule context="turn[user/ask]/assistant/content">
-      <sch:assert test="not(edit or create or delete or shell or prompt_user)">
-        An inquiry (ask) turn cannot be answered with state-changing model actions (edit, shell, prompt_user, etc.), but may use discovery tools (read, lookup, env).
+      <sch:assert test="not(edit or create or delete or run or prompt_user)">
+        An inquiry (ask) turn cannot be answered with state-changing model actions (edit, run, prompt_user, etc.), but may use discovery tools (read, lookup, env).
       </sch:assert>
     </sch:rule>
 
     <!-- The "Payload" Constraint: User feedback tags require a selection -->
-    <sch:rule context="user/shell | user/error">
+    <sch:rule context="user/run | user/error">
       <sch:assert test="selection">
-        User-provided Shell and Error tags must contain a selection payload.
+        User-provided Run and Error tags must contain a selection payload.
       </sch:assert>
     </sch:rule>
   </sch:pattern>
@@ -48,10 +48,10 @@
       <sch:assert test="@file">Edit blocks must specify a target file.</sch:assert>
     </sch:rule>
 
-    <!-- Shell Execution -->
-    <sch:rule context="assistant/content/shell | assistant/content/env">
+    <!-- Run Execution -->
+    <sch:rule context="assistant/content/run | assistant/content/env">
       <sch:assert test="string-length(normalize-space(.)) &gt; 0">
-        Shell/Env commands cannot be empty.
+        Run/Env commands cannot be empty.
       </sch:assert>
     </sch:rule>
 
@@ -69,9 +69,9 @@
       </sch:assert>
     </sch:rule>
 
-    <sch:rule context="shell | error">
+    <sch:rule context="run | error">
       <sch:assert test="ancestor::assistant or parent::user">
-        Shell and Error tags must be within an assistant action or a user feedback envelope.
+        Run and Error tags must be within an assistant action or a user feedback envelope.
       </sch:assert>
     </sch:rule>
 
@@ -82,8 +82,8 @@
     </sch:rule>
 
     <!-- File-based Action Validation -->
-    <sch:rule context="assistant/content/edit | assistant/content/create | assistant/content/read | assistant/content/delete">
-      <sch:assert test="@file">This action must specify a target file via the 'file' attribute.</sch:assert>
+    <sch:rule context="assistant/content/edit | assistant/content/create | assistant/content/read | assistant/content/delete | assistant/content/run">
+      <sch:assert test="@file or @command">This action must specify a target file or command.</sch:assert>
     </sch:rule>
   </sch:pattern>
 

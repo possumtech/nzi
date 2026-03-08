@@ -1,5 +1,5 @@
 local diff = require("nzi.ui.diff");
-local shell = require("nzi.tools.shell");
+local run_tool = require("nzi.tools.run");
 local config = require("nzi.core.config");
 local M = {};
 
@@ -87,9 +87,10 @@ function M.propose_choice(params)
   end);
 end
 
---- Execute a shell command
-function M.run_shell(cmd, bufnr, line_idx, inject, signal_type)
-  shell.run_shell(cmd, bufnr, line_idx, inject, signal_type);
+--- Execute a system command
+function M.run(cmd, bufnr, line_idx, inject, signal_type)
+  run_tool.run(cmd, bufnr, line_idx, inject, signal_type);
 end
+
 
 return M;

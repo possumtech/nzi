@@ -98,27 +98,28 @@ end
 function M.actions.test(args)
   local test_cmd = config.options.test_command or "./test/test.sh";
   if args and args ~= "" then test_cmd = test_cmd .. " " .. args; end
-  effector.run_shell(test_cmd, nil, nil, false, "test");
+  effector.run(test_cmd, nil, nil, false, "test");
 end
 
 function M.actions.ralph(args)
   local ralph_cmd = config.options.ralph_command or "./test/ralph.sh";
   if args and args ~= "" then ralph_cmd = ralph_cmd .. " " .. args; end
-  effector.run_shell(ralph_cmd, nil, nil, false, "ralph");
+  effector.run(ralph_cmd, nil, nil, false, "ralph");
 end
 
 --- Execute an internal AI/ command
---- @param cmd string: The subcommand (e.g. "model", "clear")
-function M.run(cmd)
-  config.log(cmd, "CMD");
-  if not cmd or cmd == "" then
-    require("nzi.ui.buffers").open_ui();
+--- @param cmd_text string: The subcommand (e.g. "model", "clear")
+function M.run(cmd_text)
+  config.log(cmd_text, "CMD");
+  if not cmd_text or cmd_text == "" then
+    M.actions.help();
     return;
   end
 
-  local parts = vim.split(cmd, " ");
+  local parts = vim.split(cmd_text, " ");
   local subcommand = parts[1];
   local args = table.concat(parts, " ", 2);
+
 
   if M.actions[subcommand] then
     M.actions[subcommand](args);

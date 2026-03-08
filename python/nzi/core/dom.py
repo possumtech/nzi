@@ -226,8 +226,8 @@ class SessionDOM:
 
     def _project_user_data(self, mission_node, user_data):
         boilerplates = {
-            "shell:pass": "Command completed successfully. Proceed.",
-            "shell:fail": "Command error. Diagnose and resolve.",
+            "run:pass": "Command completed successfully. Proceed.",
+            "run:fail": "Command error. Diagnose and resolve.",
             "test:pass": "Test passed. Proceed.",
             "test:fail": "Test failed. Diagnose and resolve.",
             "env:pass": "Environment discovery command results.",
@@ -239,7 +239,7 @@ class SessionDOM:
             s_type = user_data["type"]
             s_status = user_data.get("status", "pass")
             
-            # Normalization: handle "shell_pass" -> type="shell", status="pass"
+            # Normalization: handle "run_pass" -> type="run", status="pass"
             if "_" in s_type and s_type.split("_")[1] in ["pass", "fail"]:
                 parts = s_type.split("_")
                 s_type = parts[0]

@@ -31,7 +31,7 @@ def test_delete_lifecycle():
 
     # TURN 1: Acknowledge deletion via Unified Directive
     feedback = {
-        "type": "shell",
+        "type": "run",
         "status": "pass",
         "command": f"rm {target_file}",
         "content": "File deleted successfully.",

@@ -172,7 +172,7 @@
       <xs:simpleContent>
         <xs:extension base="xs:string">
           <xs:attribute name="file" type="xs:string"/>
-          <xs:attribute name="type" type="xs:string"/> <!-- env, shell, test_pass, test_fail, ralph_fail, answer, etc. -->
+          <xs:attribute name="type" type="xs:string"/> <!-- env, run, test_pass, test_fail, answer, etc. -->
           <xs:attribute name="command" type="xs:string"/>
           <xs:attribute name="status" type="xs:string"/>
           <xs:attribute name="first_row" type="xs:integer"/>
@@ -201,6 +201,16 @@
       <xs:simpleContent>
         <xs:extension base="xs:string">
           <xs:attribute name="file" type="xs:string" use="required"/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="run">
+    <xs:complexType mixed="true">
+      <xs:simpleContent>
+        <xs:extension base="xs:string">
+          <xs:attribute name="command" type="xs:string" use="required"/>
         </xs:extension>
       </xs:simpleContent>
     </xs:complexType>

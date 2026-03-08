@@ -22,11 +22,11 @@ else
 end
 
 -- 2. AI! Trigger (Run)
--- Note: 'run' type currently delegates to effector.run_shell in bridge.lua
+-- Note: 'run' type currently delegates to effector.run in bridge.lua
 -- We need to check if the effector was called.
 local effector = require("nzi.service.vim.effector");
 local last_shell_cmd = nil;
-effector.run_shell = function(cmd) last_shell_cmd = cmd end
+effector.run = function(cmd) last_shell_cmd = cmd end
 
 print("Testing 'AI!' trigger on save...");
 vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "AI! ls -la", "print('run')" });

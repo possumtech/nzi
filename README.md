@@ -106,7 +106,7 @@ The modal is your persistent log of the current session.
 | **Act** | `:` | `:AI: ...` | `\a:` | `AI: ...` | Surgical Edit / Diff |
 | **Ask** | `?` | `:AI? ...` | `\a?` | `AI? ...` | Response in Modal |
 | **Run** | `!` | `:AI! ...` | `\a!` | `AI! ...` | TODO: UNVERIFIED - Project output as directive |
-| **Internal** | `/` | `:AI/ ...` | `\a/` | - | State/Context Control |
+| **Cmd** | `/` | `:AI/ ...` | `\a/` | - | State/Context Control |
 
 ---
 
@@ -120,7 +120,7 @@ NZI uses a `<leader>a` prefix for quick command access.
 | **`\a:`** | **Act**: Prompt for code modification | Normal/Visual |
 | **`\a?`** | **Ask**: Prompt for analysis | Normal/Visual |
 | **`\a!`** | **Run**: Prompt for command execution | Normal/Visual |
-| **`\a/`** | **Internal**: Prompt for control command | Normal/Visual |
+| **`\a/`** | **Cmd**: Prompt for control command | Normal/Visual |
 | **`\aA`** | Mark current buffer as **Active** (Full context) | Normal |
 | **`\aR`** | Mark current buffer as **Read-only** (Context only) | Normal |
 | **`\aI`** | Mark current buffer as **Ignored** (Completely hidden) | Normal |
@@ -163,7 +163,7 @@ The assistant communicates via a direct projection of the LLM response.
 | **`<create>`** | `file` | New file creation. |
 | **`<delete>`** | `file` | File removal (Git-aware). |
 | **`<env>`** | `command` | Read-only environment discovery. |
-| **`<shell>`** | `command` | Destructive terminal command. |
+| **`<run>`** | `command` | State-changing execution. |
 | **`<summary>`** | - | **Turn Terminator**: A one-sentence summary of actions |
 | **`<prompt_user>`** | - | **Turn Terminator**: A question requiring user input |
 
@@ -185,11 +185,11 @@ NZI provides structured environment data via `<history>` sub-tags.
 
 ---
 
-## Precision Shell Logic (`AI!`)
-When executing a shell command with a visual selection:
-*   **No Command**: `:AI!` — Runs the selected text directly in the shell.
+## Precision Run Logic (`AI!`)
+When executing a command with a visual selection:
+*   **No Command**: `:AI!` — Runs the selected text directly.
 *   **With Command**: `:AI! command` — Runs `command selected_text`.
-*   **Output**: TODO: UNVERIFIED - Projected as directive inside an `<act>` mission.
+*   **Output**: TODO: UNVERIFIED - Projected as directive inside an `<act>` turn.
 
 ---
 *Sanitized. Structured. Assistant.*

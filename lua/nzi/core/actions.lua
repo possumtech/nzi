@@ -27,10 +27,11 @@ local commands = require("nzi.core.commands");
 function M.act() prompt_mission(":", "Act") end
 function M.ask() prompt_mission("?", "Ask") end
 function M.run() prompt_mission("!", "Run") end
-function M.internal() prompt_mission("/", "Internal") end
+function M.cmd() prompt_mission("/", "Cmd") end
 
 -- Session Control
-function M.toggle_modal() commands.actions.toggle() end
+function M.undo() commands.actions.undo() end
+
 function M.undo() commands.actions.undo() end
 function M.stop() commands.actions.stop() end
 function M.reset() 
@@ -100,7 +101,8 @@ function M.apply_default_mappings()
     { mode = { "n", "v" }, key = "<leader>a:", action = M.act, desc = "AI: Act" },
     { mode = { "n", "v" }, key = "<leader>a?", action = M.ask, desc = "AI: Ask" },
     { mode = { "n", "v" }, key = "<leader>a!", action = M.run, desc = "AI: Run" },
-    { mode = { "n", "v" }, key = "<leader>a/", action = M.internal, desc = "AI: Internal" },
+    { mode = "n", key = "<leader>a/", action = M.cmd, desc = "AI: Cmd" },
+
     { mode = "n", key = "<leader>ay", action = M.yank_last_response, desc = "AI: Yank last response" },
     { mode = "n", key = "<leader>as", action = M.save_session, desc = "AI: Save Session" },
     { mode = "n", key = "<leader>al", action = M.load_session, desc = "AI: Load Session" },

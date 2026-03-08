@@ -70,19 +70,19 @@ effector.propose_edit({
 -- Healed edits trigger a notify scold (which we can't easily assert in headless but we verify no crash)
 print("    [PASS] Healed edit dispatched.")
 
--- 5. Test <env> / <shell>
-print("  Testing <shell> execution...");
+-- 5. Test <env> / <run>
+print("  Testing <run> execution...");
 local last_cmd = nil;
-local original_shell = require("nzi.tools.shell").run_shell;
-require("nzi.tools.shell").run_shell = function(cmd) last_cmd = cmd end
+local original_run = require("nzi.tools.run").run;
+require("nzi.tools.run").run = function(cmd) last_cmd = cmd end
 
-effector.run_shell("ls -la");
+effector.run("ls -la");
 if last_cmd == "ls -la" then
-  print("    [PASS] <shell> command correctly dispatched to shell tool.")
+  print("    [PASS] <run> command correctly dispatched to run tool.")
 else
-  error("    [FAIL] <shell> command mismatch: " .. tostring(last_cmd))
+  error("    [FAIL] <run> command mismatch: " .. tostring(last_cmd))
 end
-require("nzi.tools.shell").run_shell = original_shell;
+require("nzi.tools.run").run = original_run;
 
 -- 6. Test <delete>
 print("  Testing <delete> action...");

@@ -89,23 +89,23 @@ function M.setup(opts)
 
     -- 2. Handle the "!" (Run) shortcut
     if args:match("^!") then
-      local shell_cmd = args:sub(2):gsub("^%s*", "");
+      local run_cmd = args:sub(2):gsub("^%s*", "");
       local bufnr = vim.api.nvim_get_current_buf();
       
       -- Range Logic: selection as argument
       if line1 ~= line2 or (opts.range > 0) then
         local lines = vim.api.nvim_buf_get_lines(bufnr, line1-1, line2, false);
         local selection_text = table.concat(lines, " ");
-        if shell_cmd == "" then
-          shell_cmd = selection_text;
+        if run_cmd == "" then
+          run_cmd = selection_text;
         else
-          shell_cmd = shell_cmd .. " " .. selection_text;
+          run_cmd = run_cmd .. " " .. selection_text;
         end
       end
 
-      if shell_cmd ~= "" then
-        config.log(shell_cmd, "RUN");
-        require("nzi.service.vim.effector").run_shell(shell_cmd, bufnr, line1, false);
+      if run_cmd ~= "" then
+        config.log(run_cmd, "RUN");
+        require("nzi.service.vim.effector").run(run_cmd, bufnr, line1, false);
       else
         vim.notify("AI!: No command provided.", vim.log.levels.WARN);
       end

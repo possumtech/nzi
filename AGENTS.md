@@ -15,16 +15,16 @@ This is the canonical source of truth for **nzi** development, technical specifi
 ### Pending Focus
 - [ ] TODO: UNVERIFIED - Align Vim Service (Vim <--> DOM) with the new flat protocol.
 - [ ] TODO: UNVERIFIED - Verify modal UI handles the new <reasoning_content> and <content> nesting.
-- [ ] TODO: UNVERIFIED - Ensure Ralph Mode (auto-retry) respects the Unified Directive mission flow.
+- [ ] TODO: UNVERIFIED - Ensure Ralph Mode (auto-retry) respects the Unified Directive turn flow.
 
 ---
 
 ## 2. Technical Architecture (Unified Directive)
 
 ### Core Protocol
-Every user interaction MUST be a mission. Technical feedback is carried via the `selection` tag.
+Every user interaction MUST be a turn. Technical feedback is carried via the `selection` tag.
 
-| Tag | Attributes | Mission Type |
+| Tag | Attributes | Turn Type |
 | :--- | :--- | :--- |
 | **`<ask>`** | - | Pure inquiry; only read-only tools allowed. |
 | **`<act>`** | - | Directive for state-changing action. |
@@ -32,7 +32,7 @@ Every user interaction MUST be a mission. Technical feedback is carried via the 
 ### Feedback Signals (Inside <selection>)
 | Type | Status | Boilerplate Directive |
 | :--- | :--- | :--- |
-| `shell` | `pass`/`fail` | Command completed / Command error. |
+| `run` | `pass`/`fail` | Command completed / Command error. |
 | `test` | `pass`/`fail` | Test passed / Test failed. |
 | `env` | `pass`/`fail` | Discovery results / Discovery failed. |
 | `answer` | `pass` | Your answer to a previous prompt_user. |
@@ -51,7 +51,7 @@ Every user interaction MUST be a mission. Technical feedback is carried via the 
 ### Interaction Modes
 - [x] **Act** (`:`): Directive action via `<act>`.
 - [x] **Ask** (`?`): Pure inquiry via `<ask>`.
-- [ ] TODO: UNVERIFIED - **Run** (`!`): Terminal output projected as `<selection type="shell">` inside a mission.
+- [ ] TODO: UNVERIFIED - **Run** (`!`): Terminal output projected as `<selection type="run">` inside a turn.
 
 ### Core Commands (Subcommands)
 - [x] `/model`: Alias switching and selection.

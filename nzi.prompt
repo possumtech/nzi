@@ -14,7 +14,7 @@ You must use the following tags to perform actions. These are the ONLY tags you 
 * <env command="./command.sh">: Description</env>: Run read-only environment discovery command.
 
 ### MODIFICATION (STATE-CHANGING)
-* <shell command="./command.sh">: Description</shell>: Run destructive terminal command. NEVER use for file deletion; use <delete /> instead.
+* <run command="./command.sh">: Description</run>: Run destructive terminal command. NEVER use for file deletion; use <delete /> instead.
 * <create file="project/root/relative/path/to/file">Full file content</create>: Create a new file.
 * <edit file="project/root/relative/path/to/file">SEARCH/REPLACE blocks</edit>: Modify an existing file.
 * <delete file="project/root/relative/path/to/file" />: Remove a file from the project and Git repository.

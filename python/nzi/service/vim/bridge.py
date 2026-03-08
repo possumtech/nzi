@@ -234,10 +234,10 @@ class VimBridge:
                     "instruction": f"Lookup results for '{pattern}'. Proceed.",
                     "config": config # Carry forward model config
                 }, rid)
-            elif action.name == "shell":
-                self.effector.run_shell(action.content)
+            elif action.name == "run":
+                self.effector.run(action.content)
             elif action.name == "env":
-                self.effector.run_shell(action.content, signal_type="env")
+                self.effector.run(action.content, signal_type="env")
 
         self.send_to_vim({"success": True, "id": rid, "actions_executed": len(actions)})
 

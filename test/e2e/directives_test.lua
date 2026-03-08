@@ -1,6 +1,6 @@
 -- E2E Test: Directive Projections
 local nzi = require("nzi");
-local shell = require("nzi.tools.shell");
+local run_tool = require("nzi.tools.run");
 local session = require("nzi.dom.session");
 local helper = require("test.e2e.xml_helper");
 local config = require("nzi.core.config");
@@ -13,7 +13,7 @@ session.clear();
 config.options.yolo = true; -- avoid confirm dialog
 
 -- Execute a simple command
-shell.run_shell("echo 'hello world'", nil, nil, true);
+run_tool.run("echo 'hello world'", nil, nil, true);
 
 -- Wait for it to finish and sync
 vim.wait(2000, function() 
@@ -22,16 +22,16 @@ vim.wait(2000, function()
 end, 100);
 
 local xml = session.format();
-local results = helper.xpath(xml, "//turn/user/instruct/selection[@type='shell' and @status='pass']");
+local results = helper.xpath(xml, "//turn/user/instruct/selection[@type='run' and @status='pass']");
 if #results > 0 then
-  print("    [PASS] Shell Pass projected as <selection type='shell' status='pass'>")
+  print("    [PASS] Shell Pass projected as <selection type='run' status='pass'>")
 else
   error("    [FAIL] Shell Pass projection failed.\nXML:\n" .. xml)
 end
 
 -- 2. Shell Fail Projection
 print("  Testing Shell Fail projection...");
-shell.run_shell("ls /nonexistent_directory_xyz", nil, nil, true);
+run_tool.run("ls /nonexistent_directory_xyz", nil, nil, true);
 
 vim.wait(2000, function() 
   local xml = session.format();
@@ -39,9 +39,9 @@ vim.wait(2000, function()
 end, 100);
 
 xml = session.format();
-results = helper.xpath(xml, "//turn/user/instruct/selection[@type='shell' and @status='fail']");
+results = helper.xpath(xml, "//turn/user/instruct/selection[@type='run' and @status='fail']");
 if #results > 0 then
-  print("    [PASS] Shell Fail projected as <selection type='shell' status='fail'>")
+  print("    [PASS] Shell Fail projected as <selection type='run' status='fail'>")
 else
   error("    [FAIL] Shell Fail projection failed.\nXML:\n" .. xml)
 end

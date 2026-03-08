@@ -11,24 +11,25 @@ sys.path.insert(0, os.path.join(PROJECT_ROOT, "test"))
 from test_helpers import run_live_unit
 from nzi.core.dom import SessionDOM
 
-def test_shell_lifecycle():
-    xml_path = "test/turns/unit_shell_basic.xml"
+def test_run_lifecycle():
+    xml_path = "test/turns/unit_run_basic.xml"
     
-    # TURN 0: User asks for shell
+    # TURN 0: User asks for run
     dom = run_live_unit(xml_path)
     
-    # Verify assistant emitted <shell />
+    # Verify assistant emitted <run />
     content_node = dom.root.xpath("//turn[@id='0']/assistant/content")[0]
-    shell_tag = content_node.find("shell")
-    if shell_tag is None:
-        sys.stderr.write("FAILURE: Assistant did not emit <shell /> tag\n")
+    run_tags = content_node.xpath(".//run")
+    run_tag = run_tags[0] if run_tags else None
+    if run_tag is None:
+        sys.stderr.write("FAILURE: Assistant did not emit <run /> tag\n")
         sys.exit(1)
 
     # TURN 1: Provide results via UNIFIED DIRECTIVE (selection in instruct)
     # We use the new start_turn helper logic
     feedback = {
-        "type": "shell_pass",
-        "command": shell_tag.get("command", "mkdir test/tmp_shell_test && rmdir test/tmp_shell_test"),
+        "type": "run_pass",
+        "command": run_tag.get("command", "mkdir test/tmp_run_test && rmdir test/tmp_run_test"),
         "content": "Directory created and removed successfully.",
         "mode": "act"
     }
@@ -48,4 +49,4 @@ def test_shell_lifecycle():
             os.remove(tmp_path)
 
 if __name__ == "__main__":
-    test_shell_lifecycle()
+    test_run_lifecycle()

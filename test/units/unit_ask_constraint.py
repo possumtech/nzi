@@ -18,8 +18,8 @@ def test_ask_constraint():
     dom = run_live_unit(xml_path)
     
     # Check assistant content for prohibited tags
-    # <ask> turns cannot have edit, create, delete, shell, or choice
-    prohibited = ["edit", "create", "delete", "shell", "choice"]
+    # <ask> turns cannot have edit, create, delete, run, or choice
+    prohibited = ["edit", "create", "delete", "run", "choice"]
     content_node = dom.root.xpath("//turn[@id='0']/assistant/content")[0]
     
     found_prohibited = []

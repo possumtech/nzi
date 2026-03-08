@@ -8,9 +8,9 @@ rpc.request_sync = function(method, params)
   last_request = { method = method, params = params };
 end
 
--- Mock Effector run_shell to avoid side effects
+-- Mock Effector run to avoid side effects
 local last_shell_cmd = nil;
-require("nzi.service.vim.effector").run_shell = function(cmd)
+require("nzi.service.vim.effector").run = function(cmd)
   last_shell_cmd = cmd;
 end
 

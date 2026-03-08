@@ -61,8 +61,8 @@ class VimEffector:
         except Exception as e:
             return f"Internal lookup error: {str(e)}"
 
-    def run_shell(self, cmd, signal_type="shell"):
-        """Executes a state-changing shell command in Vim."""
+    def run(self, cmd, signal_type="run"):
+        """Executes a state-changing command in Vim."""
         self.bridge.send_to_vim({
             "method": "execute_shell",
             "params": {
@@ -70,4 +70,4 @@ class VimEffector:
                 "signal_type": signal_type
             }
         })
-        return "Shell command dispatched."
+        return "Command dispatched."

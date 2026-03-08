@@ -1,8 +1,0 @@
-<?xml version='1.0' encoding='UTF-8'?>
-<session alias="unit-shell-basic">
-  <turn id="0">
-    <user>
-      <act>Execute a destructive shell command to create a temporary directory named 'test/tmp_shell_test' and then delete it. Report completion.</act>
-    </user>
-  </turn>
-</session>

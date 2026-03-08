@@ -120,8 +120,8 @@ function M.execute_interpolation(row)
 
   -- 3. Start Mission
   if type == "run" then
-    require("nzi.service.vim.effector").run_shell(content);
-  elseif type == "internal" then
+    require("nzi.service.vim.effector").run(content);
+  elseif type == "cmd" then
     require("nzi.core.commands").run(content);
   else
     M.run_loop(content, type, false, cur_file, selection);
@@ -159,7 +159,7 @@ function M.execute_range(line1, line2)
     local relative_file = (cur_file ~= "") and vim.fn.fnamemodify(cur_file, ":.") or nil;
     
     if type == "run" then
-      require("nzi.service.vim.effector").run_shell(content);
+      require("nzi.service.vim.effector").run(content);
     else
       local selection = watcher.get_selection();
       M.run_loop(content, type, false, relative_file, selection);
@@ -185,8 +185,8 @@ function M.execute_current_line()
     local relative_file = (cur_file ~= "") and vim.fn.fnamemodify(cur_file, ":.") or nil;
     
     if parsed_type == "run" then
-      require("nzi.service.vim.effector").run_shell(content);
-    elseif parsed_type == "internal" then
+      require("nzi.service.vim.effector").run(content);
+    elseif parsed_type == "cmd" then
       require("nzi.core.commands").run(content);
     else
       M.run_loop(content, parsed_type, false, relative_file, nil);
