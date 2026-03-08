@@ -28,7 +28,7 @@
     <!-- The "Ask" Constraint: Inquiry-only turns cannot perform destructive actions -->
     <sch:rule context="turn[user/ask]/assistant/content">
       <sch:assert test="not(edit or create or delete or shell or choice)">
-        An inquiry (ask) turn cannot be answered with state-changing model actions (edit, shell, choice, etc.), but may use discovery tools (read, grep, env).
+        An inquiry (ask) turn cannot be answered with state-changing model actions (edit, shell, choice, etc.), but may use discovery tools (read, lookup, env).
       </sch:assert>
     </sch:rule>
 
@@ -59,9 +59,21 @@
     </sch:rule>
 
     <!-- Context Ownership -->
-    <sch:rule context="edit | create | read | delete | shell | env | grep | choice | error | summary | response">
+    <sch:rule context="edit | create | delete | choice | summary | response">
       <sch:assert test="ancestor::assistant">
-        Model actions and protocol tags are only valid within the assistant envelope.
+        This tag is only valid within the assistant envelope.
+      </sch:assert>
+    </sch:rule>
+
+    <sch:rule context="shell | error">
+      <sch:assert test="ancestor::assistant or parent::user">
+        Shell and Error tags must be within an assistant action or a user feedback envelope.
+      </sch:assert>
+    </sch:rule>
+
+    <sch:rule context="lookup | read | ack | env">
+      <sch:assert test="ancestor::assistant or ancestor::history">
+        Discovery and Acknowledgment tags must be within an assistant action or a history envelope.
       </sch:assert>
     </sch:rule>
 

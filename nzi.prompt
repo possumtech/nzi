@@ -10,7 +10,7 @@ You are an assistant.
 ## ASSISTANT ACTION PROTOCOL
 ### DISCOVERY (READ-ONLY)
 * <read file="project/root/relative/path/to/file" />: Pull file into context.
-* <grep>Pattern</grep>: Search for pattern in all files and return matches.
+* <lookup>Pattern</lookup>: Search for pattern in all files and return matches.
 * <env command="./command.sh">: Description</env>: Run read-only environment discovery command.
 
 ### MODIFICATION (STATE-CHANGING)

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session alias="unit-grep-basic">
+  <turn id="0">
+    <user>
+      <instruct>Find all occurrences of the word "assistant" in the 'test/' directory files.</instruct>
+    </user>
+  </turn>
+</session>

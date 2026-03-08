@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session alias="unit-discovery-multi">
+  <turn id="0">
+    <user>
+      <instruct>Read 'test/read_sample.txt' and also list the files in 'test/fs/'. Perform both actions in this turn.</instruct>
+    </user>
+  </turn>
+</session>

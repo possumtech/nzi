@@ -3,10 +3,10 @@
 This document outlines the complete set of unit tests required to verify the integrity, fidelity, and robustness of the NZI protocol. Each unit consists of an XML turn (`test/turns/`) and a corresponding live Python drill (`test/units/`).
 
 ## 1. Core Discovery Protocol (Read-Only)
-- [ ] **unit_read_basic**: Verify Character-perfect `<read />` of a text file.
-- [ ] **unit_grep_basic**: Verify `<grep>` returns expected matches across multiple files.
-- [ ] **unit_env_basic**: Verify `<env>` execution for non-destructive discovery (e.g., `ls -R`).
-- [ ] **unit_discovery_multi**: Verify multiple discovery actions in a single turn.
+- [x] **unit_read_basic**: Verify Character-perfect `<read />` of a text file.
+- [x] **unit_lookup_basic**: Verify `<lookup>` returns expected matches across multiple files.
+- [x] **unit_env_basic**: Verify `<env>` execution for non-destructive discovery (e.g., `ls -R`).
+- [x] **unit_discovery_multi**: Verify multiple discovery actions in a single turn.
 
 ## 2. Modification Protocol (State-Changing)
 - [ ] **unit_create_basic**: Verify `<create>` with full file content and proper escaping.

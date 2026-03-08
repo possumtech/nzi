@@ -18,7 +18,7 @@ class ActionParser:
     def __init__(self):
         # List of tags that we consider "actions" or protocol units
         self.action_tags = [
-            "edit", "create", "read", "shell", "env", "grep", "delete", 
+            "edit", "create", "read", "shell", "env", "lookup", "delete", 
             "choice", "reset", "status", "ack", "match",
             "summary", "reasoning", "response"
         ]
