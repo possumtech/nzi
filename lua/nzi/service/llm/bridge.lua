@@ -82,7 +82,8 @@ function M.execute_range(line1, line2)
     if type == "run" then
       require("nzi.service.vim.effector").run_shell(content);
     else
-      M.run_loop(content, type, false, relative_file, nil);
+      local selection = watcher.get_selection();
+      M.run_loop(content, type, false, relative_file, selection);
     end
   else
     local selection = watcher.get_selection();

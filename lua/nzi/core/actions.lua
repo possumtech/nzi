@@ -21,6 +21,8 @@ local function prompt_mission(prefix, prompt_label)
   end
 end
 
+local commands = require("nzi.core.commands");
+
 -- Core Interaction Missions
 function M.instruct() prompt_mission(":", "Instruct") end
 function M.ask() prompt_mission("?", "Ask") end
@@ -28,12 +30,12 @@ function M.run() prompt_mission("!", "Run") end
 function M.internal() prompt_mission("/", "Internal") end
 
 -- Session Control
-function M.toggle_modal() vim.cmd("AI/toggle") end
-function M.undo() vim.cmd("AI/undo") end
-function M.stop() vim.cmd("AI/stop") end
+function M.toggle_modal() commands.actions.toggle() end
+function M.undo() commands.actions.undo() end
+function M.stop() commands.actions.stop() end
 function M.reset() 
-  vim.cmd("AI/stop")
-  vim.cmd("AI/reset")
+  commands.actions.stop()
+  commands.actions.clear() -- reset was mostly clear
 end
 
 -- Diff Management
@@ -50,13 +52,13 @@ function M.mark_ignored() vim.cmd("AI/ignore") end
 -- Persistence
 function M.save_session()
   vim.ui.input({ prompt = "Session Name: ", default = "default" }, function(input)
-    if input then vim.cmd("AI/save " .. input) end
+    if input then commands.actions.save(input) end
   end)
 end
 
 function M.load_session()
   vim.ui.input({ prompt = "Session Name: ", default = "default" }, function(input)
-    if input then vim.cmd("AI/load " .. input) end
+    if input then commands.actions.load(input) end
   end)
 end
 
@@ -66,7 +68,7 @@ function M.yank_last_response() vim.cmd("AI/yank") end
 function M.run_tests()
   local current_file = vim.fn.expand("%:.")
   vim.ui.input({ prompt = "Test args: ", default = current_file }, function(input)
-    vim.cmd("AI/test " .. (input or ""))
+    commands.actions.test(input or "")
   end)
 end
 
@@ -81,16 +83,6 @@ function M.toggle_yolo()
   config.options.yolo = not config.options.yolo;
   local mode = config.options.yolo and "ACTIVE" or "OFF";
   config.notify("YOLO Mode is now " .. mode, vim.log.levels.WARN);
-end
-
--- Specialized Visual actions
-function M.ask_selection()
-  local selection = engine.get_visual_selection();
-  vim.ui.input({ prompt = "AI Ask on selection: " }, function(input)
-    if input and input ~= "" then
-      engine.run_loop(input, "ask", false, nil, selection);
-    end
-  end);
 end
 
 --- Apply the standard leader mappings
@@ -113,7 +105,6 @@ function M.apply_default_mappings()
     { mode = "n", key = "<leader>as", action = M.save_session, desc = "AI: Save Session" },
     { mode = "n", key = "<leader>al", action = M.load_session, desc = "AI: Load Session" },
     { mode = "n", key = "<leader>aa", action = M.toggle_modal, desc = "AI: Toggle Modal" },
-    { mode = "v", key = "<leader>av", action = M.ask_selection, desc = "AI: Ask on selection" },
     { mode = "n", key = "<leader>aA", action = M.mark_active, desc = "AI: Mark buffer as Active" },
     { mode = "n", key = "<leader>aR", action = M.mark_read_only, desc = "AI: Mark buffer as Read-only Context" },
     { mode = "n", key = "<leader>aI", action = M.mark_ignored, desc = "AI: Mark buffer as Ignored" },

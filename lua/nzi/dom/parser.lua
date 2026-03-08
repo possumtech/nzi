@@ -3,10 +3,10 @@ local M = {};
 --- Parse a single line for AI instructs in-buffer (Legacy feature)
 function M.parse_line(line)
   local patterns = {
-    instruct = ":[Aa][Ii]:",
-    ask = ":[Aa][Ii]%?",
-    run = ":[Aa][Ii]!",
-    internal = ":[Aa][Ii]/"
+    instruct = ":?[Aa][Ii]:",
+    ask = ":?[Aa][Ii]%?",
+    run = ":?[Aa][Ii]!",
+    internal = ":?[Aa][Ii]/"
   };
 
   for type, prefix in pairs(patterns) do

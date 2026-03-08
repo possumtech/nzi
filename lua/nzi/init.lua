@@ -163,6 +163,20 @@ function M.setup(opts)
   if config.options.default_mappings then
     require("nzi.core.actions").apply_default_mappings();
   end
+
+  -- Interpolation: Trigger on save
+  vim.api.nvim_create_autocmd("BufWritePost", {
+    group = vim.api.nvim_create_augroup("nzi_interpolation", { clear = true }),
+    callback = function()
+      -- Scan buffer for AI prefixes
+      local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false);
+      local parser = require("nzi.dom.parser");
+      local row, type, content = parser.find_in_lines(lines);
+      if type then
+        engine.execute_range(row, row);
+      end
+    end
+  });
 end
 
 return M;
