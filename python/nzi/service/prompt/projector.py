@@ -59,6 +59,8 @@ def project_dom_to_messages(dom, system_prompt_raw=None):
                         if mission.text:
                             primordial_text += mission.text.strip() + "\n"
                 else:
+                    # In the new structure, history might be here if it's not handled above
+                    # but we already handled history, roadmap and system.
                     primordial_text += f"{etree.tostring(child, encoding='unicode').strip()}\n"
             
             if primordial_text.strip():
@@ -82,23 +84,23 @@ def project_dom_to_messages(dom, system_prompt_raw=None):
         # 2. Subsequent Turns (N > 0)
         user_node = t.find("user")
         user_text = ""
+        
+        # A. Context First (Inside Turn)
+        history_node = t.find("history")
+        if history_node is not None:
+            parts = []
+            for f in history_node.xpath(".//file"):
+                pf = etree.Element("file")
+                pf.set("name", f.get("name") or f.get("path"))
+                pf.set("type", f.get("type"))
+                pf.text = f.text
+                parts.append(etree.tostring(pf, encoding='unicode').strip())
+            if parts:
+                user_text += "CONTEXT:\n" + "\n".join(parts) + "\n\n"
+        
         if user_node is not None:
-            # A. Context First
-            history_nodes = user_node.xpath(".//history")
-            for h in history_nodes:
-                parts = []
-                for f in h.xpath(".//file"):
-                    pf = etree.Element("file")
-                    pf.set("name", f.get("name") or f.get("path"))
-                    pf.set("type", f.get("type"))
-                    pf.text = f.text
-                    parts.append(etree.tostring(pf, encoding='unicode').strip())
-                if parts:
-                    user_text += "CONTEXT:\n" + "\n".join(parts) + "\n\n"
-            
             # B. Directive Second (Selection then Instruction)
             for mission in user_node:
-                if mission.tag == "history": continue
                 for sel in mission.findall("selection"):
                     user_text += etree.tostring(sel, encoding='unicode').strip() + "\n"
                 if mission.text:

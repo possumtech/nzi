@@ -26,6 +26,9 @@
         <xs:element ref="project_roadmap" minOccurs="0"/>
         <xs:element ref="suggest_next_task" minOccurs="0"/>
         
+        <!-- Environmental Context (Long-term memory) -->
+        <xs:element ref="history" minOccurs="0"/>
+
         <xs:element ref="user"/>
         <xs:element ref="assistant" minOccurs="0"/>
       </xs:sequence>
@@ -41,9 +44,6 @@
   <xs:element name="user">
     <xs:complexType>
       <xs:sequence>
-        <!-- Environmental Context (Long-term memory) -->
-        <xs:element ref="history" minOccurs="0"/>
-        
         <!-- The interaction choice (The Mission) -->
         <xs:choice>
           <xs:element ref="ask"/>
