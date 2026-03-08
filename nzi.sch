@@ -25,6 +25,13 @@
       </sch:assert>
     </sch:rule>
 
+    <!-- Turn Termination Rule -->
+    <sch:rule context="assistant/content">
+      <sch:assert test="summary or prompt_user">
+        Assistant content must end with either a <summary> or a <prompt_user> tag.
+      </sch:assert>
+    </sch:rule>
+
     <!-- The "Ask" Constraint: Inquiry-only turns cannot perform destructive actions -->
     <sch:rule context="turn[user/ask]/assistant/content">
       <sch:assert test="not(edit or create or delete or run or prompt_user)">
